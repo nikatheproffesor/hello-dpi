@@ -7,21 +7,52 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    name: Build Multi-Platform Binaries
+  build-tray-windows:
+    name: Build Windows Tray App
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      - name: Build Windows Tray GUI (.exe)
+        env:
+          GOOS: windows
+          GOARCH: amd64
+          CGO_ENABLED: 0
+        run: |
+          mkdir -p dist
+          go build -ldflags="-s -w -H=windowsgui" -o dist/HelloDPI-Windows.exe ./cmd/hellodpi-tray
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HelloDPI-Windows.exe
+          path: dist/HelloDPI-Windows.exe
+
+  build-tray-macos:
+    name: Build macOS Menubar App
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      - name: Package macOS App Bundle
+        run: |
+          chmod +x scripts/build-macos-app.sh
+          ./scripts/build-macos-app.sh
+          mkdir -p dist
+          cp bin/HelloDPI-macOS.zip dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HelloDPI-macOS.zip
+          path: dist/HelloDPI-macOS.zip
+
+  build-cli:
+    name: Build CLI Binaries
     runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
-          - goos: darwin
-            goarch: arm64
-            output_name: hellodpi-darwin-arm64
-          - goos: darwin
-            goarch: amd64
-            output_name: hellodpi-darwin-amd64
-          - goos: windows
-            goarch: amd64
-            output_name: hellodpi-windows-amd64.exe
           - goos: linux
             goarch: amd64
             output_name: hellodpi-linux-amd64
@@ -30,39 +61,32 @@ jobs:
             output_name: hellodpi-linux-arm64
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
-
-      - name: Compile Binary
+          go-version: '1.25'
+      - name: Compile CLI Binary
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0
         run: |
-          go build -ldflags="-s -w" -o dist/${{{ matrix.output_name }}} ./cmd/hellodpi
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+          mkdir -p dist
+          go build -ldflags="-s -w" -o dist/${{ matrix.output_name }} ./cmd/hellodpi
+      - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.output_name }}
           path: dist/${{ matrix.output_name }}
 
   release:
     name: Create GitHub Release
-    needs: build
+    needs: [build-tray-windows, build-tray-macos, build-cli]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
-      - name: Download all built binaries
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           path: release-artifacts
-
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
