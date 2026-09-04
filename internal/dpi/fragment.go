@@ -2,6 +2,7 @@ package dpi
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"net"
 	"time"
@@ -11,6 +12,7 @@ import (
 type SplitMode string
 
 const (
+	SplitTLS       SplitMode = "tlsrec"     // Split TLS ClientHello into two valid TLS records (Bypasses advanced DPI)
 	SplitSNI       SplitMode = "sni"        // Split at the SNI hostname
 	SplitFirstByte SplitMode = "first-byte" // Split 1st byte from the rest
 	SplitChunked   SplitMode = "chunked"    // Split into small fragments (e.g. 20-50 bytes)
@@ -27,7 +29,7 @@ type FragmentEngine struct {
 // NewFragmentEngine creates a configured FragmentEngine
 func NewFragmentEngine(mode SplitMode, delayMs int) *FragmentEngine {
 	if delayMs <= 0 {
-		delayMs = 2 // 2ms is optimal: fast enough to be unnoticeable, slow enough to ensure separate TCP packets
+		delayMs = 5 // 5ms default is reliable across all OS TCP stacks
 	}
 	return &FragmentEngine{
 		Mode:       mode,
@@ -77,35 +79,65 @@ func (fe *FragmentEngine) SendFragmented(conn net.Conn, data []byte) error {
 
 // fragmentTLS creates fragmented chunks for TLS ClientHello
 func (fe *FragmentEngine) fragmentTLS(data []byte, info ParsedInfo) [][]byte {
-	switch fe.Mode {
-	case SplitSNI:
-		if info.SNIOffset > 0 && info.SNILength > 1 {
-			// Split right in the middle of the SNI domain name
-			// e.g. "wiki" in first packet, "pedia.org" in second packet
-			splitPoint := info.SNIOffset + (info.SNILength / 2)
-			if splitPoint > 0 && splitPoint < len(data) {
-				return [][]byte{
-					data[:splitPoint],
-					data[splitPoint:],
-				}
-			}
-		}
-		// If SNI couldn't be located precisely, fall back to first byte split
-		return fe.splitFirstByte(data)
+	// Advanced TLS Record Splitting (RFC compliant, defeats stateful TCP reassembling DPI)
+	// Works for Turkey Discord, Cloudflare, etc.
+	if fe.Mode == SplitTLS || fe.Mode == SplitSNI || fe.Mode == "" {
+		return fe.splitTLSRecord(data, 5)
+	}
 
+	switch fe.Mode {
 	case SplitChunked:
 		return fe.splitInChunks(data, 40)
-
 	case SplitFirstByte:
-		fallthrough
+		return fe.splitFirstByte(data)
 	default:
+		return fe.splitTLSRecord(data, 5)
+	}
+}
+
+// splitTLSRecord splits a single TLS record into two valid RFC-compliant TLS records.
+// The first record carries only the handshake header (5 bytes) with NO SNI.
+// The second record carries the remainder of the handshake.
+// Compliant with RFC 5246 section 6.2.1 and RFC 8446 section 5.1.
+func (fe *FragmentEngine) splitTLSRecord(data []byte, splitPos int) [][]byte {
+	if len(data) < 9 || data[0] != 0x16 {
 		return fe.splitFirstByte(data)
 	}
+
+	recLen := int(binary.BigEndian.Uint16(data[3:5]))
+	if recLen <= splitPos || 5+recLen > len(data) {
+		splitPos = 1
+	}
+	if recLen <= splitPos {
+		return [][]byte{data}
+	}
+
+	// Record 1: 5-byte header + first splitPos bytes
+	rec1 := make([]byte, 5+splitPos)
+	rec1[0] = data[0] // 0x16 (Handshake)
+	rec1[1] = data[1] // TLS major
+	rec1[2] = data[2] // TLS minor
+	binary.BigEndian.PutUint16(rec1[3:5], uint16(splitPos))
+	copy(rec1[5:], data[5:5+splitPos])
+
+	// Record 2: 5-byte header + remaining handshake bytes
+	remRecLen := recLen - splitPos
+	extraLen := len(data) - (5 + recLen)
+	rec2 := make([]byte, 5+remRecLen+extraLen)
+	rec2[0] = data[0]
+	rec2[1] = data[1]
+	rec2[2] = data[2]
+	binary.BigEndian.PutUint16(rec2[3:5], uint16(remRecLen))
+	copy(rec2[5:5+remRecLen], data[5+splitPos:5+recLen])
+	if extraLen > 0 {
+		copy(rec2[5+remRecLen:], data[5+recLen:])
+	}
+
+	return [][]byte{rec1, rec2}
 }
 
 // fragmentHTTP modifies or fragments HTTP requests
 func (fe *FragmentEngine) fragmentHTTP(data []byte, info ParsedInfo) [][]byte {
-	// If Host offset is found, we can trick DPI by altering Host case or adding spaces
 	if info.HostOffset >= 0 && info.HostOffset+5 < len(data) {
 		modData := make([]byte, len(data))
 		copy(modData, data)
@@ -129,7 +161,7 @@ func (fe *FragmentEngine) fragmentHTTP(data []byte, info ParsedInfo) [][]byte {
 	return fe.splitFirstByte(data)
 }
 
-// splitFirstByte splits the 1st byte (or 2 bytes) and the rest
+// splitFirstByte splits the 1st byte and the rest
 func (fe *FragmentEngine) splitFirstByte(data []byte) [][]byte {
 	if len(data) <= 1 {
 		return [][]byte{data}
