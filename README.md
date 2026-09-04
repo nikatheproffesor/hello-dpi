@@ -2,7 +2,7 @@
 
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo_white.png">
-    <img src="assets/logo.png" width="130" alt="Hello DPI Logo" />
+    <img src="assets/logo.png" width="120" alt="Hello DPI Logo" />
   </picture>
 
   # Hello DPI
@@ -13,9 +13,9 @@
 
   <br />
 
-  [![License: MIT](https://img.shields.io/badge/Lisans-MIT-yellow.svg)](LICENSE)
-  [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-blue.svg)](#-nasıl-kullanılır)
-  [![Speed](https://img.shields.io/badge/H%C4%B1z-%25100%20Hat%20H%C4%B1z%C4%B1-brightgreen.svg)](#-neden-vpn-değil)
+  [![License: MIT](https://img.shields.io/badge/Lisans-MIT-black.svg)](LICENSE)
+  [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-black.svg)](#-nasıl-kullanılır)
+  [![Speed](https://img.shields.io/badge/H%C4%B1z-%25100%20Hat%20H%C4%B1z%C4%B1-black.svg)](#-neden-vpn-değil)
   [![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go)](https://go.dev/)
 
   <br />
@@ -30,25 +30,38 @@
 
 ### 🚀 Hemen İndir
 
-Kod veya terminal bilmenize gerek yok! İşletim sisteminize uygun olanı seçip tek tıkla kullanmaya başlayın:
+İşletim sisteminize uygun olanı seçip tek tıkla kullanmaya başlayın:
 
 | İşletim Sistemi | İndirme Linki | Kurulum |
 | :--- | :--- | :--- |
-| **🍏 macOS (Mac)** | [**HelloDPI-macOS.zip**](https://github.com/emreaytekxn/hello-dpi/releases/latest) | `.zip` dosyasını açın ve `Hello DPI.app` uygulamasına çift tıklayın. |
-| **🪟 Windows** | [**HelloDPI-Windows.exe**](https://github.com/emreaytekxn/hello-dpi/releases/latest) | Dosyayı indirin ve çift tıklayın (Siyah pencere açılmaz, doğrudan saatin yanına yerleşir). |
+| **🍏 macOS (DMG - Önerilen)** | [**HelloDPI-macOS.dmg**](https://github.com/emreaytekxn/hello-dpi/releases/latest) | `.dmg` dosyasını açıp `Hello DPI.app` uygulamasını Applications klasörüne sürükleyin. |
+| **🍏 macOS (ZIP)** | [**HelloDPI-macOS.zip**](https://github.com/emreaytekxn/hello-dpi/releases/latest) | `.zip` dosyasını açın ve `Hello DPI.app` uygulamasını çalıştırın. |
+| **🪟 Windows** | [**HelloDPI-Windows.exe**](https://github.com/emreaytekxn/hello-dpi/releases/latest) | İndirin ve çift tıklayın (Siyah konsol açılmaz, sağ altta saatin yanına yerleşir). |
 | **🐧 Linux** | [**hellodpi-linux-amd64**](https://github.com/emreaytekxn/hello-dpi/releases/latest) | Terminalden tek komutla veya systemd servisi olarak çalıştırın. |
+
+> [!TIP]
+> **🍏 Mac Kullanıcıları İçin Önemli Not ("Hasar Görmüş" Uyarısı Alırsanız):**
+> Apple, yıllık $99 geliştirici lisansı bulunmayan açık kaynaklı tüm bağımsız uygulamalara internetten indirildiğinde otomatik güvenlik karantinası koyar.
+> 
+> Çözümü çok basittir:
+> 1. İndirdiğiniz klasördeki **`Başlat.command`** dosyasına çift tıklayın, **VEYA**
+> 2. Terminale şu tek satırı yapıştırıp Enter'a basın:
+>    ```bash
+>    xattr -cr ~/Downloads/"Hello DPI.app"
+>    ```
+> *(Uygulama Applications klasöründeyse: `xattr -cr /Applications/"Hello DPI.app"`)*
 
 ---
 
 ### ❓ Hello DPI Nedir?
 
-Türkiye'de Discord ve bazı web siteleri, İnternet Servis Sağlayıcılarının (Türk Telekom, TurkNet, Superonline vb.) uyguladığı **DPI (Derin Paket İncelemesi)** filtreleri yüzünden engellenir. 
+Türkiye'de Discord ve engellenen siteler, İnternet Servis Sağlayıcılarının (Türk Telekom, TurkNet, Superonline vb.) uyguladığı **DPI (Derin Paket İncelemesi)** filtreleri yüzünden açılamaz.
 
 **Hello DPI**, internetinizi başka ülkelere yönlendirip yavaşlatan hantal VPN programlarının aksine:
 - ⚡ **İnternet Hızınızı Asla Düşürmez:** %100 kendi fiber veya hat hızınızda çalışır.
 - 🎮 **Oyunlarda Pinginizi Artırmaz:** Bağlantı doğrudan hedefe gider; gecikme eklenmez (0ms).
 - 🛡️ **Arka Planda Sessizce Korur:** Bilgisayarınızı yormaz, %0 işlemci (CPU) ve sadece 15 MB RAM kullanır.
-- 🖱️ **Terminal Açtırmaz:** Ekranın köşesindeki simgesinden tek tıkla açılıp kapanabilir.
+- 🖱️ **Terminal Açtırmaz:** Ekranın köşesindeki simgesinden (👋) tek tıkla açılıp kapanabilir.
 
 ---
 
@@ -56,7 +69,7 @@ Türkiye'de Discord ve bazı web siteleri, İnternet Servis Sağlayıcılarını
 
 1. Size uygun dosyayı yukarıdaki tablodan indirin.
 2. Çift tıklayarak çalıştırın:
-   - **Mac'te:** Sağ üst köşedeki menü çubuğunda kalkan simgemiz belirir.
+   - **Mac'te:** Sağ üst köşedeki menü çubuğunda el sallama simgemiz (👋) belirir.
    - **Windows'ta:** Sağ altta saatin yanındaki sistem tepsisine simgemiz yerleşir.
 3. **Bitti!** Artık Discord'u ve tüm siteleri dilediğiniz gibi açabilirsiniz. Korumayı geçici olarak durdurmak isterseniz simgeye tıklayıp *"Korumayı Duraklat"* demeniz yeterlidir.
 
@@ -106,8 +119,6 @@ Hello DPI is a zero-latency, cross-platform Deep Packet Inspection (DPI) circumv
 ---
 
 ### 📦 Quick Start (Developers & CLI)
-
-If you prefer building from source:
 
 ```bash
 git clone https://github.com/emreaytekxn/hello-dpi.git

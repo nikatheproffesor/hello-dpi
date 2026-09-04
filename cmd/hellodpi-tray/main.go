@@ -50,12 +50,13 @@ func main() {
 	tray := systray.New()
 	tray.SetAppName(appTitle)
 	tray.SetTooltip("Hello DPI: Aktif (Sansürsüz İnternet)")
+	tray.SetTemplateIcon(icon.ActiveIconPNG())
 	tray.SetIcon(icon.ActiveIconPNG())
 
 	menu := systray.NewMenu()
 
 	// 1. Status Label
-	statusItem := menu.Add("🛡️ Hello DPI: Aktif", nil)
+	statusItem := menu.Add("👋 Hello DPI: Aktif", nil)
 	statusItem.SetDisabled(true)
 
 	// 2. Protection Toggle
@@ -66,6 +67,7 @@ func main() {
 			// Pause protection
 			_ = sysproxy.ClearSystemProxy()
 			isActive = false
+			tray.SetTemplateIcon(icon.PausedIconPNG())
 			tray.SetIcon(icon.PausedIconPNG())
 			tray.SetTooltip("Hello DPI: Duraklatıldı")
 			statusItem.SetLabel("⏸️ Hello DPI: Duraklatıldı")
@@ -75,9 +77,10 @@ func main() {
 			// Resume protection
 			_ = sysproxy.SetSystemProxy("127.0.0.1", 8080)
 			isActive = true
+			tray.SetTemplateIcon(icon.ActiveIconPNG())
 			tray.SetIcon(icon.ActiveIconPNG())
 			tray.SetTooltip("Hello DPI: Aktif (Sansürsüz İnternet)")
-			statusItem.SetLabel("🛡️ Hello DPI: Aktif")
+			statusItem.SetLabel("👋 Hello DPI: Aktif")
 			toggleItem.SetLabel("⏸️ Korumayı Duraklat")
 			tray.ShowNotification(appTitle, "Hello DPI devrede! Discord ve tüm siteler açık.")
 		}

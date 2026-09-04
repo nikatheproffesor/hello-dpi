@@ -7,7 +7,7 @@ CONTENTS_DIR="$BUNDLE_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
 
-echo "=== Building $APP_NAME for macOS with Logo ==="
+echo "=== Building $APP_NAME for macOS (Ad-Hoc Signed) ==="
 
 rm -rf "$BUNDLE_DIR"
 mkdir -p "$MACOS_DIR"
@@ -52,10 +52,36 @@ cat <<EOF > "$CONTENTS_DIR/Info.plist"
 </plist>
 EOF
 
-echo "Packaging macOS release zip..."
-mkdir -p bin
-rm -f "bin/HelloDPI-macOS.zip"
-zip -r -q "bin/HelloDPI-macOS.zip" "$BUNDLE_DIR"
+echo "Applying Ad-Hoc Code Signature..."
+codesign --force --deep --sign - "$BUNDLE_DIR"
 
-echo "✓ Successfully generated '$BUNDLE_DIR' and 'bin/HelloDPI-macOS.zip' with logo!"
-echo "  Kullanıcı sadece 'Hello DPI.app' dosyasına çift tıklayarak çalıştırabilir."
+# Clear quarantine if any
+xattr -cr "$BUNDLE_DIR" 2>/dev/null || true
+
+mkdir -p bin
+
+# Create helper launch script for Gatekeeper bypass
+cat <<'EOF' > "bin/Başlat.command"
+#!/bin/bash
+DIR="$(cd "$(dirname "$0")" && pwd)"
+xattr -cr "$DIR/Hello DPI.app" 2>/dev/null || true
+open "$DIR/Hello DPI.app"
+EOF
+chmod +x "bin/Başlat.command"
+
+echo "Creating macOS release ZIP..."
+rm -f "bin/HelloDPI-macOS.zip"
+zip -r -q "bin/HelloDPI-macOS.zip" "$BUNDLE_DIR" "bin/Başlat.command"
+
+echo "Creating macOS release DMG..."
+rm -f "bin/HelloDPI-macOS.dmg"
+DMG_TMP="dmg_tmp"
+rm -rf "$DMG_TMP"
+mkdir -p "$DMG_TMP"
+cp -R "$BUNDLE_DIR" "$DMG_TMP/"
+cp "bin/Başlat.command" "$DMG_TMP/"
+ln -s /Applications "$DMG_TMP/Applications"
+hdiutil create -volname "Hello DPI" -srcfolder "$DMG_TMP" -ov -format UDZO "bin/HelloDPI-macOS.dmg" -quiet
+rm -rf "$DMG_TMP"
+
+echo "✓ Successfully built and signed '$BUNDLE_DIR', DMG and ZIP!"
