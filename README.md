@@ -1,6 +1,8 @@
-# ⚡ Hello DPI
-
 <div align="center">
+
+<img src="assets/logo.png" width="160" alt="Hello DPI Logo" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0, 200, 255, 0.2);" />
+
+# ⚡ Hello DPI
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go)](https://go.dev/)
