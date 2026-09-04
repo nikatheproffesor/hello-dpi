@@ -1,6 +1,9 @@
 <div align="center">
 
-  <img src="assets/logo.png" width="130" alt="Hello DPI Logo" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo_white.png">
+    <img src="assets/logo.png" width="130" alt="Hello DPI Logo" />
+  </picture>
 
   # Hello DPI
 
