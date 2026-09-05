@@ -85,6 +85,11 @@ func (fe *FragmentEngine) fragmentTLS(data []byte, info ParsedInfo) [][]byte {
 	splitPos := 5
 	if fe.CustomOffset > 0 {
 		splitPos = fe.CustomOffset
+	} else if info.SNIOffset > 5 && info.SNILength > 2 {
+		// Split right inside the SNI hostname (e.g. at middle of SNI)
+		// This guarantees that the blocked domain (e.g. "roblox.com" or "discord.com")
+		// is NEVER present as a contiguous string in ANY TCP packet!
+		splitPos = (info.SNIOffset - 5) + (info.SNILength / 2)
 	}
 
 	switch fe.Mode {

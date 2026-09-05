@@ -20,7 +20,7 @@ var (
 const (
 	internetOptionSettingsChanged = 39
 	internetOptionRefresh         = 37
-	bypassList                    = "<local>;*.local;10.*;172.16.*;172.17.*;172.18.*;172.19.*;172.20.*;172.21.*;172.22.*;172.23.*;172.24.*;172.25.*;172.26.*;172.27.*;172.28.*;172.29.*;172.30.*;172.31.*;192.168.*;*.gsb.gov.tr;*.kyk.gov.tr;captive.apple.com;connectivitycheck.gstatic.com;msftconnecttest.com"
+	bypassList                    = "<-loopback>;127.0.0.1;localhost;<local>;*.local;10.*;172.16.*;172.17.*;172.18.*;172.19.*;172.20.*;172.21.*;172.22.*;172.23.*;172.24.*;172.25.*;172.26.*;172.27.*;172.28.*;172.29.*;172.30.*;172.31.*;192.168.*;*.gsb.gov.tr;*.kyk.gov.tr;captive.apple.com;connectivitycheck.gstatic.com;msftconnecttest.com"
 )
 
 type windowsManager struct {
@@ -69,9 +69,10 @@ func (m *windowsManager) Enable(host string, port int) error {
 
 	notifyWinINet()
 
-	// Automatically flush Windows DNS cache to clear poisoned ISP records (e.g. 195.175.254.2)
+	// Automatically flush Windows DNS cache & sync WinHTTP proxy for background apps (Roblox / Discord)
 	go func() {
 		_ = exec.Command("ipconfig", "/flushdns").Run()
+		_ = exec.Command("netsh", "winhttp", "import", "proxy", "source=ie").Run()
 	}()
 
 	return nil
@@ -99,5 +100,10 @@ func (m *windowsManager) Disable() error {
 	}
 
 	notifyWinINet()
+
+	go func() {
+		_ = exec.Command("netsh", "winhttp", "reset", "proxy").Run()
+	}()
+
 	return nil
 }

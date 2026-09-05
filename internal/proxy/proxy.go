@@ -192,10 +192,18 @@ func (s *Server) handleHTTP(clientConn net.Conn, reader *bufio.Reader) {
 	}
 
 	// Intercept local Speedtest and Doctor endpoints
-	if req.Method != http.MethodConnect && (req.URL.Path == "/speedtest" || strings.HasPrefix(req.URL.Path, "/api/speedtest") || req.URL.Path == "/doctor" || strings.HasPrefix(req.URL.Path, "/api/doctor")) {
+	pathLower := strings.ToLower(req.URL.Path)
+	if req.Method != http.MethodConnect && (pathLower == "/speedtest" || strings.HasPrefix(pathLower, "/speedtest/") ||
+		strings.HasPrefix(pathLower, "/api/speedtest") || pathLower == "/doctor" ||
+		strings.HasPrefix(pathLower, "/doctor/") || strings.HasPrefix(pathLower, "/api/doctor")) {
 		w := newConnResponseWriter(clientConn)
 		s.speedtestMux.ServeHTTP(w, req)
-		w.flushHeaders()
+		return
+	}
+
+	if req.URL.Path == "/favicon.ico" {
+		w := newConnResponseWriter(clientConn)
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
@@ -479,16 +487,18 @@ func (s *Server) pipe(src, dst net.Conn) {
 
 // connResponseWriter implements http.ResponseWriter and http.Flusher directly over net.Conn
 type connResponseWriter struct {
-	conn        net.Conn
-	headers     http.Header
-	wroteHeader bool
-	status      int
+	conn          net.Conn
+	headers       http.Header
+	headerFlushed bool
+	status        int
 }
 
 func newConnResponseWriter(c net.Conn) *connResponseWriter {
+	h := make(http.Header)
+	h.Set("Connection", "close")
 	return &connResponseWriter{
 		conn:    c,
-		headers: make(http.Header),
+		headers: h,
 		status:  http.StatusOK,
 	}
 }
@@ -498,15 +508,14 @@ func (w *connResponseWriter) Header() http.Header {
 }
 
 func (w *connResponseWriter) WriteHeader(statusCode int) {
-	if !w.wroteHeader {
+	if !w.headerFlushed {
 		w.status = statusCode
-		w.wroteHeader = true
 		w.flushHeaders()
 	}
 }
 
 func (w *connResponseWriter) Write(data []byte) (int, error) {
-	if !w.wroteHeader {
+	if !w.headerFlushed {
 		w.WriteHeader(http.StatusOK)
 	}
 	return w.conn.Write(data)
@@ -517,6 +526,10 @@ func (w *connResponseWriter) Flush() {
 }
 
 func (w *connResponseWriter) flushHeaders() {
+	if w.headerFlushed {
+		return
+	}
+	w.headerFlushed = true
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("HTTP/1.1 %d %s\r\n", w.status, http.StatusText(w.status)))
 	for k, vv := range w.headers {

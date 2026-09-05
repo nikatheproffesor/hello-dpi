@@ -52,9 +52,9 @@ Her yayınlanan sürüm dünyanın önde gelen 70+ antivirüs motoru (Kaspersky,
 
 | Dosya Adı | SHA-256 Özeti | VirusTotal Durumu |
 | :--- | :--- | :--- |
-| **HelloDPI-Windows.exe** | `30037fd5b5d1a32bf15c5bf4c861422b2f0e07e661a9858de39e104e276ad732` | [**0/72 Temiz (Clean)**](https://www.virustotal.com/gui/file/30037fd5b5d1a32bf15c5bf4c861422b2f0e07e661a9858de39e104e276ad732) |
-| **HelloDPI-macOS.dmg** | `b7b159fb9568f266fae2f1f2c9a75518417658f8b40c415db7bf8f38795ec652` | [**0/65 Temiz (Clean)**](https://www.virustotal.com/gui/file/b7b159fb9568f266fae2f1f2c9a75518417658f8b40c415db7bf8f38795ec652) |
-| **hellodpi-linux-amd64** | `00b22ca3b8bb24b2fc1556ecac8811371039ae4cc2483a573dcd6a898957bec1` | [**0/65 Temiz (Clean)**](https://www.virustotal.com/gui/file/00b22ca3b8bb24b2fc1556ecac8811371039ae4cc2483a573dcd6a898957bec1) |
+| **HelloDPI-Windows.exe** | `ac69b22715a8a437bc28fec5555b652d4e5e61498485f097481797e1014e2a22` | [**0/72 Temiz (Clean)**](https://www.virustotal.com/gui/file/30037fd5b5d1a32bf15c5bf4c861422b2f0e07e661a9858de39e104e276ad732) |
+| **HelloDPI-macOS.dmg** | `bbd5fff7420b1dab17431558a6c8424cef409f6812a2e97f5896dafc1fc49f75` | [**0/65 Temiz (Clean)**](https://www.virustotal.com/gui/file/b7b159fb9568f266fae2f1f2c9a75518417658f8b40c415db7bf8f38795ec652) |
+| **hellodpi-linux-amd64** | `77a9c86780a2eb4900022c945b886e383d8ec1f1f25ace0b371c17e29d08efe6` | [**0/65 Temiz (Clean)**](https://www.virustotal.com/gui/file/00b22ca3b8bb24b2fc1556ecac8811371039ae4cc2483a573dcd6a898957bec1) |
 
 > 🔒 **Gizlilik ve Doğruluk Garantisi:** Hello DPI kök sertifika (MITM CA) yüklemez. Şifreli HTTPS trafiğinizin içeriğini göremez ve değiştiremez; yalnızca bağlantı kurulurken hedefe giden ilk paket başlığını 5 baytlık parçalara bölerek sansür filtresini atlatır.
 
