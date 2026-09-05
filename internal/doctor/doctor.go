@@ -188,115 +188,115 @@ func RunRepair() *DiagnosticReport {
 		report.Logs = append(report.Logs, msg)
 	}
 
-	addLog("🚀 Hello DPI Ağ Doktoru v%s başlatıldı (%s)", version.Version, runtime.GOOS)
+	addLog("[BASLAT] Hello DPI Ag Doktoru v%s (%s)", version.Version, runtime.GOOS)
 
 	// 1. Flush DNS Cache
-	addLog("🧹 İşletim sistemi DNS önbelleği temizleniyor (FlushDNS)...")
+	addLog("[DNS] Isletim sistemi DNS onbellegi temizleniyor (FlushDNS)...")
 	flushStatus, flushDetail := flushDNSCache()
 	report.Steps = append(report.Steps, DiagnosticStep{
 		ID:          "step-dns-flush",
-		Name:        "DNS Önbelleği Temizlendi (Cache Flush)",
-		Description: "İSS tarafından zehirlenmiş engelleme kayıtları (195.175.254.2) hafızadan silindi.",
+		Name:        "DNS Onbellegi Temizlendi (Cache Flush)",
+		Description: "ISS tarafindan zehirlenmis engelleme kayitlari hafizadan silindi.",
 		Status:      flushStatus,
 		Detail:      flushDetail,
 	})
-	addLog("✓ FlushDNS: %s", flushDetail)
+	addLog("[OK] FlushDNS: %s", flushDetail)
 
 	// 2. Re-apply System Proxy + SOCKS5
-	addLog("🔌 WinINet & WinHTTP proxy tüneli eşitleniyor (127.0.0.1:8080)...")
+	addLog("[PROXY] Sistem proxy tuneli esitleniyor (127.0.0.1:8080)...")
 	proxyStatus, proxyDetail := repairSystemProxy()
 	report.Steps = append(report.Steps, DiagnosticStep{
 		ID:          "step-sysproxy",
-		Name:        "Sistem Proxy & SOCKS5 Protokolü Yenilendi",
-		Description: "HTTP, HTTPS, SOCKS5 ve WinHTTP proxy (127.0.0.1:8080) bypass kuralları uygulandı.",
+		Name:        "Sistem Proxy & SOCKS5 Protokolu Yenilendi",
+		Description: "HTTP, HTTPS, SOCKS5 ve ortam degiskenleri (127.0.0.1:8080) uygulandi.",
 		Status:      proxyStatus,
 		Detail:      proxyDetail,
 	})
-	addLog("✓ Proxy Motoru: %s", proxyDetail)
+	addLog("[OK] Proxy Motoru: %s", proxyDetail)
 
 	// 3. DNS Optimization (Cloudflare 1.1.1.1 / Google 8.8.8.8)
-	addLog("🛡️ Güvenli DNS yapılandırması denetleniyor (1.1.1.1 / 1.0.0.1)...")
+	addLog("[DNS] Guvenli DNS yapilandirmasi denetleniyor (1.1.1.1 / 8.8.8.8)...")
 	dnsStatus, dnsDetail := optimizeDNS()
 	report.Steps = append(report.Steps, DiagnosticStep{
 		ID:          "step-dns-config",
-		Name:        "Güvenli DNS ve Adaptör Yapılandırması",
-		Description: "Roblox masaüstü istemcisi ve Discord için Cloudflare (1.1.1.1) ve Google DNS denetlendi.",
+		Name:        "Guvenli DNS ve Adaptor Yapilandirmasi",
+		Description: "Roblox masaustu istemcisi ve Discord icin Cloudflare ve Google DNS denetlendi.",
 		Status:      dnsStatus,
 		Detail:      dnsDetail,
 	})
-	addLog("✓ DNS Yapılandırması: %s", dnsDetail)
+	addLog("[OK] DNS Yapilandirmasi: %s", dnsDetail)
 
 	// 4. Stale Discord Connection Check
-	addLog("💬 Discord masaüstü arka plan soketleri taranıyor...")
+	addLog("[DISCORD] Discord masaustu arka plan soketleri taraniyor...")
 	discordStatus, discordDetail := checkDiscordState()
 	report.Steps = append(report.Steps, DiagnosticStep{
 		ID:          "step-discord-state",
-		Name:        "Discord Durumu ve Askıda Kalan Soketler",
-		Description: "Discord masaüstü uygulamasının Hello DPI korumalı tüneline temiz bağlanması denetlendi.",
+		Name:        "Discord Durumu ve Soket Kontrolu",
+		Description: "Discord masaustu uygulamasinin korumali tunele temiz baglanmasi denetlendi.",
 		Status:      discordStatus,
 		Detail:      discordDetail,
 	})
-	addLog("✓ Discord Durumu: %s", discordDetail)
+	addLog("[OK] Discord Durumu: %s", discordDetail)
 
 	// 5. Live Connectivity & DPI Fragmentation Tests
-	addLog("⚡ Cloudflare DoH (1.1.1.1:443) canlı gecikme ölçümü yapılıyor...")
+	addLog("[TEST] Cloudflare DoH (1.1.1.1:443) canli gecikme olcumu yapiliyor...")
 	report.DoHPing = testDirectLatency("1.1.1.1:443", 2*time.Second)
 	if report.DoHPing > 0 {
-		addLog("✓ Cloudflare DNS Erişimi: %d ms [Mükemmel]", report.DoHPing)
+		addLog("[OK] Cloudflare DNS Erisimi: %d ms", report.DoHPing)
 	} else {
-		addLog("⚠️ Cloudflare DNS gecikmeli yanıt verdi")
+		addLog("[WARN] Cloudflare DNS gecikmeli yanit verdi")
 	}
 
-	addLog("🟣 Discord Gateway (discord.com:443) Hello DPI tünel testi yapılıyor...")
+	addLog("[TEST] Discord Gateway (discord.com:443) Hello DPI tunel testi yapiliyor...")
 	report.DiscordPing = testProxyTunnel("127.0.0.1:8080", "discord.com:443", 4*time.Second)
 	if report.DiscordPing <= 0 {
 		report.DiscordPing = testDirectLatency("discord.com:443", 2*time.Second)
 	}
 
 	if report.DiscordPing > 0 {
-		addLog("✓ Discord Gateway: %d ms [Erişim Açık]", report.DiscordPing)
+		addLog("[OK] Discord Gateway: %d ms [Erisim Acik]", report.DiscordPing)
 		report.Steps = append(report.Steps, DiagnosticStep{
 			ID:          "step-discord-ping",
-			Name:        "Discord Sunucularına Erişim",
-			Description: fmt.Sprintf("Discord ağ geçidine doğrudan erişim sağlandı (Gecikme: %d ms).", report.DiscordPing),
+			Name:        "Discord Sunucularina Erisim",
+			Description: fmt.Sprintf("Discord ag gecidine dogrudan erisim saglandi (%d ms).", report.DiscordPing),
 			Status:      "success",
-			Detail:      "Discord Web, Gateway ve Ses sunucuları engelsiz yanıt veriyor.",
+			Detail:      "Discord Web, Gateway ve Ses sunuculari engelsiz yanit veriyor.",
 		})
 	} else {
 		report.AllGood = false
-		addLog("❌ Discord Gateway bağlantısı zaman aşımına uğradı")
+		addLog("[WARN] Discord Gateway baglantisi gecikmeli")
 		report.Steps = append(report.Steps, DiagnosticStep{
 			ID:          "step-discord-ping",
-			Name:        "Discord Sunucularına Erişim",
-			Description: "Discord sunucusuna doğrudan erişim gecikmeli.",
+			Name:        "Discord Sunucularina Erisim",
+			Description: "Discord sunucusuna dogrudan erisim gecikmeli.",
 			Status:      "warning",
-			Detail:      "Discord'u aşağıdaki butona tıklayarak Hello DPI ile temiz baştan başlatabilirsiniz.",
+			Detail:      "Discord'u asagidaki butona tiklayarak Hello DPI ile temiz bastan baslatabilirsiniz.",
 		})
 	}
 
-	addLog("🟥 Roblox CDN ve Web (setup.rbxcdn.com:443) test ediliyor...")
+	addLog("[TEST] Roblox CDN ve Web (setup.rbxcdn.com:443) test ediliyor...")
 	report.RobloxPing = testProxyTunnel("127.0.0.1:8080", "setup.rbxcdn.com:443", 4*time.Second)
 	if report.RobloxPing <= 0 {
 		report.RobloxPing = testDirectLatency("setup.rbxcdn.com:443", 2*time.Second)
 	}
 
 	if report.RobloxPing > 0 {
-		addLog("✓ Roblox CDN ve Oyun Paketleri: %d ms [Erişim Açık]", report.RobloxPing)
+		addLog("[OK] Roblox CDN ve Paketleri: %d ms [Erisim Acik]", report.RobloxPing)
 		report.Steps = append(report.Steps, DiagnosticStep{
 			ID:          "step-roblox-ping",
 			Name:        "Roblox Web ve CDN Paketleri",
-			Description: fmt.Sprintf("Roblox Web ve CDN sunucularına bağlantı kuruldu (Gecikme: %d ms).", report.RobloxPing),
+			Description: fmt.Sprintf("Roblox Web ve CDN sunucularina baglanti kuruldu (%d ms).", report.RobloxPing),
 			Status:      "success",
-			Detail:      "roblox.com ve setup.rbxcdn.com paketleri sansürsüz akıyor.",
+			Detail:      "roblox.com ve setup.rbxcdn.com paketleri engelsiz akiyor.",
 		})
 	} else {
-		addLog("ℹ️ Roblox CDN doğrudan yanıt vermedi, DNS onarımı önerilir")
+		addLog("[INFO] Roblox CDN dogrudan yanit vermedi")
 		report.Steps = append(report.Steps, DiagnosticStep{
 			ID:          "step-roblox-ping",
 			Name:        "Roblox Web ve CDN Paketleri",
-			Description: "Roblox doğrudan bağlanamadı; ağ kartı DNS'inin 1.1.1.1 yapılması gerekir.",
+			Description: "Roblox dogrudan baglanamadi; ag karti DNS'inin 1.1.1.1 yapilmasi onerilir.",
 			Status:      "info",
-			Detail:      "Aşağıdaki 'Roblox İçin Ağ Kartı DNS'ini Onar' butonuna tıklayarak tek tıkla çözebilirsiniz.",
+			Detail:      "Ag ayarlarini sifirlayarak veya Cekirdek Modunu baslatarak cozebilirsiniz.",
 		})
 	}
 
@@ -304,26 +304,26 @@ func RunRepair() *DiagnosticReport {
 	kernelActive := divert.IsRunning()
 	report.KernelActive = kernelActive
 	if kernelActive {
-		addLog("🟢 Çekirdek Modu (L3/L4 WinDivert) devrede: Roblox ve tüm oyunlar engelsiz.")
+		addLog("[OK] Cekirdek Modu (L3/L4 WinDivert) devrede: Roblox ve tum oyunlar engelsiz.")
 		report.Steps = append(report.Steps, DiagnosticStep{
 			ID:          "step-kernel",
-			Name:        "Çekirdek Modu (L3/L4 WinDivert)",
-			Description: "Roblox ve ham soket kullanan oyunlar için çekirdek seviyesinde paket parçalama",
+			Name:        "Cekirdek Modu (L3/L4 WinDivert)",
+			Description: "Roblox ve ham soket kullanan oyunlar icin cekirdek seviyesinde paket parcalama",
 			Status:      "success",
-			Detail:      "Aktif. Tüm ağ trafiği çekirdek seviyesinde korunuyor.",
+			Detail:      "Aktif. Tum ag trafigi cekirdek seviyesinde korunuyor.",
 		})
 	} else {
-		addLog("⚪ Çekirdek Modu beklemede (Roblox ve oyunlar için tek tıkla başlatılabilir).")
+		addLog("[INFO] Cekirdek Modu beklemede (Roblox ve oyunlar icin baslatilabilir).")
 		report.Steps = append(report.Steps, DiagnosticStep{
 			ID:          "step-kernel",
-			Name:        "Çekirdek Modu (L3/L4 WinDivert)",
-			Description: "Roblox ve ham soket kullanan oyunlar için çekirdek seviyesinde paket parçalama",
+			Name:        "Cekirdek Modu (L3/L4 WinDivert)",
+			Description: "Roblox ve ham soket kullanan oyunlar icin cekirdek seviyesinde paket parcalama",
 			Status:      "info",
-			Detail:      "Hazır durumda. Roblox oynamak için tek tıkla başlatabilirsiniz.",
+			Detail:      "Hazir durumda. Roblox oynamak icin baslatabilirsiniz.",
 		})
 	}
 
-	addLog("🎉 Tüm onarım ve teşhis adımları tamamlandı! Sistem hazır.")
+	addLog("[TAMAM] Tum onarim ve tesihis adimlari tamamlandi. Sistem hazir.")
 
 	lastReportMu.Lock()
 	lastReport = report
@@ -520,10 +520,13 @@ func LaunchRoblox() (bool, string) {
 	case "windows":
 		cmd := exec.Command("cmd", "/c", "start", "https://www.roblox.com/home")
 		_ = cmd.Start()
-		return true, "Roblox sayfası açıldı. Oyuna katılabilirsiniz."
-	case "darwin":
-		_ = exec.Command("open", "https://www.roblox.com/home").Start()
 		return true, "Roblox sayfası açıldı."
+	case "darwin":
+		for _, envVar := range []string{"http_proxy", "https_proxy", "all_proxy", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY"} {
+			_ = exec.Command("launchctl", "setenv", envVar, "http://127.0.0.1:8080").Run()
+		}
+		_ = exec.Command("open", "https://www.roblox.com/home").Start()
+		return true, "Roblox sayfası açıldı (Proxy ortam değişkenleri uygulandı)."
 	default:
 		_ = exec.Command("xdg-open", "https://www.roblox.com/home").Start()
 		return true, "Roblox sayfası açıldı."
@@ -573,26 +576,23 @@ const doctorHTML = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hello DPI - Ağ Doktoru & Sorun Giderici</title>
+  <title>Hello DPI - Ağ Doktoru & Teşhis</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #07090e;
-      --card-bg: rgba(15, 21, 37, 0.85);
-      --card-border: rgba(255, 255, 255, 0.09);
-      --accent-cyan: #00f2fe;
-      --accent-emerald: #10b981;
-      --accent-amber: #f59e0b;
-      --accent-rose: #f43f5e;
-      --accent-purple: #a855f7;
-      --text-main: #f8fafc;
-      --text-dim: #94a3b8;
+      --bg: #000000;
+      --card-bg: #111113;
+      --card-border: #27272a;
+      --card-border-subtle: #1c1c1f;
+      --text-main: #ffffff;
+      --text-sub: #a1a1aa;
+      --text-muted: #71717a;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: 'Outfit', sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: var(--bg);
       color: var(--text-main);
       min-height: 100vh;
@@ -600,382 +600,205 @@ const doctorHTML = `<!DOCTYPE html>
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
-      padding: 40px 20px;
-      background-image: 
-        radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.15) 0%, transparent 50%),
-        radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.1) 0%, transparent 40%),
-        radial-gradient(circle at 10% 90%, rgba(0, 242, 254, 0.1) 0%, transparent 50%);
+      padding: 32px 20px;
+      -webkit-font-smoothing: antialiased;
     }
     .container {
       width: 100%;
-      max-width: 880px;
+      max-width: 860px;
       background: var(--card-bg);
       border: 1px solid var(--card-border);
-      border-radius: 28px;
-      padding: 36px 40px;
-      backdrop-filter: blur(28px);
-      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.7);
-      position: relative;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
     }
     .header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 24px;
       padding-bottom: 20px;
       border-bottom: 1px solid var(--card-border);
     }
     .header-left {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 12px;
     }
-    .header-icon {
-      width: 48px;
-      height: 48px;
-      background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(0, 242, 254, 0.2));
-      border: 1px solid rgba(16, 185, 129, 0.4);
-      border-radius: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 26px;
-    }
-    h1 {
-      font-size: 26px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      background: linear-gradient(135deg, #ffffff 40%, var(--accent-emerald));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .subtitle {
-      font-size: 14px;
-      color: var(--text-dim);
-      margin-top: 2px;
-    }
-    .btn-retest {
-      background: linear-gradient(135deg, var(--accent-emerald), #059669);
-      color: #fff;
-      font-size: 14px;
+    .brand-title {
+      font-size: 16px;
       font-weight: 700;
-      padding: 12px 22px;
-      border-radius: 99px;
-      border: none;
-      cursor: pointer;
-      box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35);
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      letter-spacing: -0.3px;
+      color: #ffffff;
+      text-transform: uppercase;
     }
-    .btn-retest:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 12px 30px rgba(16, 185, 129, 0.5);
-    }
-    .btn-retest:active { transform: translateY(0); }
-    .btn-retest:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    /* Live Progress Bar */
-    .progress-section {
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid var(--card-border);
-      border-radius: 18px;
-      padding: 16px 20px;
-      margin-bottom: 24px;
-    }
-    .progress-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-    .progress-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-dim);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .progress-percent {
+    .version-tag {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--accent-emerald);
-    }
-    .progress-track {
-      width: 100%;
-      height: 8px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 99px;
-      overflow: hidden;
-      position: relative;
-    }
-    .progress-bar {
-      height: 100%;
-      width: 0%;
-      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-emerald));
-      border-radius: 99px;
-      transition: width 0.4s ease;
-      box-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
-    }
-
-    /* Pings Grid */
-    .pings-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-    .ping-card {
-      background: rgba(255, 255, 255, 0.03);
+      font-size: 11px;
+      background: #1f1f23;
       border: 1px solid var(--card-border);
-      border-radius: 20px;
-      padding: 18px 20px;
+      color: var(--text-sub);
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+    .header-right {
       display: flex;
-      flex-direction: column;
       align-items: center;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-      transition: all 0.2s ease;
+      gap: 12px;
     }
-    .ping-card:hover {
-      background: rgba(255, 255, 255, 0.05);
-      border-color: rgba(255, 255, 255, 0.15);
-      transform: translateY(-2px);
-    }
-    .ping-icon {
-      font-size: 22px;
-      margin-bottom: 4px;
-    }
-    .ping-title {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text-dim);
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      margin-bottom: 6px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: #18181b;
+      border: 1px solid var(--card-border);
+      color: #ffffff;
     }
-    .ping-val {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 28px;
-      font-weight: 800;
-      color: var(--accent-emerald);
-      display: flex;
-      align-items: baseline;
-      gap: 2px;
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #ffffff;
     }
-    .ping-unit {
+    .btn-retest {
+      background: #ffffff;
+      color: #000000;
       font-size: 13px;
-      color: var(--text-dim);
-      font-weight: 500;
+      font-weight: 600;
+      padding: 8px 18px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s ease;
     }
-    .ping-status {
-      margin-top: 6px;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 3px 8px;
-      border-radius: 99px;
-      background: rgba(16, 185, 129, 0.15);
-      color: var(--accent-emerald);
-      border: 1px solid rgba(16, 185, 129, 0.3);
+    .btn-retest:hover {
+      background: #e4e4e7;
     }
-    .ping-status.bad {
-      background: rgba(244, 63, 94, 0.15);
-      color: var(--accent-rose);
-      border-color: rgba(244, 63, 94, 0.3);
+    .btn-retest:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
     }
 
-    /* Action Center (Quick Fixes) */
-    .action-center {
-      background: linear-gradient(135deg, rgba(168, 85, 247, 0.08), rgba(0, 242, 254, 0.08));
-      border: 1px solid rgba(168, 85, 247, 0.25);
-      border-radius: 20px;
-      padding: 20px;
-      margin-bottom: 24px;
+    /* Metrics Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
     }
-    .action-header {
+    .metric-card {
+      background: #09090b;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 16px;
       display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 12px;
+      flex-direction: column;
+      gap: 6px;
     }
-    .action-header h3 {
-      font-size: 15px;
+    .metric-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+    .metric-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 24px;
       font-weight: 700;
-      color: #fff;
+      color: #ffffff;
+      line-height: 1.2;
     }
-    .action-buttons {
-      display: flex;
-      flex-wrap: wrap;
+    .metric-sub {
+      font-size: 11px;
+      color: var(--text-sub);
+    }
+
+    /* Actions Section */
+    .section-header {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .actions-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
       gap: 10px;
     }
     .btn-action {
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: #fff;
+      background: #18181b;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      color: #ffffff;
       font-size: 13px;
-      font-weight: 700;
-      padding: 10px 18px;
-      border-radius: 12px;
+      font-weight: 600;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 8px;
-      transition: all 0.2s ease;
+      justify-content: space-between;
+      transition: all 0.15s ease;
+      text-align: left;
     }
     .btn-action:hover {
-      background: rgba(255, 255, 255, 0.12);
-      border-color: rgba(255, 255, 255, 0.3);
-      transform: translateY(-2px);
+      background: #27272a;
+      border-color: #3f3f46;
     }
     .btn-action.highlight {
-      background: linear-gradient(135deg, rgba(0, 242, 254, 0.2), rgba(16, 185, 129, 0.2));
-      border-color: var(--accent-emerald);
-      color: #a7f3d0;
+      background: #ffffff;
+      color: #000000;
+      border-color: #ffffff;
     }
     .btn-action.highlight:hover {
-      background: linear-gradient(135deg, rgba(0, 242, 254, 0.3), rgba(16, 185, 129, 0.3));
-    }
-
-    /* Toast Notification */
-    .toast {
-      display: none;
-      background: rgba(16, 185, 129, 0.2);
-      border: 1px solid var(--accent-emerald);
-      color: #fff;
-      padding: 12px 18px;
-      border-radius: 12px;
-      font-size: 13px;
-      font-weight: 600;
-      margin-top: 12px;
-      animation: fadeIn 0.3s ease;
-    }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
-
-    /* Checklist */
-    .checklist {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      margin-bottom: 24px;
-    }
-    .check-item {
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid var(--card-border);
-      border-radius: 18px;
-      padding: 16px 20px;
-      display: flex;
-      align-items: flex-start;
-      gap: 16px;
-      transition: all 0.2s ease;
-    }
-    .check-item:hover {
-      background: rgba(255, 255, 255, 0.04);
-      border-color: rgba(255, 255, 255, 0.15);
-    }
-    .badge-icon {
-      width: 34px;
-      height: 34px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-      font-weight: bold;
-      flex-shrink: 0;
-      margin-top: 2px;
-    }
-    .badge-success {
-      background: rgba(16, 185, 129, 0.15);
-      color: var(--accent-emerald);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      box-shadow: 0 0 12px rgba(16, 185, 129, 0.2);
-    }
-    .badge-warning {
-      background: rgba(245, 158, 11, 0.15);
-      color: var(--accent-amber);
-      border: 1px solid rgba(245, 158, 11, 0.3);
-    }
-    .badge-info {
-      background: rgba(0, 242, 254, 0.15);
-      color: var(--accent-cyan);
-      border: 1px solid rgba(0, 242, 254, 0.3);
-    }
-    .check-content { flex: 1; }
-    .check-title {
-      font-size: 15px;
-      font-weight: 700;
-      color: #fff;
-      margin-bottom: 3px;
-    }
-    .check-desc {
-      font-size: 13px;
-      color: var(--text-dim);
-      margin-bottom: 6px;
-      line-height: 1.4;
-    }
-    .check-detail {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      color: #a7f3d0;
-      background: rgba(16, 185, 129, 0.08);
-      padding: 5px 10px;
-      border-radius: 8px;
-      display: inline-block;
-    }
-    .check-detail.warning {
-      color: #fde68a;
-      background: rgba(245, 158, 11, 0.08);
-    }
-
-    /* Terminal Console */
-    .terminal-box {
-      background: #040609;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 16px;
-      padding: 16px;
-      margin-bottom: 24px;
-      font-family: 'JetBrains Mono', monospace;
       background: #e4e4e7;
-    }
-    .btn-action.highlight .action-tag {
-      background: #000000;
-      color: #ffffff;
     }
     .action-tag {
       font-family: 'JetBrains Mono', monospace;
       font-size: 10px;
       padding: 3px 8px;
-      border-radius: 6px;
-      background: rgba(255, 255, 255, 0.06);
+      border-radius: 4px;
+      background: #27272a;
       color: var(--text-sub);
+      text-transform: uppercase;
     }
+    .btn-action.highlight .action-tag {
+      background: #000000;
+      color: #ffffff;
+    }
+
+    /* Console Section */
     .console-wrapper {
-      background: #0c0d14;
+      background: #000000;
       border: 1px solid var(--card-border);
-      border-radius: 14px;
+      border-radius: 10px;
       overflow: hidden;
     }
-    .console-header {
-      background: rgba(255, 255, 255, 0.02);
+    .console-bar {
+      background: #18181b;
       border-bottom: 1px solid var(--card-border);
       padding: 10px 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
       color: var(--text-muted);
     }
     .console-body {
       padding: 16px;
-      max-height: 220px;
+      max-height: 200px;
       overflow-y: auto;
       font-family: 'JetBrains Mono', monospace;
       font-size: 12px;
@@ -988,39 +811,45 @@ const doctorHTML = `<!DOCTYPE html>
       color: #a1a1aa;
       word-break: break-all;
     }
-    .notes-grid {
+
+    /* Documentation Cards */
+    .info-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
     }
-    .note-card {
-      background: rgba(255, 255, 255, 0.015);
-      border: 1px solid var(--card-border-subtle);
-      border-radius: 12px;
+    .info-card {
+      background: #09090b;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
       padding: 16px;
     }
-    .note-card h4 {
-      font-size: 13px;
-      font-weight: 600;
-      color: #fff;
+    .info-card h4 {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #ffffff;
       margin-bottom: 6px;
     }
-    .note-card p {
+    .info-card p {
       font-size: 12px;
-      color: var(--text-muted);
+      color: var(--text-sub);
       line-height: 1.5;
     }
+
+    /* Toast */
     .toast {
       position: fixed;
       bottom: 24px;
       right: 24px;
       background: #18181b;
       border: 1px solid var(--card-border);
-      color: #fff;
-      font-size: 13px;
+      color: #ffffff;
+      font-size: 12px;
       padding: 12px 20px;
-      border-radius: 10px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      border-radius: 8px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.2s ease;
@@ -1029,27 +858,28 @@ const doctorHTML = `<!DOCTYPE html>
     .toast.show {
       opacity: 1;
     }
+
     @media (max-width: 680px) {
       .metrics-grid { grid-template-columns: repeat(2, 1fr); }
       .actions-grid { grid-template-columns: 1fr; }
-      .notes-grid { grid-template-columns: 1fr; }
+      .info-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="top-nav">
-      <div class="nav-brand">
-        <span class="brand-name">Hello DPI Console</span>
-        <span class="version-tag">v3.0.0</span>
+    <div class="header">
+      <div class="header-left">
+        <span class="brand-title">Hello DPI Console</span>
+        <span class="version-tag">v3.1.0</span>
       </div>
-      <div class="nav-actions">
+      <div class="header-right">
         <div class="status-badge">
-          <span class="dot-online"></span>
-          <span id="nav-status-text">Sistem Çevrimiçi</span>
+          <span class="status-dot"></span>
+          <span id="nav-status-text">CEVRIMICI</span>
         </div>
-        <button class="btn-retest" onclick="startFullDiagnostics()">
-          <span>Yeniden Tara</span>
+        <button class="btn-retest" id="retestBtn" onclick="startFullDiagnostics()">
+          Yeniden Tara
         </button>
       </div>
     </div>
@@ -1058,77 +888,65 @@ const doctorHTML = `<!DOCTYPE html>
       <div class="metric-card">
         <div class="metric-label">Sistem Proxy</div>
         <div class="metric-value">127.0.0.1:8080</div>
-        <div class="metric-detail">
-          <span class="detail-dot"></span>
-          <span>WinINet Tüneli Aktif</span>
-        </div>
+        <div class="metric-sub">Tunel Aktif</div>
       </div>
       <div class="metric-card">
-        <div class="metric-label">Çekirdek Modu</div>
+        <div class="metric-label">Cekirdek Modu</div>
         <div class="metric-value" id="val-kernel">Beklemede</div>
-        <div class="metric-detail" id="detail-kernel">
-          <span class="detail-dot inactive" id="dot-kernel"></span>
-          <span id="text-kernel">Roblox İçin Hazır</span>
-        </div>
+        <div class="metric-sub" id="sub-kernel">Roblox Icin Hazir</div>
       </div>
       <div class="metric-card">
         <div class="metric-label">Discord Gateway</div>
         <div class="metric-value" id="val-discord">-- ms</div>
-        <div class="metric-detail">
-          <span class="detail-dot"></span>
-          <span id="text-discord">Ses & API Tüneli</span>
-        </div>
+        <div class="metric-sub">Ses & API Tuneli</div>
       </div>
       <div class="metric-card">
         <div class="metric-label">Roblox Servisleri</div>
         <div class="metric-value" id="val-roblox">-- ms</div>
-        <div class="metric-detail">
-          <span class="detail-dot" id="dot-roblox"></span>
-          <span id="text-roblox">CDN ve Oyun Paketleri</span>
-        </div>
+        <div class="metric-sub">CDN & Oyun Paketleri</div>
       </div>
     </div>
 
     <div>
-      <div class="section-title">Hızlı Eylemler</div>
+      <div class="section-header">Hizli Islemler</div>
       <div class="actions-grid">
         <button class="btn-action highlight" id="btn-kernel-toggle" onclick="toggleKernel()">
-          <span id="btn-kernel-label">🎮 Roblox & Çekirdek Modunu Başlat</span>
-          <span class="action-tag">WinDivert L3/L4</span>
+          <span id="btn-kernel-label">Cekirdek Modunu Baslat</span>
+          <span class="action-tag">L3/L4 Sockets</span>
         </button>
         <button class="btn-action" onclick="resetNetwork()">
-          <span>🚨 Ağ Ayarlarını Sıfırla (DHCP & WinHTTP)</span>
-          <span class="action-tag">Temizle</span>
+          <span>Ag Ayarlarini Sifirla</span>
+          <span class="action-tag">DHCP & Flush</span>
         </button>
         <button class="btn-action" onclick="restartDiscord()">
-          <span>💬 Discord'u Temizle & Başlat</span>
-          <span class="action-tag">Yenile</span>
+          <span>Discord Tunelini Yenile</span>
+          <span class="action-tag">Restart</span>
         </button>
         <button class="btn-action" onclick="launchRoblox()">
-          <span>🚀 Roblox'u Başlat</span>
-          <span class="action-tag">Aç</span>
+          <span>Roblox'u Baslat</span>
+          <span class="action-tag">Launch</span>
         </button>
       </div>
     </div>
 
     <div class="console-wrapper">
-      <div class="console-header">
-        <span>Canlı Teşhis Günlüğü</span>
-        <span id="log-count">0 olay</span>
+      <div class="console-bar">
+        <span>Canli Teshis Gunlugu</span>
+        <span id="log-count">0 kayit</span>
       </div>
       <div class="console-body" id="console-body">
-        <div class="log-line">> Konsol başlatılıyor...</div>
+        <div class="log-line">> Konsol baslatiliyor...</div>
       </div>
     </div>
 
-    <div class="notes-grid">
-      <div class="note-card">
-        <h4>Proxy Modu (Tarayıcılar & Discord)</h4>
-        <p>Chrome, Edge ve Discord masaüstü istemcisi Windows sistem proxy'sini (127.0.0.1:8080) kullanır. Hello DPI, bu bağlantılardaki ilk TLS paketlerini 5 bayta bölerek sansürü sıfır gecikmeyle aşar.</p>
+    <div class="info-grid">
+      <div class="info-card">
+        <h4>Standart Tunel Modu (Discord & Web)</h4>
+        <p>Tarayicilar, Edge, Chrome ve Discord masaustu istemcisi yerel proxy tunelini kullanir. Ilk TLS ClientHello paketleri 5 bayta bolunerek sansur sifir gecikmeyle asilir.</p>
       </div>
-      <div class="note-card">
-        <h4>Çekirdek Modu (Roblox & Oyunlar)</h4>
-        <p>Roblox masaüstü istemcisi (RobloxPlayerBeta.exe) sistem proxy'sini dinlemez. Çekirdek Modu (WinDivert), giden ham paketleri ağ kartı düzeyinde yakalayıp parçalayarak engelsiz oyun erişimi sağlar.</p>
+      <div class="info-card">
+        <h4>Cekirdek Modu (Roblox & Oyunlar)</h4>
+        <p>Roblox ve ham soket kullanan oyun istemcileri icin ag karti duzeyinde paket parcalama yapilir. WinDivert surucusu ve ortam degiskenleri ile baglanti kurulur.</p>
       </div>
     </div>
 
@@ -1138,10 +956,9 @@ const doctorHTML = `<!DOCTYPE html>
   <script>
     let isKernelActive = false;
 
-    function showToast(msg, isErr = false) {
+    function showToast(msg) {
       const t = document.getElementById('toast');
       t.innerText = msg;
-      t.style.borderColor = isErr ? 'rgba(239, 68, 68, 0.4)' : 'rgba(255, 255, 255, 0.15)';
       t.classList.add('show');
       setTimeout(() => t.classList.remove('show'), 3500);
     }
@@ -1155,7 +972,7 @@ const doctorHTML = `<!DOCTYPE html>
       b.scrollTop = b.scrollHeight;
 
       const total = b.querySelectorAll('.log-line').length;
-      document.getElementById('log-count').innerText = total + ' olay';
+      document.getElementById('log-count').innerText = total + ' kayit';
     }
 
     async function checkKernelStatus() {
@@ -1169,87 +986,82 @@ const doctorHTML = `<!DOCTYPE html>
 
     function updateKernelUI(active) {
       const val = document.getElementById('val-kernel');
-      const dot = document.getElementById('dot-kernel');
-      const txt = document.getElementById('text-kernel');
+      const sub = document.getElementById('sub-kernel');
       const btn = document.getElementById('btn-kernel-toggle');
       const btnLbl = document.getElementById('btn-kernel-label');
 
       if (active) {
         val.innerText = "Aktif";
-        val.style.color = "#10b981";
-        dot.className = "detail-dot";
-        txt.innerText = "Tüm Oyunlar Destekleniyor";
-        btnLbl.innerText = "⏹️ Çekirdek Modunu Durdur";
+        sub.innerText = "Tum Oyunlar Destekleniyor";
+        btnLbl.innerText = "Cekirdek Modunu Durdur";
         btn.classList.remove('highlight');
       } else {
         val.innerText = "Beklemede";
-        val.style.color = "#fff";
-        dot.className = "detail-dot inactive";
-        txt.innerText = "Roblox İçin Hazır";
-        btnLbl.innerText = "🎮 Roblox & Çekirdek Modunu Başlat";
+        sub.innerText = "Roblox Icin Hazir";
+        btnLbl.innerText = "Cekirdek Modunu Baslat";
         btn.classList.add('highlight');
       }
     }
 
     async function toggleKernel() {
-      const action = isKernelActive ? "durduruluyor" : "başlatılıyor";
-      showToast("⏳ Çekirdek Modu " + action + "... (Windows onayı çıkarsa 'Evet'e tıklayın)");
-      appendLog("> [KOMUT] Çekirdek Modu " + action + "...");
+      const action = isKernelActive ? "durduruluyor" : "baslatiliyor";
+      showToast("Cekirdek Modu " + action + "...");
+      appendLog("> [KOMUT] Cekirdek Modu " + action + "...");
 
       try {
         const res = await fetch('/api/doctor/kernel-toggle');
         const data = await res.json();
-        showToast(data.message, !data.success);
-        appendLog("> [SONUÇ] " + data.message);
+        showToast(data.message);
+        appendLog("> [SONUC] " + data.message);
         setTimeout(startFullDiagnostics, 1200);
       } catch (err) {
-        showToast("Hata: " + err.message, true);
+        showToast("Hata: " + err.message);
       }
     }
 
     async function resetNetwork() {
-      showToast("⏳ Ağ ayarları fabrika ayarlarına döndürülüyor...");
-      appendLog("> [KOMUT] Ağ ayarları sıfırlanıyor (DHCP + WinHTTP Reset)...");
+      showToast("Ag ayarlari sifirlaniyor...");
+      appendLog("> [KOMUT] Ag ayarlari sifirlaniyor (DHCP + WinHTTP Reset)...");
       try {
         const res = await fetch('/api/doctor/reset-network');
         const data = await res.json();
-        showToast(data.message, !data.success);
-        appendLog("> [SONUÇ] " + data.message);
+        showToast(data.message);
+        appendLog("> [SONUC] " + data.message);
         setTimeout(startFullDiagnostics, 1200);
       } catch (err) {
-        showToast("Hata: " + err.message, true);
+        showToast("Hata: " + err.message);
       }
     }
 
     async function restartDiscord() {
-      showToast("⏳ Discord soketleri yenileniyor...");
-      appendLog("> [KOMUT] Discord tüneli temizleniyor...");
+      showToast("Discord soketleri yenileniyor...");
+      appendLog("> [KOMUT] Discord tuneli temizleniyor...");
       try {
         const res = await fetch('/api/doctor/restart-discord');
         const data = await res.json();
-        showToast(data.message, !data.success);
-        appendLog("> [SONUÇ] " + data.message);
+        showToast(data.message);
+        appendLog("> [SONUC] " + data.message);
       } catch (err) {
-        showToast("Hata: " + err.message, true);
+        showToast("Hata: " + err.message);
       }
     }
 
     async function launchRoblox() {
-      showToast("🚀 Roblox başlatılıyor...");
-      appendLog("> [KOMUT] Roblox başlatıcı çağrılıyor...");
+      showToast("Roblox baslatiliyor...");
+      appendLog("> [KOMUT] Roblox cagriliyor...");
       try {
         const res = await fetch('/api/doctor/launch-roblox');
         const data = await res.json();
-        showToast(data.message, !data.success);
+        showToast(data.message);
       } catch (err) {
-        showToast("Hata: " + err.message, true);
+        showToast("Hata: " + err.message);
       }
     }
 
     async function startFullDiagnostics() {
       const consoleBody = document.getElementById('console-body');
       consoleBody.innerHTML = '';
-      appendLog("> Canlı sistem teşhisi başlatıldı...");
+      appendLog("> Canli sistem teshisi baslatildi...");
 
       await checkKernelStatus();
 
@@ -1260,23 +1072,22 @@ const doctorHTML = `<!DOCTYPE html>
         if (report.discord_ping_ms > 0) {
           document.getElementById('val-discord').innerText = report.discord_ping_ms + ' ms';
         } else {
-          document.getElementById('val-discord').innerText = 'Bağlı';
+          document.getElementById('val-discord').innerText = 'Bagli';
         }
 
         if (report.roblox_ping_ms > 0) {
           document.getElementById('val-roblox').innerText = report.roblox_ping_ms + ' ms';
-          document.getElementById('dot-roblox').className = 'detail-dot';
         } else {
-          document.getElementById('val-roblox').innerText = isKernelActive ? 'Çekirdek Aktif' : 'Beklemede';
+          document.getElementById('val-roblox').innerText = isKernelActive ? 'Aktif' : 'Beklemede';
         }
 
         if (report.logs && report.logs.length > 0) {
           report.logs.forEach(l => appendLog(l));
         }
 
-        appendLog("> Teşhis tamamlandı. Sistem nominal.");
+        appendLog("> Teshis tamamlandi. Sistem hazir.");
       } catch (err) {
-        appendLog("> Teşhis hatası: " + err.message);
+        appendLog("> Teshis hatasi: " + err.message);
       }
     }
 
@@ -1284,3 +1095,4 @@ const doctorHTML = `<!DOCTYPE html>
   </script>
 </body>
 </html>`
+

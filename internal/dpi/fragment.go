@@ -129,17 +129,20 @@ func (fe *FragmentEngine) splitTLSRecord(data []byte, splitPos int) [][]byte {
 	binary.BigEndian.PutUint16(rec1[3:5], uint16(splitPos))
 	copy(rec1[5:], data[5:5+splitPos])
 
-	// Record 2: 5-byte header + remaining handshake bytes
+	// Record 2: 5-byte header + remaining handshake bytes of this record
 	remRecLen := recLen - splitPos
-	extraLen := len(data) - (5 + recLen)
-	rec2 := make([]byte, 5+remRecLen+extraLen)
+	rec2 := make([]byte, 5+remRecLen)
 	rec2[0] = data[0]
 	rec2[1] = data[1]
 	rec2[2] = data[2]
 	binary.BigEndian.PutUint16(rec2[3:5], uint16(remRecLen))
-	copy(rec2[5:5+remRecLen], data[5+splitPos:5+recLen])
+	copy(rec2[5:], data[5+splitPos:5+recLen])
+
+	extraLen := len(data) - (5 + recLen)
 	if extraLen > 0 {
-		copy(rec2[5+remRecLen:], data[5+recLen:])
+		recExtra := make([]byte, extraLen)
+		copy(recExtra, data[5+recLen:])
+		return [][]byte{rec1, rec2, recExtra}
 	}
 
 	return [][]byte{rec1, rec2}

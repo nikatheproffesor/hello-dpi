@@ -50,6 +50,11 @@ func main() {
 	// Activate system proxy
 	_ = sysproxy.SetSystemProxy("127.0.0.1", 8080)
 
+	// On Windows, auto-start WinDivert kernel engine in background for games (Roblox)
+	go func() {
+		_ = divert.Start()
+	}()
+
 	// Setup tray
 	tray := systray.New()
 	tray.SetAppName(appTitle)
@@ -60,7 +65,7 @@ func main() {
 	menu := systray.NewMenu()
 
 	// 1. Status Label
-	statusItem := menu.Add(fmt.Sprintf("● Hello DPI: Aktif (v%s)", version.Version), nil)
+	statusItem := menu.Add(fmt.Sprintf("Hello DPI: Aktif (v%s)", version.Version), nil)
 	statusItem.SetDisabled(true)
 
 	// 2. Protection Toggle (Instant 0ms UI feedback + Async sysproxy toggle)
@@ -78,11 +83,12 @@ func main() {
 			tray.SetTemplateIcon(icon.PausedIconPNG())
 			tray.SetIcon(icon.PausedIconPNG())
 			tray.SetTooltip("Hello DPI: Duraklatıldı")
-			statusItem.SetLabel("○ Hello DPI: Duraklatıldı")
+			statusItem.SetLabel("Hello DPI: Duraklatıldı")
 			toggleItem.SetLabel("Korumayı Başlat")
 			tray.ShowNotification(appTitle, "Koruma geçici olarak duraklatıldı.")
 
 			go func() {
+				_ = divert.Stop()
 				_ = sysproxy.ClearSystemProxy()
 			}()
 		} else {
@@ -91,12 +97,13 @@ func main() {
 			tray.SetTemplateIcon(icon.ActiveIconPNG())
 			tray.SetIcon(icon.ActiveIconPNG())
 			tray.SetTooltip("Hello DPI: Aktif (v" + version.Version + ")")
-			statusItem.SetLabel(fmt.Sprintf("● Hello DPI: Aktif (v%s)", version.Version))
+			statusItem.SetLabel(fmt.Sprintf("Hello DPI: Aktif (v%s)", version.Version))
 			toggleItem.SetLabel("Korumayı Duraklat")
 			tray.ShowNotification(appTitle, "Hello DPI devrede. Discord ve tüm siteler açık.")
 
 			go func() {
 				_ = sysproxy.SetSystemProxy("127.0.0.1", 8080)
+				_ = divert.Start()
 			}()
 		}
 	})
@@ -105,18 +112,18 @@ func main() {
 
 	// 3. Kernel Divert Engine (Roblox & Direct Socket Games)
 	var kernelItem *systray.MenuItem
-	kernelItem = menu.Add("🎮 Çekirdek Modu (Roblox)", func() {
+	kernelItem = menu.Add("Çekirdek Modu (Roblox)", func() {
 		if divert.IsRunning() {
 			_ = divert.Stop()
-			kernelItem.SetLabel("🎮 Çekirdek Modu (Roblox)")
+			kernelItem.SetLabel("Çekirdek Modu (Roblox)")
 			tray.ShowNotification(appTitle, "Çekirdek Modu durduruldu.")
 		} else {
 			err := divert.Start()
 			if err != nil {
 				tray.ShowNotification(appTitle, "Çekirdek Modu başlatılamadı: "+err.Error())
 			} else {
-				kernelItem.SetLabel("🎮 Çekirdek Modu: Aktif (Roblox)")
-				tray.ShowNotification(appTitle, "Çekirdek Modu (WinDivert) devrede! Roblox engelsiz açılacaktır.")
+				kernelItem.SetLabel("Çekirdek Modu: Aktif (Roblox)")
+				tray.ShowNotification(appTitle, "Çekirdek Modu (WinDivert) devrede. Roblox engelsiz açılacaktır.")
 			}
 		}
 	})
@@ -124,26 +131,26 @@ func main() {
 	menu.AddSeparator()
 
 	// 4. One-Click Network Troubleshooter & Doctor
-	menu.Add("🩺 Ağ Doktoru & Teşhis", func() {
+	menu.Add("Ağ Doktoru & Teşhis", func() {
 		go func() {
 			doctor.OpenDoctor(proxyPort)
 		}()
 	})
 
 	// 5. Custom Minimalist Speedtest
-	menu.Add("⚡ Hız Testi (Speedtest)", func() {
+	menu.Add("Hız Testi", func() {
 		speedtest.OpenSpeedtest(proxyPort)
 	})
 
 	menu.AddSeparator()
 
-	// 4. Auto-Updater Action
+	// 6. Auto-Updater Action
 	var latestRelease *updater.ReleaseInfo
 	var updateMu sync.Mutex
 	isUpdating := false
 
 	var updateItem *systray.MenuItem
-	updateItem = menu.Add("🔄 Güncellemeleri Denetle", func() {
+	updateItem = menu.Add("Güncellemeleri Denetle", func() {
 		updateMu.Lock()
 		defer updateMu.Unlock()
 
@@ -154,24 +161,24 @@ func main() {
 		if latestRelease != nil && latestRelease.TargetAsset != nil {
 			// Apply update
 			isUpdating = true
-			updateItem.SetLabel("⏳ İndiriliyor... (%0)")
+			updateItem.SetLabel("İndiriliyor... (%0)")
 			tray.ShowNotification(appTitle, fmt.Sprintf("%s güncellemesi indiriliyor...", latestRelease.TagName))
 
 			go func() {
 				err := updater.ApplyUpdate(latestRelease, func(percent int) {
-					updateItem.SetLabel(fmt.Sprintf("⏳ İndiriliyor... (%%%d)", percent))
+					updateItem.SetLabel(fmt.Sprintf("İndiriliyor... (%%%d)", percent))
 				})
 
 				if err != nil {
 					updateMu.Lock()
 					isUpdating = false
 					updateMu.Unlock()
-					updateItem.SetLabel("❌ Güncelleme Başarısız")
+					updateItem.SetLabel("Güncelleme Başarısız")
 					tray.ShowNotification(appTitle, "Güncelleme hatası: "+err.Error())
 					return
 				}
 
-				tray.ShowNotification(appTitle, "Güncelleme tamamlandı! Yeniden başlatılıyor...")
+				tray.ShowNotification(appTitle, "Güncelleme tamamlandı. Yeniden başlatılıyor...")
 				time.Sleep(1 * time.Second)
 				_ = updater.RestartApp()
 			}()
@@ -179,29 +186,29 @@ func main() {
 		}
 
 		// Manual check
-		updateItem.SetLabel("⏳ Denetleniyor...")
+		updateItem.SetLabel("Denetleniyor...")
 		go func() {
 			rel, isNew, err := updater.CheckUpdate()
 			updateMu.Lock()
 			defer updateMu.Unlock()
 
 			if err != nil {
-				updateItem.SetLabel("🔄 Güncellemeleri Denetle")
+				updateItem.SetLabel("Güncellemeleri Denetle")
 				tray.ShowNotification(appTitle, "Güncelleme denetlenemedi: "+err.Error())
 				return
 			}
 
 			if isNew && rel != nil && rel.TargetAsset != nil {
 				latestRelease = rel
-				updateItem.SetLabel(fmt.Sprintf("✨ Yeni Güncelleme: %s (Tıkla ve Güncelle)", rel.TagName))
-				tray.ShowNotification(appTitle, fmt.Sprintf("Yeni sürüm mevcut: %s! Güncellemek için tıklayın.", rel.TagName))
+				updateItem.SetLabel(fmt.Sprintf("Yeni Güncelleme: %s (Tıkla ve Güncelle)", rel.TagName))
+				tray.ShowNotification(appTitle, fmt.Sprintf("Yeni sürüm mevcut: %s. Güncellemek için tıklayın.", rel.TagName))
 			} else {
-				updateItem.SetLabel("✓ En Son Sürüm Kullanılıyor")
-				tray.ShowNotification(appTitle, fmt.Sprintf("Hello DPI güncel! (v%s)", version.Version))
+				updateItem.SetLabel("En Son Sürüm Kullanılıyor")
+				tray.ShowNotification(appTitle, fmt.Sprintf("Hello DPI güncel (v%s)", version.Version))
 				time.AfterFunc(10*time.Second, func() {
 					updateMu.Lock()
 					if latestRelease == nil {
-						updateItem.SetLabel("🔄 Güncellemeleri Denetle")
+						updateItem.SetLabel("Güncellemeleri Denetle")
 					}
 					updateMu.Unlock()
 				})
@@ -211,7 +218,7 @@ func main() {
 
 	menu.AddSeparator()
 
-	// 5. Launch on Boot Toggle (Persistence)
+	// 7. Launch on Boot Toggle (Persistence)
 	isAutoStart := autostart.IsEnabled()
 	var autoStartItem *systray.MenuItem
 	autoStartItem = menu.AddCheckbox("Açılışta Otomatik Başlat", isAutoStart, func() {
@@ -231,7 +238,7 @@ func main() {
 
 	menu.AddSeparator()
 
-	// 6. Quit
+	// 8. Quit
 	menu.Add("Çıkış", func() {
 		_ = divert.Stop()
 		_ = sysproxy.ClearSystemProxy()
@@ -262,9 +269,9 @@ func main() {
 			if err == nil && isNew && rel != nil && rel.TargetAsset != nil {
 				updateMu.Lock()
 				latestRelease = rel
-				updateItem.SetLabel(fmt.Sprintf("✨ Yeni Güncelleme: %s (Tıkla ve Güncelle)", rel.TagName))
+				updateItem.SetLabel(fmt.Sprintf("Yeni Güncelleme: %s (Tıkla ve Güncelle)", rel.TagName))
 				updateMu.Unlock()
-				tray.ShowNotification(appTitle, fmt.Sprintf("✨ Yeni sürüm yayınlandı: %s! Güncellemek için menüye tıklayın.", rel.TagName))
+				tray.ShowNotification(appTitle, fmt.Sprintf("Yeni sürüm yayınlandı: %s. Güncellemek için menüye tıklayın.", rel.TagName))
 				break
 			}
 			time.Sleep(4 * time.Hour)

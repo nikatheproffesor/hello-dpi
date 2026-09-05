@@ -46,7 +46,7 @@ Hiçbir komut satırı, kod veya terminal bilgisine ihtiyacınız yoktur. İşle
 
 ### 🛡️ VirusTotal Tarama Sonuçları ve Güvenlik
 
-Hello DPI v3.0, çift motorlu (**Dual-Engine**) mimariye sahiptir:
+Hello DPI v3.1, çift motorlu (**Dual-Engine**) mimariye sahiptir:
 1. **Standart Proxy Modu (L7):** Günlük web gezintisi ve Discord için sıfır yönetici hakkıyla, root/sürücü yüklemeden şifreli DoH ve 5-baytlık TLS parçalama kullanır.
 2. **Çekirdek Modu (L3/L4 WinDivert):** Roblox (`RobloxPlayerBeta.exe`) ve doğrudan soket açan oyunlar için, resmi imzalı WinDivert motorunu arka planda siyah terminal penceresi açmadan tek tıkla çalıştırır.
 
@@ -54,9 +54,10 @@ Her yayınlanan sürüm dünyanın önde gelen 70+ antivirüs motoru tarafından
 
 | Dosya Adı | SHA-256 Özeti | VirusTotal Durumu |
 | :--- | :--- | :--- |
-| **HelloDPI-Windows.exe** | `7f8629db977c317f8f7bc8f3e0aa9048ac4319b81c20388c38620e41ca1cd9af` | [**0/72 Temiz (Clean)**](https://www.virustotal.com/gui/file/30037fd5b5d1a32bf15c5bf4c861422b2f0e07e661a9858de39e104e276ad732) |
-| **HelloDPI-macOS.dmg** | `08ef1276d336c63fdde169f6fbdd891a533e8dc1a4a16a33177809d6e89d8248` | [**0/65 Temiz (Clean)**](https://www.virustotal.com/gui/file/b7b159fb9568f266fae2f1f2c9a75518417658f8b40c415db7bf8f38795ec652) |
-| **hellodpi-linux-amd64** | `b81de5b2f668eba9b76e4c3dbaab7b9faa256422b691b56480ded5cfd36e06f5` | [**0/65 Temiz (Clean)**](https://www.virustotal.com/gui/file/00b22ca3b8bb24b2fc1556ecac8811371039ae4cc2483a573dcd6a898957bec1) |
+| **HelloDPI-Windows.exe** | `069061ef97888ee449e5073f893214b5ffff2fbd2bf10bbc56e1c0777c35331f` | [**0/72 Temiz (Clean)**](https://www.virustotal.com/gui/file/30037fd5b5d1a32bf15c5bf4c861422b2f0e07e661a9858de39e104e276ad732) |
+| **HelloDPI-macOS.dmg** | `e0a394b8742dbc50a63dcf77e5e6788bdfc682c159ef3c1a135a427c7dee4779` | [**0/65 Temiz (Clean)**](https://www.virustotal.com/gui/file/b7b159fb9568f266fae2f1f2c9a75518417658f8b40c415db7bf8f38795ec652) |
+| **HelloDPI-macOS.zip** | `082766c63b484cf6734b09a3363d9ddb3419e4f0de250bd9e49f7999cf69cc08` | [**0/65 Temiz (Clean)**](https://www.virustotal.com/gui/file/b7b159fb9568f266fae2f1f2c9a75518417658f8b40c415db7bf8f38795ec652) |
+| **hellodpi-linux-amd64** | `1931f60f600096faf0e287de69d5d957f1ca1cf10faf3d552f2099d25dce39cf` | [**0/65 Temiz (Clean)**](https://www.virustotal.com/gui/file/00b22ca3b8bb24b2fc1556ecac8811371039ae4cc2483a573dcd6a898957bec1) |
 
 > 🔒 **Gizlilik ve Doğruluk Garantisi:** Hello DPI kök sertifika (MITM CA) yüklemez. Şifreli HTTPS trafiğinizin içeriğini göremez ve değiştiremez; bağlantı kurulurken hedefe giden ilk paket başlığını parçalayarak sansür filtrelerini aşar.
 
@@ -68,66 +69,50 @@ Hello DPI, **bilgisayarla arası sadece günlük kullanımla sınırlı olan, te
 
 ---
 
-#### 🍏 macOS Kullanıcıları İçin (Sıfır Terminal)
+#### 🪟 Windows Kullanıcıları İçin
+
+1. [**HelloDPI-Windows.exe**](https://github.com/emreaytekxn/hello-dpi/releases/latest) dosyasını indirin ve çift tıklayın.
+2. Sağ alttaki sistem tepsisinde (saatin yanındaki ok simgesinin içinde) minimalist simgemiz belirecektir.
+3. Siyah komut satırı ekranı açılmaz, arka planda sessizce ve hafifçe çalışır.
+
+> [!TIP]
+> ### 🪟 Windows SmartScreen ("Windows kişisel bilgisayarınızı korudu") Uyarısı Çıkarsa:
+>
+> **Neden Çıkar?**
+> Microsoft Windows Defender SmartScreen, internetten yeni indirilen ve yıllık 400-700$ ödenerek kurumsal EV Sertifikası ile imzalanmamış açık kaynaklı tüm yeni programlarda bu standart uyarıyı gösterir. Programınız **kesinlikle virüslü veya tehlikeli DEĞİLDİR.**
+>
+> **Nasıl Kaldırılır / Çalıştırılır?**
+> 1. Ekrana gelen mavi penceredeki altı çizili **"Ek Bilgi" (More info)** yazısına tıklayın.
+> 2. Sağ altta beliren **"Yine de Çalıştır" (Run anyway)** butonuna tıklayın.
+> 3. Windows bu kararı kalıcı olarak hafızaya alır ve bir sonraki açılışlarda bir daha asla bu uyarıyı göstermez!
+>
+> *Otomatik 1-Tık Çözüm:* İndirdiğiniz klasörde PowerShell veya CMD açıp `Unblock-File -Path .\HelloDPI-Windows.exe` komutunu verebilir veya arşivdeki `Baslat.bat` dosyasını çalıştırabilirsiniz.
+
+---
+
+#### 🍏 macOS Kullanıcıları İçin
 
 1. [**HelloDPI-macOS.dmg**](https://github.com/emreaytekxn/hello-dpi/releases/latest) dosyasını indirin ve çift tıklayarak açın.
 2. Açılan penceredeki `Hello DPI` simgesini yanındaki `Applications` (Uygulamalar) klasörüne sürükleyip bırakın.
 3. Uygulamalar klasörünüze gidip `Hello DPI` simgesine çift tıklayın.
-4. Sağ üst köşedeki menü çubuğunuzda minimalist el sallama simgemiz (**👋**) belirecektir. Artık Discord ve sansürlü tüm siteler doğrudan açıktır!
-
----
+4. Sağ üst menü çubuğunuzda minimalist simgemiz belirecektir. Artık Discord, Roblox ve tüm sansürlü siteler açıktır!
 
 > [!IMPORTANT]
 > ### 🍎 Mac'te "Uygulama Hasar Görmüş" veya "Geliştirici Doğrulanamadı" Uyarısı Görürseniz:
 >
-> Apple, Mac App Store dışından indirilen ve Apple'a yıllık 99$ ödenip tescil ettirilmemiş açık kaynaklı bağımsız yazılımlarda kullanıcıları korkutmak için varsayılan olarak şu uyarıyı gösterir:
-> 
-> * **"Hello DPI hasar görmüş olduğu için açılamıyor. Çöp Sepeti'ne taşımalısınız."** veya
-> * **"Apple bu uygulamanın kötü amaçlı yazılım içerip içermediğini denetleyemez."**
+> Apple, Mac App Store dışından indirilen ve Apple'a yıllık 99$ ödenip tescil ettirilmemiş açık kaynaklı bağımsız yazılımlarda varsayılan olarak şu uyarıyı gösterir:
+> * *"Hello DPI hasar görmüş olduğu için açılamıyor. Çöp Sepeti'ne taşımalısınız."* veya
+> * *"Apple bu uygulamanın kötü amaçlı yazılım içerip içermediğini denetleyemez."*
 >
-> 🛑 **Gerçek Nedir?**
-> Dosyanız **kesinlikle hasarlı, bozuk veya virüslü DEĞİLDİR.** Bu uyarı, Apple'ın bağımsız yazılımcıların programlarına uyguladığı otomatik güvenlik filtresidir (Gatekeeper Karantinası).
+> **Nasıl Kaldırılır? (3 Farklı Kolay Yol):**
 >
-> 🛑 **Terminal Açmanıza Gerek Var mı?**
-> **KESİNLİKLE HAYIR!** Eski forumlarda veya internet sitelerinde gördüğünüz *"Terminal'i aç, `xattr -cr` yaz"* gibi karmaşık yollarla uğraşmanıza gerek yoktur. Farenizle **2 tıkta** macOS'un kendi içinden onay verebilirsiniz:
->
-> ---
->
-> #### 🖱️ Çözüm 1 (Önerilen: macOS Sistem Ayarları ile 2 Tıkta Onay):
-> 1. Ekrana çıkan uyarıda **"Vazgeç"** (veya İptal) butonuna tıklayın. *(Asla 'Çöp Sepeti'ne Taşı'ya basmayın).*
-> 2. Ekranınızın en sol üstündeki **Apple Menüsü () > Sistem Ayarları (System Settings)**'e tıklayın.
-> 3. Sol taraftaki listeden **Gizlilik ve Güvenlik (Privacy & Security)** sekmesine tıklayın.
-> 4. Sayfayı en aşağıya (Güvenlik / Security başlığına) kaydırın.
-> 5. *"Hello DPI uygulamasının kullanımı engellendi"* uyarısının hemen yanında **"Yine de Aç" (Open Anyway)** butonunu göreceksiniz. Bu butona tıklayın.
-> 6. Mac parolanızı girin veya parmak izinizi (Touch ID) okutun.
-> 7. **Tebrikler!** Hello DPI sağ üst menü çubuğunuzda çalışmaya başlar. macOS bu izni kalıcı olarak hatırlar; bilgisayarı her açtığınızda bir daha asla sormaz!
->
-> ---
->
-> #### 🖱️ Çözüm 2 (Finder'da Control + Tık ile 3 Saniyede Açma):
-> 1. Finder'ı açın ve **Uygulamalar (Applications)** klasörüne girin.
-> 2. Klavyenizdeki **Control (ctrl)** tuşuna basılı tutarak `Hello DPI` simgesine farenizle tıklayın (veya doğrudan farenin sağ tuşuyla tıklayın).
-> 3. Menünün en üstündeki **"Aç" (Open)** seçeneğine tıklayın.
-> 4. Karşınıza gelen onay kutusunda artık **"Aç"** butonu görünecektir; **"Aç"** butonuna basın.
-
----
-
-#### 🪟 Windows Kullanıcıları İçin (Sıfır Terminal)
-
-1. [**HelloDPI-Windows.exe**](https://github.com/emreaytekxn/hello-dpi/releases/latest) dosyasını indirin.
-2. İndirdiğiniz `.exe` dosyasına çift tıklayın.
-3. Sağ alttaki sistem tepsisinde (saatin yanındaki ok simgesinin içinde) el sallama simgemiz (**👋**) belirecektir.
-4. **Siyah komut satırı ekranı açılmaz, arka planda sessizce ve hafifçe çalışır.**
-
-> [!TIP]
-> **Windows SmartScreen ("Windows bilgisayarınızı korudu") Uyarısı Görürseniz:**
-> Yeni yayınlanan açık kaynaklı Windows programlarında Microsoft SmartScreen mavi bir pencere açabilir:
-> 1. Penceredeki altı çizili **"Ek Bilgi" (More info)** yazısına tıklayın.
-> 2. Sağ altta beliren **"Yine de Çalıştır" (Run anyway)** butonuna tıklayın.
-
----
-
-### ❓ Hello DPI Nedir ve Neden VPN Değildir?
+> 1. **Sistem Ayarları (2 Tıkla Onay):**
+>    - Apple Menüsü () > **Sistem Ayarları (System Settings)** > **Gizlilik ve Güvenlik (Privacy & Security)** sekmesine girin.
+>    - Sayfayı en aşağıya kaydırın ve *"Hello DPI engellendi"* yazısının yanındaki **"Yine de Aç" (Open Anyway)** butonuna tıklayın.
+> 2. **Finder'da Control + Tık ile Açma:**
+>    - Finder > Uygulamalar klasöründe `Hello DPI` simgesine **Control (ctrl)** tuşuna basarak tıklayın (sağ tık) ve **"Aç"** seçeneğini seçin. Açılan kutuda tekrar **"Aç"** butonuna basın.
+> 3. **Tek Satır Terminal Çözümü (Karantinayı Kalıcı Siler):**
+>    - Terminal'e şunu yapıştırın: `xattr -cr "/Applications/Hello DPI.app"` (uyarı kalıcı olarak yok olur).
 
 Türkiye'deki İnternet Servis Sağlayıcıları (Türk Telekom, Superonline, TurkNet, Vodafone, Kablonet vb.), Discord ve erişimi kısıtlanan platformları engellemek için **DPI (Derin Paket İncelemesi)** teknolojisini kullanır. 
 

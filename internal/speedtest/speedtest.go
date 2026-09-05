@@ -100,13 +100,13 @@ const dashboardHTML = `<!DOCTYPE html>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #090a0f;
-      --card-bg: #0f1118;
-      --card-border: rgba(255, 255, 255, 0.08);
-      --text-main: #f4f4f5;
+      --bg: #000000;
+      --card-bg: #111113;
+      --card-border: #27272a;
+      --text-main: #ffffff;
       --text-muted: #71717a;
       --text-sub: #a1a1aa;
-      --accent-green: #10b981;
+      --accent: #ffffff;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -126,9 +126,9 @@ const dashboardHTML = `<!DOCTYPE html>
       max-width: 680px;
       background: var(--card-bg);
       border: 1px solid var(--card-border);
-      border-radius: 20px;
-      padding: 44px 36px;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      border-radius: 16px;
+      padding: 40px 32px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -141,7 +141,7 @@ const dashboardHTML = `<!DOCTYPE html>
       width: 100%;
       margin-bottom: 32px;
       padding-bottom: 18px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid var(--card-border);
     }
     .brand {
       display: flex;
@@ -150,26 +150,28 @@ const dashboardHTML = `<!DOCTYPE html>
     }
     .brand-title {
       font-size: 15px;
-      font-weight: 600;
+      font-weight: 700;
       letter-spacing: -0.2px;
-      color: #fff;
+      color: #ffffff;
+      text-transform: uppercase;
     }
     .status-pill {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      font-size: 12px;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
       color: var(--text-sub);
-      background: rgba(255, 255, 255, 0.03);
+      background: #18181b;
       border: 1px solid var(--card-border);
       padding: 4px 10px;
-      border-radius: 9999px;
+      border-radius: 6px;
     }
     .dot {
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background: var(--accent-green);
+      background: #ffffff;
     }
     .stats-grid {
       display: grid;
@@ -307,7 +309,7 @@ const dashboardHTML = `<!DOCTYPE html>
       </div>
       <div class="status-pill">
         <span class="dot"></span>
-        <span>Tünel Aktif (v3.0.0)</span>
+        <span>Tünel Aktif (v3.1.0)</span>
       </div>
     </div>
 
@@ -345,7 +347,7 @@ const dashboardHTML = `<!DOCTYPE html>
     </button>
 
     <div class="footer-note">
-      Hello DPI v3.0.0 · Doğrudan Yerel Ölçüm · Sıfır Paket Kaybı
+      Hello DPI v3.1.0 · Doğrudan Yerel Ölçüm · Sıfır Paket Kaybı
     </div>
   </div>
 
