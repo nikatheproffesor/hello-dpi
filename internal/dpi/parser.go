@@ -17,10 +17,10 @@ const (
 
 // ParsedInfo contains information extracted from the initial packet.
 type ParsedInfo struct {
-	Type      PacketType
-	Host      string
-	SNIOffset int // Start index of the SNI hostname in the payload
-	SNILength int // Length of the SNI hostname in the payload
+	Type       PacketType
+	Host       string
+	SNIOffset  int // Start index of the SNI hostname in the payload
+	SNILength  int // Length of the SNI hostname in the payload
 	HostOffset int // Start index of "Host: " in HTTP payload
 }
 

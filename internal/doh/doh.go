@@ -54,8 +54,8 @@ func NewResolver(endpoint string, enabled bool) *Resolver {
 		httpClient: &http.Client{
 			Timeout: 4 * time.Second,
 			Transport: &http.Transport{
-				MaxIdleConns:        100,
-				IdleConnTimeout:     90 * time.Second,
+				MaxIdleConns:       100,
+				IdleConnTimeout:    90 * time.Second,
 				DisableCompression: true,
 			},
 		},

@@ -1,0 +1,19 @@
+package dpi
+
+import (
+	"testing"
+)
+
+func FuzzSplitTLSRecord(f *testing.F) {
+	f.Add([]byte{0x16, 0x03, 0x01, 0x00, 0x05, 0x01, 0x00, 0x00, 0x01, 0x00}, 5)
+	f.Add([]byte{0x16, 0x03, 0x03, 0x00, 0x02, 0x01, 0x02}, 1)
+	f.Add([]byte{0x16}, 0)
+	f.Add([]byte{}, 5)
+	f.Add([]byte{0x16, 0x03, 0x01, 0xFF, 0xFF}, 10)
+
+	fe := NewFragmentEngine(SplitTLS, 5)
+
+	f.Fuzz(func(t *testing.T, data []byte, splitPos int) {
+		_ = fe.splitTLSRecord(data, splitPos)
+	})
+}

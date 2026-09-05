@@ -12,7 +12,8 @@ import (
 type SplitMode string
 
 const (
-	SplitTLS       SplitMode = "tlsrec"     // Split TLS ClientHello into two valid TLS records (Bypasses advanced DPI)
+	SplitAuto      SplitMode = "auto"       // Automatic adaptive fragmentation
+	SplitTLS       SplitMode = "tlsrec"     // Split TLS ClientHello into two valid TLS records
 	SplitSNI       SplitMode = "sni"        // Split at the SNI hostname
 	SplitFirstByte SplitMode = "first-byte" // Split 1st byte from the rest
 	SplitChunked   SplitMode = "chunked"    // Split into small fragments (e.g. 20-50 bytes)
@@ -30,6 +31,9 @@ type FragmentEngine struct {
 func NewFragmentEngine(mode SplitMode, delayMs int) *FragmentEngine {
 	if delayMs <= 0 {
 		delayMs = 5 // 5ms default is reliable across all OS TCP stacks
+	}
+	if mode == "" {
+		mode = SplitAuto
 	}
 	return &FragmentEngine{
 		Mode:       mode,
@@ -54,7 +58,6 @@ func (fe *FragmentEngine) SendFragmented(conn net.Conn, data []byte) error {
 	case TypeHTTPRequest:
 		chunks = fe.fragmentHTTP(data, info)
 	default:
-		// Fallback for unknown protocols: split first byte
 		chunks = fe.splitFirstByte(data)
 	}
 
@@ -79,37 +82,43 @@ func (fe *FragmentEngine) SendFragmented(conn net.Conn, data []byte) error {
 
 // fragmentTLS creates fragmented chunks for TLS ClientHello
 func (fe *FragmentEngine) fragmentTLS(data []byte, info ParsedInfo) [][]byte {
-	// Advanced TLS Record Splitting (RFC compliant, defeats stateful TCP reassembling DPI)
-	// Works for Turkey Discord, Cloudflare, etc.
-	if fe.Mode == SplitTLS || fe.Mode == SplitSNI || fe.Mode == "" {
-		return fe.splitTLSRecord(data, 5)
+	splitPos := 5
+	if fe.CustomOffset > 0 {
+		splitPos = fe.CustomOffset
 	}
 
 	switch fe.Mode {
+	case SplitAuto, SplitTLS, SplitSNI:
+		return fe.splitTLSRecord(data, splitPos)
 	case SplitChunked:
 		return fe.splitInChunks(data, 40)
 	case SplitFirstByte:
 		return fe.splitFirstByte(data)
 	default:
-		return fe.splitTLSRecord(data, 5)
+		return fe.splitTLSRecord(data, splitPos)
 	}
 }
 
 // splitTLSRecord splits a single TLS record into two valid RFC-compliant TLS records.
-// The first record carries only the handshake header (5 bytes) with NO SNI.
-// The second record carries the remainder of the handshake.
 // Compliant with RFC 5246 section 6.2.1 and RFC 8446 section 5.1.
+// Panic-proof and handles incomplete or malformed inputs safely.
 func (fe *FragmentEngine) splitTLSRecord(data []byte, splitPos int) [][]byte {
 	if len(data) < 9 || data[0] != 0x16 {
 		return fe.splitFirstByte(data)
 	}
 
 	recLen := int(binary.BigEndian.Uint16(data[3:5]))
-	if recLen <= splitPos || 5+recLen > len(data) {
-		splitPos = 1
+	if recLen <= 0 || len(data) < 6 {
+		return fe.splitFirstByte(data)
 	}
-	if recLen <= splitPos {
-		return [][]byte{data}
+
+	availablePayload := len(data) - 5
+	if recLen > availablePayload {
+		recLen = availablePayload
+	}
+
+	if splitPos <= 0 || splitPos >= recLen {
+		splitPos = 1
 	}
 
 	// Record 1: 5-byte header + first splitPos bytes
@@ -142,7 +151,6 @@ func (fe *FragmentEngine) fragmentHTTP(data []byte, info ParsedInfo) [][]byte {
 		modData := make([]byte, len(data))
 		copy(modData, data)
 
-		// Replace "Host:" with "host:" (standard HTTP servers accept this, many DPI boxes don't match)
 		if bytes.Equal(bytes.ToLower(modData[info.HostOffset:info.HostOffset+5]), []byte("host:")) {
 			modData[info.HostOffset] = 'h'
 			modData[info.HostOffset+1] = 'o'
@@ -150,11 +158,12 @@ func (fe *FragmentEngine) fragmentHTTP(data []byte, info ParsedInfo) [][]byte {
 			modData[info.HostOffset+3] = 't'
 		}
 
-		// Split right inside the host header
 		splitPoint := info.HostOffset + 3
-		return [][]byte{
-			modData[:splitPoint],
-			modData[splitPoint:],
+		if splitPoint > 0 && splitPoint < len(modData) {
+			return [][]byte{
+				modData[:splitPoint],
+				modData[splitPoint:],
+			}
 		}
 	}
 

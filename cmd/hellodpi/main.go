@@ -14,9 +14,8 @@ import (
 	"github.com/hellodpi/hellodpi/internal/dpi"
 	"github.com/hellodpi/hellodpi/internal/proxy"
 	"github.com/hellodpi/hellodpi/internal/sysproxy"
+	"github.com/hellodpi/hellodpi/internal/version"
 )
-
-const version = "1.0.0"
 
 func printBanner() {
 	banner := `
@@ -28,7 +27,7 @@ func printBanner() {
  |_|  |_|\___|_|_|\___/  |_____/|_|   |_____|
   Cross-Platform Zero-Overhead DPI Bypass (v%s)
 `
-	fmt.Printf(banner, version)
+	fmt.Printf(banner, version.Version)
 	fmt.Println("---------------------------------------------------------")
 	fmt.Println("  ⚡ Direct Connection (No VPN speed loss or ping penalty)")
 	fmt.Println("  🛡️  TLS SNI & HTTP Fragmentation Evasion")
@@ -47,7 +46,7 @@ func main() {
 	flag.Parse()
 
 	if *showVersion {
-		fmt.Printf("Hello DPI v%s\n", version)
+		fmt.Printf("Hello DPI v%s\n", version.Version)
 		return
 	}
 

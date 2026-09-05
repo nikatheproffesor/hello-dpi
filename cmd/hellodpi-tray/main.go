@@ -1,35 +1,33 @@
 package main
 
 import (
-	"context"
-	"fmt"
 	"log"
-	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/gogpu/systray"
+	"github.com/hellodpi/hellodpi/internal/autostart"
 	"github.com/hellodpi/hellodpi/internal/doh"
 	"github.com/hellodpi/hellodpi/internal/dpi"
 	"github.com/hellodpi/hellodpi/internal/icon"
 	"github.com/hellodpi/hellodpi/internal/proxy"
+	"github.com/hellodpi/hellodpi/internal/speedtest"
 	"github.com/hellodpi/hellodpi/internal/sysproxy"
+	"github.com/hellodpi/hellodpi/internal/version"
 )
 
 const (
-	proxyAddr = "127.0.0.1:8080"
+	proxyPort = "8080"
+	proxyAddr = "127.0.0.1:" + proxyPort
 	appTitle  = "Hello DPI"
-	version   = "1.1.0"
 )
 
 func main() {
 	// Initialize core proxy server
 	cfg := proxy.Config{
 		Addr:        proxyAddr,
-		SplitMode:   dpi.SplitTLS,
+		SplitMode:   dpi.SplitAuto,
 		DelayMs:     5,
 		DoHEndpoint: string(doh.Cloudflare),
 		EnableDoH:   true,
@@ -88,37 +86,33 @@ func main() {
 
 	menu.AddSeparator()
 
-	// 3. Quick Connection Test
-	menu.Add("⚡ Bağlantıyı Test Et", func() {
-		go func() {
-			start := time.Now()
-			proxyURL, _ := url.Parse("http://127.0.0.1:8080")
-			client := &http.Client{
-				Timeout: 4 * time.Second,
-				Transport: &http.Transport{
-					Proxy: http.ProxyURL(proxyURL),
-				},
-			}
-			ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
-			defer cancel()
-
-			req, _ := http.NewRequestWithContext(ctx, "GET", "https://discord.com", nil)
-			resp, err := client.Do(req)
-			elapsed := time.Since(start)
-
-			if err == nil && resp.StatusCode == 200 {
-				tray.ShowNotification(appTitle, fmt.Sprintf("✓ Bağlantı Başarılı!\nDiscord ve web siteleri açık (%dms)", elapsed.Milliseconds()))
-			} else {
-				tray.ShowNotification(appTitle, "⚠️ Test bağlantısı zaman aşımına uğradı.")
-			}
-		}()
+	// 3. Custom Animated Speedtest
+	menu.Add("⚡ Hız Testi Yap (Speedtest)", func() {
+		speedtest.OpenSpeedtest(proxyPort)
+		tray.ShowNotification(appTitle, "Özel Hız Testi paneli tarayıcınızda açıldı.")
 	})
 
 	menu.AddSeparator()
 
-	// 4. Version Info
-	verItem := menu.Add(fmt.Sprintf("ℹ️ Hello DPI v%s", version), nil)
-	verItem.SetDisabled(true)
+	// 4. Launch on Boot Toggle (Persistence)
+	isAutoStart := autostart.IsEnabled()
+	var autoStartItem *systray.MenuItem
+	autoStartItem = menu.AddCheckbox("Açılışta Otomatik Başlat", isAutoStart, func() {
+		newChecked := !autoStartItem.IsChecked()
+		if newChecked {
+			if err := autostart.Enable(); err == nil {
+				autoStartItem.SetChecked(true)
+				tray.ShowNotification(appTitle, "Hello DPI bilgisayar açıldığında otomatik başlayacak.")
+			}
+		} else {
+			if err := autostart.Disable(); err == nil {
+				autoStartItem.SetChecked(false)
+				tray.ShowNotification(appTitle, "Açılışta otomatik başlatma kapatıldı.")
+			}
+		}
+	})
+
+	menu.AddSeparator()
 
 	// 5. Quit
 	menu.Add("❌ Çıkış", func() {
@@ -143,7 +137,7 @@ func main() {
 
 	// Notify user on launch
 	tray.Show()
-	tray.ShowNotification(appTitle, "Hello DPI başlatıldı. Menü çubuğundan kontrol edebilirsiniz.")
+	tray.ShowNotification(appTitle, "Hello DPI v"+version.Version+" devrede. Menü çubuğundan kontrol edebilirsiniz.")
 
 	// Start tray event loop
 	if err := tray.Run(); err != nil {

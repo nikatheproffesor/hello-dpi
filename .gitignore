@@ -14,3 +14,14 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# Secrets, Environment and Certificates (Never commit!)
+*.env
+*.p12
+*.p8
+*.cer
+*.key
+*.mobileprovision
+signing.env
+credentials.json
+dmg_tmp/
