@@ -19,6 +19,53 @@ import (
 	"github.com/hellodpi/hellodpi/internal/speedtest"
 )
 
+var privateIPBlocks []*net.IPNet
+
+func init() {
+	for _, cidr := range []string{
+		"127.0.0.0/8",    // IPv4 loopback
+		"::1/128",        // IPv6 loopback
+		"10.0.0.0/8",     // RFC1918 (GSB WiFi / KYK dorm networks)
+		"172.16.0.0/12",  // RFC1918
+		"192.168.0.0/16", // RFC1918
+		"169.254.0.0/16", // RFC3927 link-local
+	} {
+		_, block, _ := net.ParseCIDR(cidr)
+		privateIPBlocks = append(privateIPBlocks, block)
+	}
+}
+
+func isPrivateOrLocalIP(ipStr string) bool {
+	ip := net.ParseIP(ipStr)
+	if ip == nil {
+		return false
+	}
+	for _, block := range privateIPBlocks {
+		if block.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// isDirectPassThrough checks if a host should bypass DPI fragmentation and DoH (GSB WiFi / Captive Portals)
+func isDirectPassThrough(host string) bool {
+	h := strings.ToLower(strings.TrimSuffix(host, "."))
+	if h == "localhost" || strings.HasSuffix(h, ".local") || strings.HasSuffix(h, ".lan") || strings.HasSuffix(h, ".home") {
+		return true
+	}
+	if strings.Contains(h, "gsb.gov.tr") ||
+		strings.Contains(h, "kyk.gov.tr") ||
+		h == "captive.apple.com" ||
+		h == "connectivitycheck.gstatic.com" ||
+		h == "connectivitycheck.android.com" ||
+		h == "msftconnecttest.com" ||
+		h == "ipv6.msftconnecttest.com" {
+		return true
+	}
+	return isPrivateOrLocalIP(h)
+}
+
 // Server is the core Hello DPI proxy server
 type Server struct {
 	Addr         string
@@ -99,15 +146,31 @@ func (s *Server) Close() error {
 	return nil
 }
 
+// bufferedConn guarantees that unread bytes buffered in bufio.Reader are never lost
+type bufferedConn struct {
+	r io.Reader
+	net.Conn
+}
+
+func (b *bufferedConn) Read(p []byte) (int, error) {
+	return b.r.Read(p)
+}
+
 // handleConnection auto-detects between HTTP CONNECT / plain HTTP and SOCKS5
 func (s *Server) handleConnection(clientConn net.Conn) {
 	defer clientConn.Close()
+
+	// 15-second handshake deadline to prevent slowloris socket exhaustion
+	_ = clientConn.SetDeadline(time.Now().Add(15 * time.Second))
 
 	reader := bufio.NewReader(clientConn)
 	firstByte, err := reader.Peek(1)
 	if err != nil {
 		return
 	}
+
+	// Clear deadline for streaming phase
+	_ = clientConn.SetDeadline(time.Time{})
 
 	// SOCKS5 starts with byte 0x05
 	if firstByte[0] == 0x05 {
@@ -150,10 +213,29 @@ func (s *Server) handleHTTP(clientConn net.Conn, reader *bufio.Reader) {
 		}
 	}
 
+	// SSRF & Loopback Protection: prevent proxying back to self
+	if (host == "127.0.0.1" || host == "localhost" || host == "::1") && (port == "8080" || s.isProxyAddr(host, port)) {
+		_, _ = clientConn.Write([]byte("HTTP/1.1 403 Forbidden\r\n\r\nLoopback proxying forbidden"))
+		return
+	}
+
+	directPass := isDirectPassThrough(host)
+
 	// Resolve target using DoH or system DNS
-	resolvedIP, err := s.Resolver.Resolve(context.Background(), host)
-	if err != nil {
-		resolvedIP = host // fallback to unresolved
+	var resolvedIP string
+	if directPass {
+		// Captive portal / local network: use OS DNS directly
+		ips, err := net.DefaultResolver.LookupHost(context.Background(), host)
+		if err == nil && len(ips) > 0 {
+			resolvedIP = ips[0]
+		} else {
+			resolvedIP = host
+		}
+	} else {
+		resolvedIP, err = s.Resolver.Resolve(context.Background(), host)
+		if err != nil {
+			resolvedIP = host
+		}
 	}
 	destAddr := net.JoinHostPort(resolvedIP, port)
 
@@ -167,10 +249,19 @@ func (s *Server) handleHTTP(clientConn net.Conn, reader *bufio.Reader) {
 	}
 	defer targetConn.Close()
 
+	// Wrap clientConn with bufferedConn so any bytes in reader are drained first!
+	clientBuffered := &bufferedConn{r: reader, Conn: clientConn}
+
 	if req.Method == http.MethodConnect {
 		// Respond 200 OK to the client
 		_, err = clientConn.Write([]byte("HTTP/1.1 200 Connection Established\r\n\r\n"))
 		if err != nil {
+			return
+		}
+
+		if directPass {
+			// Direct pass-through for GSB WiFi / local networks: zero fragmentation
+			s.pipe(clientBuffered, targetConn)
 			return
 		}
 
@@ -183,20 +274,28 @@ func (s *Server) handleHTTP(clientConn net.Conn, reader *bufio.Reader) {
 			}
 		}
 
-		// Stream bidirectional data at full line rate
-		s.pipe(clientConn, targetConn)
+		// Stream bidirectional data at full line rate with buffer preservation for WebSockets (w2g.tv)
+		s.pipe(clientBuffered, targetConn)
 	} else {
-		// Plain HTTP: re-serialize request and fragment it
-		var reqBuf []byte
+		// Plain HTTP or WebSocket Upgrade
+		isWS := strings.EqualFold(req.Header.Get("Upgrade"), "websocket")
+
+		if isWS || directPass {
+			_ = req.Write(targetConn)
+			s.pipe(clientBuffered, targetConn)
+			return
+		}
+
+		// Plain HTTP: serialize and fragment request
 		var b strings.Builder
 		_ = req.Write(&b)
-		reqBuf = []byte(b.String())
+		reqBuf := []byte(b.String())
 
 		if err := s.Engine.SendFragmented(targetConn, reqBuf); err != nil {
 			return
 		}
 
-		s.pipe(clientConn, targetConn)
+		s.pipe(clientBuffered, targetConn)
 	}
 }
 
@@ -271,10 +370,22 @@ func (s *Server) handleSOCKS5(clientConn net.Conn, reader *bufio.Reader) {
 	}
 	port := strconv.Itoa(int(portBytes[0])<<8 | int(portBytes[1]))
 
+	directPass := isDirectPassThrough(targetHost)
+
 	// Resolve target
-	resolvedIP, err := s.Resolver.Resolve(context.Background(), targetHost)
-	if err != nil {
-		resolvedIP = targetHost
+	var resolvedIP string
+	if directPass {
+		ips, err := net.DefaultResolver.LookupHost(context.Background(), targetHost)
+		if err == nil && len(ips) > 0 {
+			resolvedIP = ips[0]
+		} else {
+			resolvedIP = targetHost
+		}
+	} else {
+		resolvedIP, err = s.Resolver.Resolve(context.Background(), targetHost)
+		if err != nil {
+			resolvedIP = targetHost
+		}
 	}
 	destAddr := net.JoinHostPort(resolvedIP, port)
 
@@ -288,13 +399,32 @@ func (s *Server) handleSOCKS5(clientConn net.Conn, reader *bufio.Reader) {
 	// SOCKS5 success reply
 	_, _ = clientConn.Write([]byte{0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
 
+	clientBuffered := &bufferedConn{r: reader, Conn: clientConn}
+
+	if directPass {
+		s.pipe(clientBuffered, targetConn)
+		return
+	}
+
 	// Read complete initial payload from client (e.g. TLS ClientHello)
 	initialPayload, err := readInitialPayload(reader)
 	if err == nil && len(initialPayload) > 0 {
 		_ = s.Engine.SendFragmented(targetConn, initialPayload)
 	}
 
-	s.pipe(clientConn, targetConn)
+	s.pipe(clientBuffered, targetConn)
+}
+
+// isProxyAddr checks if the target matches the proxy's own address
+func (s *Server) isProxyAddr(host, port string) bool {
+	sHost, sPort, err := net.SplitHostPort(s.Addr)
+	if err != nil {
+		return false
+	}
+	if port == sPort && (host == sHost || host == "127.0.0.1" || host == "localhost") {
+		return true
+	}
+	return false
 }
 
 // readInitialPayload guarantees reading the entire TLS ClientHello packet even if chunked by OS
@@ -323,7 +453,7 @@ func readInitialPayload(reader *bufio.Reader) ([]byte, error) {
 	return buf[:n], err
 }
 
-// pipe streams traffic bidirectionally with zero-copy buffer pooling
+// pipe streams traffic bidirectionally with zero-copy buffer pooling and clean half-close
 func (s *Server) pipe(src, dst net.Conn) {
 	var wg sync.WaitGroup
 	wg.Add(2)

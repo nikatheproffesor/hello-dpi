@@ -5,10 +5,10 @@ package sysproxy
 import (
 	"fmt"
 	"log"
-	"os/exec"
-	"strings"
 	"sync"
 	"syscall"
+
+	"golang.org/x/sys/windows/registry"
 )
 
 var (
@@ -19,6 +19,7 @@ var (
 const (
 	internetOptionSettingsChanged = 39
 	internetOptionRefresh         = 37
+	bypassList                    = "<local>;*.local;10.*;172.16.*;172.17.*;172.18.*;172.19.*;172.20.*;172.21.*;172.22.*;172.23.*;172.24.*;172.25.*;172.26.*;172.27.*;172.28.*;172.29.*;172.30.*;172.31.*;192.168.*;*.gsb.gov.tr;*.kyk.gov.tr;captive.apple.com;connectivitycheck.gstatic.com;msftconnecttest.com"
 )
 
 type windowsManager struct {
@@ -41,24 +42,29 @@ func (m *windowsManager) Enable(host string, port int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	regKey := `HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings`
+	key, err := registry.OpenKey(registry.CURRENT_USER, `Software\Microsoft\Windows\CurrentVersion\Internet Settings`, registry.QUERY_VALUE|registry.SET_VALUE)
+	if err != nil {
+		return fmt.Errorf("failed to open Internet Settings registry key: %w", err)
+	}
+	defer key.Close()
 
 	// Backup existing proxy settings
-	if out, err := exec.Command("reg", "query", regKey, "/v", "ProxyEnable").Output(); err == nil {
-		m.hadProxy = strings.Contains(string(out), "0x1")
+	if val, _, err := key.GetIntegerValue("ProxyEnable"); err == nil {
+		m.hadProxy = (val == 1)
 	}
-	if out, err := exec.Command("reg", "query", regKey, "/v", "ProxyServer").Output(); err == nil {
-		fields := strings.Fields(string(out))
-		if len(fields) >= 3 {
-			m.prevServer = fields[len(fields)-1]
-		}
+	if val, _, err := key.GetStringValue("ProxyServer"); err == nil {
+		m.prevServer = val
+	}
+	if val, _, err := key.GetStringValue("ProxyOverride"); err == nil {
+		m.prevOverride = val
 	}
 
 	proxyAddr := fmt.Sprintf("%s:%d", host, port)
-	log.Printf("[Hello DPI] Configuring Windows Internet Settings proxy to %s", proxyAddr)
+	log.Printf("[Hello DPI] Configuring Windows Internet Settings proxy to %s (instant Win32 Registry)", proxyAddr)
 
-	_ = exec.Command("reg", "add", regKey, "/v", "ProxyEnable", "/t", "REG_DWORD", "/d", "1", "/f").Run()
-	_ = exec.Command("reg", "add", regKey, "/v", "ProxyServer", "/t", "REG_SZ", "/d", proxyAddr, "/f").Run()
+	_ = key.SetDWordValue("ProxyEnable", 1)
+	_ = key.SetStringValue("ProxyServer", proxyAddr)
+	_ = key.SetStringValue("ProxyOverride", bypassList)
 
 	notifyWinINet()
 	return nil
@@ -69,13 +75,20 @@ func (m *windowsManager) Disable() error {
 	defer m.mu.Unlock()
 
 	log.Printf("[Hello DPI] Restoring Windows Internet Settings proxy")
-	regKey := `HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings`
+	key, err := registry.OpenKey(registry.CURRENT_USER, `Software\Microsoft\Windows\CurrentVersion\Internet Settings`, registry.SET_VALUE)
+	if err != nil {
+		return fmt.Errorf("failed to open Internet Settings registry key: %w", err)
+	}
+	defer key.Close()
 
 	if m.hadProxy && m.prevServer != "" {
-		_ = exec.Command("reg", "add", regKey, "/v", "ProxyEnable", "/t", "REG_DWORD", "/d", "1", "/f").Run()
-		_ = exec.Command("reg", "add", regKey, "/v", "ProxyServer", "/t", "REG_SZ", "/d", m.prevServer, "/f").Run()
+		_ = key.SetDWordValue("ProxyEnable", 1)
+		_ = key.SetStringValue("ProxyServer", m.prevServer)
+		if m.prevOverride != "" {
+			_ = key.SetStringValue("ProxyOverride", m.prevOverride)
+		}
 	} else {
-		_ = exec.Command("reg", "add", regKey, "/v", "ProxyEnable", "/t", "REG_DWORD", "/d", "0", "/f").Run()
+		_ = key.SetDWordValue("ProxyEnable", 0)
 	}
 
 	notifyWinINet()

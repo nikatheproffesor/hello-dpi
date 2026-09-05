@@ -319,7 +319,7 @@ const dashboardHTML = `<!DOCTYPE html>
 
     <div class="status-badge">
       <span class="dot"></span>
-      <span>DPI Motoru Aktif: Trafik doğrudan hat hızında (%100) işleniyor</span>
+      <span>Hello DPI v2.1 • TLS Record Splitting & WebSockets Aktif • GSB WiFi Hazır</span>
     </div>
   </div>
 

@@ -116,6 +116,7 @@ func (m *darwinManager) Enable(host string, port int) error {
 		_ = exec.Command("networksetup", "-setwebproxy", s, host, portStr).Run()
 		_ = exec.Command("networksetup", "-setsecurewebproxy", s, host, portStr).Run()
 		_ = exec.Command("networksetup", "-setsocksfirewallproxy", s, host, portStr).Run()
+		_ = exec.Command("networksetup", "-setproxybypassdomains", s, "127.0.0.1", "localhost", "*.local", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "*.gsb.gov.tr", "*.kyk.gov.tr", "captive.apple.com", "connectivitycheck.gstatic.com", "msftconnecttest.com").Run()
 	}
 	return nil
 }

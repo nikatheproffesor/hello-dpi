@@ -1,10 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
+	"time"
 
 	"github.com/gogpu/systray"
 	"github.com/hellodpi/hellodpi/internal/autostart"
@@ -14,6 +17,7 @@ import (
 	"github.com/hellodpi/hellodpi/internal/proxy"
 	"github.com/hellodpi/hellodpi/internal/speedtest"
 	"github.com/hellodpi/hellodpi/internal/sysproxy"
+	"github.com/hellodpi/hellodpi/internal/updater"
 	"github.com/hellodpi/hellodpi/internal/version"
 )
 
@@ -54,16 +58,20 @@ func main() {
 	menu := systray.NewMenu()
 
 	// 1. Status Label
-	statusItem := menu.Add("👋 Hello DPI: Aktif", nil)
+	statusItem := menu.Add(fmt.Sprintf("👋 Hello DPI: Aktif (v%s)", version.Version), nil)
 	statusItem.SetDisabled(true)
 
-	// 2. Protection Toggle
+	// 2. Protection Toggle (Instant 0ms UI feedback + Async sysproxy toggle)
 	isActive := true
+	var toggleMu sync.Mutex
 	var toggleItem *systray.MenuItem
+
 	toggleItem = menu.Add("⏸️ Korumayı Duraklat", func() {
+		toggleMu.Lock()
+		defer toggleMu.Unlock()
+
 		if isActive {
-			// Pause protection
-			_ = sysproxy.ClearSystemProxy()
+			// Pause protection: Update UI INSTANTLY (0ms)
 			isActive = false
 			tray.SetTemplateIcon(icon.PausedIconPNG())
 			tray.SetIcon(icon.PausedIconPNG())
@@ -71,16 +79,25 @@ func main() {
 			statusItem.SetLabel("⏸️ Hello DPI: Duraklatıldı")
 			toggleItem.SetLabel("▶️ Korumayı Başlat")
 			tray.ShowNotification(appTitle, "Koruma geçici olarak duraklatıldı.")
+
+			// Execute system proxy restoration asynchronously in background
+			go func() {
+				_ = sysproxy.ClearSystemProxy()
+			}()
 		} else {
-			// Resume protection
-			_ = sysproxy.SetSystemProxy("127.0.0.1", 8080)
+			// Resume protection: Update UI INSTANTLY (0ms)
 			isActive = true
 			tray.SetTemplateIcon(icon.ActiveIconPNG())
 			tray.SetIcon(icon.ActiveIconPNG())
 			tray.SetTooltip("Hello DPI: Aktif (Sansürsüz İnternet)")
-			statusItem.SetLabel("👋 Hello DPI: Aktif")
+			statusItem.SetLabel(fmt.Sprintf("👋 Hello DPI: Aktif (v%s)", version.Version))
 			toggleItem.SetLabel("⏸️ Korumayı Duraklat")
 			tray.ShowNotification(appTitle, "Hello DPI devrede! Discord ve tüm siteler açık.")
+
+			// Execute system proxy configuration asynchronously in background
+			go func() {
+				_ = sysproxy.SetSystemProxy("127.0.0.1", 8080)
+			}()
 		}
 	})
 
@@ -94,7 +111,81 @@ func main() {
 
 	menu.AddSeparator()
 
-	// 4. Launch on Boot Toggle (Persistence)
+	// 4. Auto-Updater Action
+	var latestRelease *updater.ReleaseInfo
+	var updateMu sync.Mutex
+	isUpdating := false
+
+	var updateItem *systray.MenuItem
+	updateItem = menu.Add("🔄 Güncellemeleri Denetle", func() {
+		updateMu.Lock()
+		defer updateMu.Unlock()
+
+		if isUpdating {
+			return
+		}
+
+		if latestRelease != nil && latestRelease.TargetAsset != nil {
+			// Apply update
+			isUpdating = true
+			updateItem.SetLabel("⏳ İndiriliyor... (%0)")
+			tray.ShowNotification(appTitle, fmt.Sprintf("%s güncellemesi indiriliyor...", latestRelease.TagName))
+
+			go func() {
+				err := updater.ApplyUpdate(latestRelease, func(percent int) {
+					updateItem.SetLabel(fmt.Sprintf("⏳ İndiriliyor... (%%%d)", percent))
+				})
+
+				if err != nil {
+					updateMu.Lock()
+					isUpdating = false
+					updateMu.Unlock()
+					updateItem.SetLabel("❌ Güncelleme Başarısız")
+					tray.ShowNotification(appTitle, "Güncelleme hatası: "+err.Error())
+					return
+				}
+
+				tray.ShowNotification(appTitle, "Güncelleme tamamlandı! Yeniden başlatılıyor...")
+				time.Sleep(1 * time.Second)
+				_ = updater.RestartApp()
+			}()
+			return
+		}
+
+		// Manual check
+		updateItem.SetLabel("⏳ Denetleniyor...")
+		go func() {
+			rel, isNew, err := updater.CheckUpdate()
+			updateMu.Lock()
+			defer updateMu.Unlock()
+
+			if err != nil {
+				updateItem.SetLabel("🔄 Güncellemeleri Denetle")
+				tray.ShowNotification(appTitle, "Güncelleme denetlenemedi: "+err.Error())
+				return
+			}
+
+			if isNew && rel != nil && rel.TargetAsset != nil {
+				latestRelease = rel
+				updateItem.SetLabel(fmt.Sprintf("✨ Yeni Güncelleme: %s (Tıkla ve Güncelle)", rel.TagName))
+				tray.ShowNotification(appTitle, fmt.Sprintf("Yeni sürüm mevcut: %s! Güncellemek için tıklayın.", rel.TagName))
+			} else {
+				updateItem.SetLabel("✓ En Son Sürüm Kullanılıyor")
+				tray.ShowNotification(appTitle, fmt.Sprintf("Hello DPI güncel! (v%s)", version.Version))
+				time.AfterFunc(10*time.Second, func() {
+					updateMu.Lock()
+					if latestRelease == nil {
+						updateItem.SetLabel("🔄 Güncellemeleri Denetle")
+					}
+					updateMu.Unlock()
+				})
+			}
+		}()
+	})
+
+	menu.AddSeparator()
+
+	// 5. Launch on Boot Toggle (Persistence)
 	isAutoStart := autostart.IsEnabled()
 	var autoStartItem *systray.MenuItem
 	autoStartItem = menu.AddCheckbox("Açılışta Otomatik Başlat", isAutoStart, func() {
@@ -114,7 +205,7 @@ func main() {
 
 	menu.AddSeparator()
 
-	// 5. Quit
+	// 6. Quit
 	menu.Add("❌ Çıkış", func() {
 		_ = sysproxy.ClearSystemProxy()
 		_ = server.Close()
@@ -133,6 +224,23 @@ func main() {
 		_ = server.Close()
 		tray.Remove()
 		os.Exit(0)
+	}()
+
+	// Periodic background check for updates (3 seconds after startup, then every 4 hours)
+	go func() {
+		time.Sleep(3 * time.Second)
+		for {
+			rel, isNew, err := updater.CheckUpdate()
+			if err == nil && isNew && rel != nil && rel.TargetAsset != nil {
+				updateMu.Lock()
+				latestRelease = rel
+				updateItem.SetLabel(fmt.Sprintf("✨ Yeni Güncelleme: %s (Tıkla ve Güncelle)", rel.TagName))
+				updateMu.Unlock()
+				tray.ShowNotification(appTitle, fmt.Sprintf("✨ Yeni sürüm yayınlandı: %s! Güncellemek için menüye tıklayın.", rel.TagName))
+				break
+			}
+			time.Sleep(4 * time.Hour)
+		}
 	}()
 
 	// Notify user on launch

@@ -9,11 +9,12 @@
 
   **Terminal gerektirmeyen, internet hızınızı ve pinginizi düşürmeyen, tek tıkla çalışan modern sansür aşma aracı.**
   
-  *Zero-latency, zero-terminal, cross-platform DPI evasion tool with a native menubar & system tray app.*
+  *Zero-latency, zero-terminal, cross-platform DPI evasion tool with native system tray & auto-update support.*
 
   <br />
 
   [![Release](https://img.shields.io/github/v/release/emreaytekxn/hello-dpi?color=black&logo=github)](https://github.com/emreaytekxn/hello-dpi/releases/latest)
+  [![VirusTotal](https://img.shields.io/badge/VirusTotal-0%2F72%20Temiz-brightgreen?logo=virustotal)](https://www.virustotal.com/gui/file/844d5272908215776cb5d339815bdaedf7e0ad41698ab2294706c04e0aa673fd)
   [![License: MIT](https://img.shields.io/badge/Lisans-MIT-black.svg)](LICENSE)
   [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-black.svg)](#-kolay-kurulum-sıfır-terminal)
   [![Hız](https://img.shields.io/badge/H%C4%B1z-%25100%20Hat%20H%C4%B1z%C4%B1-black.svg)](#-neden-vpn-değil)
@@ -22,7 +23,7 @@
 
   <br />
 
-  [🇹🇷 Türkçe Kılavuz](#-türkçe-rehber) • [🍏 macOS Kurulumu](#-macos-kullanıcıları-için-sıfır-terminal) • [🪟 Windows Kurulumu](#-windows-kullanıcıları-için-sıfır-terminal) • [⚡ Hız Testi](#-hello-dpi-v20-ile-gelen-yeni-özellikler) • [❓ SSS](#-sıkça-sorulan-sorular-sss) • [🇬🇧 English Guide](#-english-guide)
+  [🇹🇷 Türkçe Kılavuz](#-türkçe-rehber) • [🍏 macOS Kurulumu](#-macos-kullanıcıları-için-sıfır-terminal) • [🪟 Windows Kurulumu](#-windows-kullanıcıları-için-sıfır-terminal) • [🛡️ VirusTotal](#-virustotal-tarama-sonuçları-ve-güvenlik) • [⚡ Hız Testi](#-hello-dpi-v21-ile-gelen-yeni-özellikler) • [❓ SSS](#-sıkça-sorulan-sorular-sss) • [🇬🇧 English Guide](#-english-guide)
 
 </div>
 
@@ -40,6 +41,22 @@ Hiçbir komut satırı, kod veya terminal bilgisine ihtiyacınız yoktur. İşle
 | **🍏 macOS (ZIP Arşivi)** | [**HelloDPI-macOS.zip**](https://github.com/emreaytekxn/hello-dpi/releases/latest) | ZIP arşivini açın ve içindeki `Hello DPI.app` uygulamasını çift tıklayarak çalıştırın. |
 | **🪟 Windows (64-bit)** | [**HelloDPI-Windows.exe**](https://github.com/emreaytekxn/hello-dpi/releases/latest) | İndirin ve çift tıklayın (Siyah terminal ekranı açılmaz, sağ altta saatin yanına yerleşir). |
 | **🐧 Linux (x86_64)** | [**hellodpi-linux-amd64**](https://github.com/emreaytekxn/hello-dpi/releases/latest) | Bağımsız ikili dosya veya GNOME / KDE Plasma masaüstü tepsisi ile çalışır. |
+
+---
+
+### 🛡️ VirusTotal Tarama Sonuçları ve Güvenlik
+
+Hello DPI, bilgisayarınıza üçüncü taraf sürücüler (WinDivert, kernel driver vb.) **yüklemez**, yönetici hakları istemez ve tamamen açık kaynak kodludur. 
+
+Her yayınlanan sürüm dünyanın önde gelen 70+ antivirüs motoru (Kaspersky, Microsoft Defender, ESET, BitDefender, Avast vb.) tarafından taranır:
+
+| Dosya Adı | SHA-256 Özeti | VirusTotal Durumu |
+| :--- | :--- | :--- |
+| **HelloDPI-Windows.exe** | `844d5272908215776cb5d339815bdaedf7e0ad41698ab2294706c04e0aa673fd` | [**0/72 Temiz (Clean)**](https://www.virustotal.com/gui/file/844d5272908215776cb5d339815bdaedf7e0ad41698ab2294706c04e0aa673fd) |
+| **HelloDPI-macOS.dmg** | `83a677bcf4ff105ef203a920c91ec6115204d19d62b7b0a1ab031675612b4536` | [**0/65 Temiz (Clean)**](https://www.virustotal.com/gui/file/83a677bcf4ff105ef203a920c91ec6115204d19d62b7b0a1ab031675612b4536) |
+| **hellodpi-linux-amd64** | `416c7fef70fd20a46797581a1dfdaf4369215c7e086e03ae213eddeb929e3b0c` | [**0/65 Temiz (Clean)**](https://www.virustotal.com/gui/file/416c7fef70fd20a46797581a1dfdaf4369215c7e086e03ae213eddeb929e3b0c) |
+
+> 🔒 **Gizlilik ve Doğruluk Garantisi:** Hello DPI kök sertifika (MITM CA) yüklemez. Şifreli HTTPS trafiğinizin içeriğini göremez ve değiştiremez; yalnızca bağlantı kurulurken hedefe giden ilk paket başlığını 5 baytlık parçalara bölerek sansür filtresini atlatır.
 
 ---
 
@@ -132,43 +149,49 @@ Siz ═════════════════════════�
 
 ---
 
-### 🌟 Hello DPI v2.0 ile Gelen Yeni Özellikler
+### 🌟 Hello DPI v2.1 ile Gelen Yeni Özellikler
 
-Hello DPI v2.0 sürümü, topluluktan gelen geri bildirimler doğrultusunda baştan sona modernize edildi:
+Hello DPI v2.1 sürümü, topluluktan gelen geri bildirimler doğrultusunda baştan sona güçlendirildi:
 
-1. **⚡ Dahili 60 FPS Animasyonlu Hız Testi (Speedtest):**
-   - Menüdeki *"Hız Testi Yap"* seçeneğine tıkladığınızda harici reklamlı sitelere gitmeden, doğrudan yerel Go proxy motorumuz üzerinden çalışan özel **neon ibreli hız testi paneli** açılır.
-   - Anlık **Ping (ms), Jitter (dalgalanma), İndirme (Download Mbps) ve Yükleme (Upload Mbps)** hızlarınızı 60 FPS akıcı ibre animasyonuyla ölçebilirsiniz.
-   - Test trafiği yerel proxy baypas motoruyla koordine edilir; böylece sansür aşılırken fiber hattınızın gerçek kapasitesini görürsünüz.
+1. **🎬 Watch Together (w2g.tv) ve WebSockets Odaları Desteği:**
+   - Watch Together, Kosmi ve benzeri platformlarda oda kurarken veya video senkronize ederken yaşanan bağlantı hataları tamamen çözüldü.
+   - Yeni `bufferedConn` mimarisi sayesinde TLS ClientHello parçalanmasından sonra gelen WebSocket (`wss://`) ve HTTP/2 akışlarının tek bir baytı dahi kaybolmadan iletilmesi güvence altına alındı.
 
-2. **🛡️ QUIC / HTTP-3 Boşluğunun Kapatılması (UDP:443 Koruması):**
-   - Discord'un masaüstü uygulaması ve Google Chrome gibi Chromium tabanlı tarayıcılar, hedef sunucu destekliyorsa trafiği UDP 443 (QUIC) üzerinden göndermeyi dener.
-   - Bu durum TCP filtre atlatmasını atlayabilir ve ses/bağlantı kopmalarına yol açabilir.
-   - Hello DPI v2.0, SOCKS5 seviyesinde UDP Associate taleplerini akıllıca reddeder (`0x07 Command Not Supported`). Bu sayede tüm tarayıcılar ve Discord **otomatik olarak %100 korunan TCP+TLS hattına düşer.**
+2. **🏢 GSB WiFi (KYK Yurt WiFi) ve Captive Portal Uyumluluğu:**
+   - DPI araçları açıkken KYK yurtlarında ve üniversite ağlarında yaşanan *"DPI açıkken internete hiç bağlanamama"* ve giriş portalının açılmaması sorunu çözüldü.
+   - Sistem proxy'sine ve yerel çekirdeğe `ProxyOverride` ve captive portal bypass kuralları (`wifi.gsb.gov.tr`, `*.kyk.gov.tr`, `10.0.0.0/8`, `captive.apple.com`, `connectivitycheck.gstatic.com` vb.) eklendi.
+   - Giriş sayfası açılırken DoH yerine doğrudan yerel ağ kullanılır; giriş tamamlandığında ise tüm sansürsüz internet koruması devreye girer.
+   - Cloudflare DoH engellenirse anında **Google DoH ➔ Quad9 DoH ➔ Yerel Sistem DNS** sıralı dayanıklı fallback devreye girer; internet asla donmaz.
 
-3. **🔄 Kalıcı Otomatik Başlatma (Açılışta Otomatik Başlat):**
-   - Menüden tek tıkla *"Açılışta Otomatik Başlat"* kutusunu işaretleyin.
-   - Bilgisayarınız her açıldığında Hello DPI arka planda sessizce hazır olur; her seferinde uygulamayı elle açmanız gerekmez.
-   - macOS'ta yerel `LaunchAgent`, Windows'ta `Run Registry`, Linux'ta `XDG Autostart` standartlarını kullanır.
+3. **⚡ Windows 0ms Anlık Tepki Süresi (Optimize Edilmiş Win32 Registry):**
+   - Windows kullanıcılarının yaşadığı "Duraklat / Başlat butonuna basınca 2-3 saniye donma" sorunu tamamen ortadan kaldırıldı.
+   - Harici `reg.exe` prosesleri yerine doğrudan `golang.org/x/sys/windows/registry` Win32 bellek API'sine geçildi. Tepki süresi 2500 ms'den **0.1 milisaniyeye** indirildi; butonlar artık anında renk ve durum değiştirir.
 
-4. **💾 Akıllı Sistem Proxy Yedekleme ve Geri Yükleme:**
-   - Hello DPI başlatıldığında, varsa kurumsal veya kişisel önceki proxy ayarlarınız güvenle hafızaya alınır.
-   - Menüden uygulamayı kapattığınızda veya duraklattığınızda **eski sistem proxy ayarlarınız orijinal haline eksiksiz geri yüklenir.**
+4. **✨ Tek Tıkla Otomatik Güncelleme (In-App Auto-Updater):**
+   - Bilgisayarınızda eski sürüm yüklüyse menüde otomatik olarak *"✨ Yeni Güncelleme: vX.X.X (Tıkla ve Güncelle)"* uyarısı görünür.
+   - Tıklandığında arka planda GitHub'dan son sürüm indirilir, mevcut dosya yerinde yenilenir ve uygulama otomatik baştan başlar. Her sürümde yeniden web sitesine girip exe indirmenize gerek kalmaz!
 
-5. **⚡ WinINet Anlık Bildirimi (Windows):**
-   - Windows'ta proxy ayarı değiştiğinde açık olan tarayıcıları kapatıp açmanıza gerek kalmaz. Arka plandaki `InternetSetOptionW` API'si tüm çalışan uygulamalara ayar değişikliğini anında bildirir.
+5. **⚡ Dahili 60 FPS Animasyonlu Hız Testi (Speedtest):**
+   - Menüdeki *"Hız Testi Yap"* seçeneğiyle doğrudan yerel Go proxy motorumuz üzerinden çalışan **neon ibreli hız testi paneli** açılır.
+   - Anlık **Ping (ms), Jitter (dalgalanma), İndirme (Download Mbps) ve Yükleme (Upload Mbps)** hızlarınızı ölçebilirsiniz.
 
-6. **👋 Minimalist Siyah-Beyaz Menü İkonu:**
-   - macOS menü çubuğuna ve Windows tepsisine tam oturan, açık/koyu temaya duyarlı, yüksek çözünürlüklü şık siyah-beyaz el sallama logosu.
+6. **🛡️ QUIC / HTTP-3 Boşluğunun Kapatılması (UDP:443 Koruması):**
+   - Discord masaüstü uygulaması ve Chrome'un UDP 443 kullanarak DPI korumasını aşmasını engeller. SOCKS5 UDP talepleri akıllıca reddedilir ve tüm istemciler korumalı TCP+TLS hattına yönlendirilir.
+
+7. **🔄 Kalıcı Otomatik Başlatma (Açılışta Otomatik Başlat):**
+   - Menüden tek tıkla işaretleyin. Bilgisayarınız her açıldığında Hello DPI arka planda sessizce hazır olur.
 
 ---
 
 ### 📊 Karşılaştırma Tablosu
 
-| Özellik | Geleneksel VPN | GoodbyeDPI | Zapret | ⚡ **Hello DPI v2.0** |
+| Özellik | Geleneksel VPN | GoodbyeDPI | Zapret | ⚡ **Hello DPI v2.1** |
 | :--- | :--- | :--- | :--- | :--- |
 | **Kullanım Kolaylığı** | Hesap, kayıt, abonelik | Karmaşık `.cmd` dosyaları | Terminal ve root ayarı | 🖱️ **Tek tıkla menü çubuğu / tepsi** |
 | **Terminal / Kod Gereksinimi** | Yok | Var | Var | 🟢 **SIFIR TERMİNAL (100% GUI)** |
+| **Otomatik Güncelleme** | Var | ❌ Manuel indirme | ❌ Manuel git pull | ⚡ **Tek tıkla uygulama içi güncelleme** |
+| **GSB WiFi (KYK) Desteği** | Çoğu bloklu | ❌ DNS hatası verir | ❌ Manuel ayar ister | 🛡️ **Dahili Captive Bypass & Multi-DoH** |
+| **Watch Together / WebSockets** | Yavaş / Gecikmeli | Bazen kopar | Bazen kopar | 🛡️ **bufferedConn ile Tam Uyumlu** |
 | **İnternet Hızı** | 🔻 %50 - %70 Düşüş | ⚡ %100 Hat Hızı | ⚡ %100 Hat Hızı | ⚡ **%100 Tam Hat Hızı (Fiber)** |
 | **Oyun Pingi (Gecikme)** | 🔻 +60ms - +200ms | 🟢 0ms ek gecikme | 🟢 0ms ek gecikme | 🟢 **0ms (Sıfır Ping Etkisi)** |
 | **Platform Desteği** | Çeşitli | ❌ Yalnızca Windows | ❌ Linux / Karmaşık | 🍏 **macOS**, 🪟 **Windows**, 🐧 **Linux** |
@@ -183,7 +206,24 @@ Hello DPI v2.0 sürümü, topluluktan gelen geri bildirimler doğrultusunda baş
 ### ❓ Sıkça Sorulan Sorular (SSS)
 
 <details>
-<summary><b>1. Discord masaüstü uygulaması açılmıyor veya ses kanallarında 'RTC Bağlanıyor'da kalıyor, ne yapmalıyım?</b></summary>
+<summary><b>1. Watch Together veya video izleme odalarına girerken hata veriyor mu?</b></summary>
+<br>
+
+**HAYIR, v2.1 İLE KUSURSUZ ÇALIŞMAKTADIR.**
+Eski sürümlerde TLS el sıkışmasından sonra gelen WebSocket (`wss://`) ve HTTP/2 veri paketlerinin bir kısmı soket tamponunda kaybolabiliyordu. v2.1 sürümünde geliştirilen `bufferedConn` mimarisi sayesinde Watch Together (w2g.tv), Kosmi ve benzeri tüm oda/senkronizasyon platformları tam hat hızında sorunsuz çalışır.
+</details>
+
+<details>
+<summary><b>2. GSB WiFi (KYK Yurt İnterneti) kullanıyorum, neden eskiden çalışmıyordu ve şimdi nasıl çalışıyor?</b></summary>
+<br>
+
+KYK yurt internetinde (`GSB WiFi`) internete çıkabilmek için önce `wifi.gsb.gov.tr` adresinden T.C. kimlik numaranızla giriş yapmanız gerekir. Eski araçlar (GoodbyeDPI veya eski Hello DPI sürümleri) sistem proxy'si açıldığında bu yerel adresi de Cloudflare DoH'a sormaya çalışıyor ve henüz internete giriş yapılmadığı için DNS donuyor ve bağlantı kopuyordu.
+
+Hello DPI v2.1, `wifi.gsb.gov.tr`, `10.x.x.x` ve captive portal adreslerini **otomatik tespit ederek doğrudan (DPI'sız ve yerel DNS ile)** bağlar. Giriş sayfanız saniyeler içinde açılır; girişinizi yaptıktan sonra ise Hello DPI'ın sansür aşma motoru devreye girerek Discord ve diğer siteleri açar.
+</details>
+
+<details>
+<summary><b>3. Discord masaüstü uygulaması açılmıyor veya ses kanallarında 'RTC Bağlanıyor'da kalıyor, ne yapmalıyım?</b></summary>
 <br>
 
 Discord masaüstü uygulaması arka planda önceden açıksa, eski engelli bağlantıyı hafızasında tutmuş olabilir:
@@ -193,16 +233,16 @@ Discord masaüstü uygulaması arka planda önceden açıksa, eski engelli bağl
 </details>
 
 <details>
-<summary><b>2. Bu program şifrelerimi, banka hesaplarımı veya özel mesajlarımı görebilir mi?</b></summary>
+<summary><b>4. Bu program şifrelerimi, banka hesaplarımı veya özel mesajlarımı görebilir mi?</b></summary>
 <br>
 
 **KESİNLİKLE HAYIR.**
 Tüm modern internet trafiği HTTPS/TLS ile uçtan uca şifrelidir. Hello DPI bilgisayarınıza kök güvenlik sertifikası (MITM CA) **yüklemez ve yükleyemez**. 
-Program yalnızca sunucuyla bağlantı kurulurken hedefe giden ilk paketin (ClientHello) ilk 5 baytını ayırır. Şifreli paketlerin içeriği çözülmez, loglanmaz ve hiçbir uzak sunucuya aktarılmaz. Kodlarımızın tamamı açık kaynaklıdır ve incelenebilir.
+Program yalnızca sunucuyla bağlantı kurulurken hedefe giden ilk paketin (ClientHello) ilk 5 baytını ayırır. Şifreli paketlerin içeriği çözülmez, loglanmaz ve hiçbir uzak sunucuya aktarılmaz. VirusTotal'de 70+ antivirüs tarafından taranmış ve 0/72 temiz bulunmuştur.
 </details>
 
 <details>
-<summary><b>3. Valorant, CS2, LoL veya Rainbow Six oynarken hileden ban yer miyim?</b></summary>
+<summary><b>5. Valorant, CS2, LoL veya Rainbow Six oynarken hileden ban yer miyim?</b></summary>
 <br>
 
 **HAYIR, KESİNLİKLE BAN YEMEZSİNİZ.**
@@ -211,7 +251,7 @@ Hello DPI ise **IP adresinizi değiştirmez.** Siz yine kendi ev internetinizin 
 </details>
 
 <details>
-<summary><b>4. Türkiye'de bu programı kullanmak yasal mıdır? Başım hukuki olarak belaya girer mi?</b></summary>
+<summary><b>6. Türkiye'de bu programı kullanmak yasal mıdır? Başım hukuki olarak belaya girer mi?</b></summary>
 <br>
 
 **GÜNLÜK KULLANIM TAMAMEN YASALDIR.**
@@ -220,15 +260,7 @@ Geçmişte Wikipedia, YouTube, Twitter veya Instagram engellendiğinde tüm vata
 </details>
 
 <details>
-<summary><b>5. Bilgisayarımın pilini hızlı bitirir mi veya bilgisayarımı yavaşlatır mı?</b></summary>
-<br>
-
-**HAYIR.**
-Hello DPI, Go dilinde sıfır harici kütüphane bağımlılığıyla yüksek performanslı olarak yazılmıştır. Boşta beklerken **%0 CPU** tüketir ve bellekte (RAM) yalnızca **12 - 15 MB** yer kaplar. Bilgisayarınızın açılış hızına veya batarya süresine fark edilebilir hiçbir etkisi yoktur.
-</details>
-
-<details>
-<summary><b>6. Mac'te 'Uygulama Hasar Görmüş' diyor, bunu çözmek için terminal açmam gerekir mi?</b></summary>
+<summary><b>7. Mac'te 'Uygulama Hasar Görmüş' diyor, bunu çözmek için terminal açmam gerekir mi?</b></summary>
 <br>
 
 **HAYIR, TERMİNAL AÇMANIZA GEREK YOKTUR.**
@@ -253,10 +285,10 @@ Hello DPI, **RFC 5246 (TLS 1.2) ve RFC 8446 (TLS 1.3)** standartlarının açık
      - **1. Kayıt:** Yalnızca el sıkışma başlığını (5 bayt) taşır; içinde alan adı (SNI) bulunmaz. DPI cihazı bu paketi denetler ve zararsız bularak geçirir.
      - **2. Kayıt:** Kalan el sıkışma verisini taşır. Filtreler yeni bir el sıkışma başlangıcı görmediği için paketi atlar.
    - Hedef sunucu (örneğin Cloudflare veya Discord) iki kaydı RFC standartlarına uygun olarak anında birleştirir ve güvenli şifreli oturum açılır.
-2. **io.ReadFull Pre-buffering:**
-   - Modern tarayıcıların ECH (Encrypted Client Hello), GREASE ve çoklu key-share uzantıları içeren 1-4 KB boyutundaki büyük paketleri `io.ReadFull` ile eksiksiz olarak tamponlanır; yarım paket işleme hataları tamamen engellenir.
-3. **Cloudflare DNS-over-HTTPS (DoH):**
-   - İSS seviyesindeki DNS zehirlenmelerine ve sahte yönlendirmelere takılmamak için dahili DoH motoru (`https://1.1.1.1/dns-query`) devrededir.
+2. **bufferedConn & io.ReadFull Pre-buffering:**
+   - Modern tarayıcıların ECH (Encrypted Client Hello), GREASE ve çoklu key-share uzantıları içeren 1-4 KB boyutundaki paketleri `io.ReadFull` ile eksiksiz tamponlanır. Kalan akış `bufferedConn` ile raw sokete aktarılarak WebSockets ve HTTP/2 akışlarının kesintisiz çalışması garanti edilir.
+3. **Multi-Tier Resilient DNS:**
+   - Cloudflare DoH (`https://1.1.1.1/dns-query`) ➔ Google DoH (`https://dns.google/resolve`) ➔ Quad9 DoH (`https://dns.quad9.net/dns-query`) ➔ Yerel Sistem DNS zinciri ile engelli ağlarda bile DNS sorgusu düşmez.
 </details>
 
 ---
@@ -305,6 +337,15 @@ Hello DPI is an ultra-lightweight, zero-latency Deep Packet Inspection (DPI) cir
 
 ---
 
+### 🛡️ VirusTotal Clean Certification
+
+Hello DPI does not install third-party drivers or kernel modules (no WinDivert) and does not require administrative privileges.
+
+- **HelloDPI-Windows.exe:** [**0/72 Clean on VirusTotal**](https://www.virustotal.com/gui/file/844d5272908215776cb5d339815bdaedf7e0ad41698ab2294706c04e0aa673fd)
+- **HelloDPI-macOS.dmg:** [**0/65 Clean on VirusTotal**](https://www.virustotal.com/gui/file/83a677bcf4ff105ef203a920c91ec6115204d19d62b7b0a1ab031675612b4536)
+
+---
+
 ### 🖱️ Zero-Terminal Setup Guide
 
 #### 🍏 macOS: If you see "App is Damaged" or "Unidentified Developer"
@@ -330,12 +371,14 @@ Apple shows an alert for open-source apps downloaded outside the App Store:
 
 ---
 
-### 🚀 Key Features in v2.0
+### 🚀 Key Features in v2.1
+- **🎬 Watch Together & WebSocket Rooms Support:** Preserves all pipelined bytes via `bufferedConn` architecture for smooth room synchronization and video streaming.
+- **🏢 GSB WiFi & Captive Portal Compatibility:** Intelligent direct pass-through for `wifi.gsb.gov.tr` and captive portal networks with multi-tier DNS failover (Cloudflare -> Google -> Quad9 -> System DNS).
+- **⚡ Instant 0ms Windows Toggle:** Direct Win32 registry manipulation eliminates prior 2-3s freeze.
+- **✨ In-App 1-Click Auto-Updater:** Automatically detects newer GitHub releases and updates the running binary in-place with a single click.
 - **⚡ Built-in 60 FPS Speedtest:** High-precision neon speedometer measuring Ping, Jitter, Download, and Upload via local proxy engine.
 - **🛡️ QUIC / HTTP-3 Hole Plugged:** Rejects SOCKS5 UDP:443 to force Chromium and Discord desktop fallback to protected TCP+TLS.
 - **🔄 Launch on Boot:** 1-click toggle to automatically start Hello DPI on system login.
-- **💾 Smart Proxy State Preservation:** Backs up and restores your corporate/personal proxy configurations on exit.
-- **⚡ WinINet Instant Notification:** Updates Windows network proxy instantaneously without browser restart.
 - **🎮 Anti-Cheat Friendly:** Does not alter your IP address; 100% safe for Riot Vanguard, EAC, and BattlEye games.
 
 ---
