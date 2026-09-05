@@ -64,13 +64,12 @@ func CheckUpdate() (*ReleaseInfo, bool, error) {
 		return nil, false, fmt.Errorf("failed to parse release json: %w", err)
 	}
 
+	// Match asset for current OS/Arch
+	rel.TargetAsset = findMatchingAsset(rel.Assets)
+
 	if !IsNewerVersion(rel.TagName, version.Version) {
 		return &rel, false, nil
 	}
-
-	// Match asset for current OS/Arch
-	targetAsset := findMatchingAsset(rel.Assets)
-	rel.TargetAsset = targetAsset
 
 	return &rel, true, nil
 }

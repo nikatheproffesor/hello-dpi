@@ -49,3 +49,16 @@ func TestFormatBytes(t *testing.T) {
 		t.Errorf("expected '1.0 MB', got %s", FormatBytes(1048576))
 	}
 }
+
+func TestLiveGitHubAPI(t *testing.T) {
+	rel, _, err := CheckUpdate()
+	if err != nil {
+		t.Fatalf("CheckUpdate failed: %v", err)
+	}
+	if rel.TagName != "v2.1.1" {
+		t.Errorf("expected latest tag 'v2.1.1', got %s", rel.TagName)
+	}
+	if rel.TargetAsset == nil {
+		t.Errorf("expected matched TargetAsset, got nil")
+	}
+}
