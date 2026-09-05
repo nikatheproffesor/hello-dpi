@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	githubRepo     = "emreaytekxn/hello-dpi"
+	githubRepo     = "nikatheproffesor/hello-dpi"
 	apiURL         = "https://api.github.com/repos/" + githubRepo + "/releases/latest"
 	requestTimeout = 10 * time.Second
 )
