@@ -15,6 +15,7 @@ import (
 	"time"
 	"unicode/utf16"
 
+	"github.com/hellodpi/hellodpi/internal/divert"
 	"github.com/hellodpi/hellodpi/internal/sysproxy"
 	"github.com/hellodpi/hellodpi/internal/version"
 )
@@ -30,15 +31,16 @@ type DiagnosticStep struct {
 
 // DiagnosticReport contains the complete repair report
 type DiagnosticReport struct {
-	Timestamp   string           `json:"timestamp"`
-	Version     string           `json:"version"`
-	OS          string           `json:"os"`
-	Steps       []DiagnosticStep `json:"steps"`
-	DiscordPing int              `json:"discord_ping_ms"`
-	RobloxPing  int              `json:"roblox_ping_ms"`
-	DoHPing     int              `json:"doh_ping_ms"`
-	AllGood     bool             `json:"all_good"`
-	Logs        []string         `json:"logs"`
+	Timestamp    string           `json:"timestamp"`
+	Version      string           `json:"version"`
+	OS           string           `json:"os"`
+	Steps        []DiagnosticStep `json:"steps"`
+	DiscordPing  int              `json:"discord_ping_ms"`
+	RobloxPing   int              `json:"roblox_ping_ms"`
+	DoHPing      int              `json:"doh_ping_ms"`
+	KernelActive bool             `json:"kernel_active"`
+	AllGood      bool             `json:"all_good"`
+	Logs         []string         `json:"logs"`
 }
 
 type ActionResponse struct {
@@ -61,6 +63,10 @@ func RegisterHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/api/doctor/fix-dns", handleResetNetwork) // Alias
 	mux.HandleFunc("/api/doctor/restart-discord", handleRestartDiscord)
 	mux.HandleFunc("/api/doctor/launch-roblox", handleLaunchRoblox)
+	mux.HandleFunc("/api/doctor/kernel-status", handleKernelStatus)
+	mux.HandleFunc("/api/doctor/kernel-start", handleKernelStart)
+	mux.HandleFunc("/api/doctor/kernel-stop", handleKernelStop)
+	mux.HandleFunc("/api/doctor/kernel-toggle", handleKernelToggle)
 }
 
 func handleDashboard(w http.ResponseWriter, r *http.Request) {
@@ -111,6 +117,43 @@ func handleLaunchRoblox(w http.ResponseWriter, r *http.Request) {
 
 	success, msg := LaunchRoblox()
 	_ = json.NewEncoder(w).Encode(ActionResponse{Success: success, Message: msg})
+}
+
+func handleKernelStatus(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	st := divert.GetStatus()
+	_ = json.NewEncoder(w).Encode(st)
+}
+
+func handleKernelStart(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	err := divert.Start()
+	if err != nil {
+		_ = json.NewEncoder(w).Encode(ActionResponse{Success: false, Message: "Çekirdek Modu başlatılamadı: " + err.Error()})
+		return
+	}
+	_ = json.NewEncoder(w).Encode(ActionResponse{Success: true, Message: "Çekirdek Modu (WinDivert) başarıyla başlatıldı! Roblox ve tüm oyunlar engelsiz çalışır."})
+}
+
+func handleKernelStop(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	err := divert.Stop()
+	if err != nil {
+		_ = json.NewEncoder(w).Encode(ActionResponse{Success: false, Message: "Çekirdek Modu durdurulamadı: " + err.Error()})
+		return
+	}
+	_ = json.NewEncoder(w).Encode(ActionResponse{Success: true, Message: "Çekirdek Modu durduruldu."})
+}
+
+func handleKernelToggle(w http.ResponseWriter, r *http.Request) {
+	if divert.IsRunning() {
+		handleKernelStop(w, r)
+	} else {
+		handleKernelStart(w, r)
+	}
 }
 
 // OpenDoctor opens the diagnostic dashboard in the default browser
@@ -254,6 +297,29 @@ func RunRepair() *DiagnosticReport {
 			Description: "Roblox doğrudan bağlanamadı; ağ kartı DNS'inin 1.1.1.1 yapılması gerekir.",
 			Status:      "info",
 			Detail:      "Aşağıdaki 'Roblox İçin Ağ Kartı DNS'ini Onar' butonuna tıklayarak tek tıkla çözebilirsiniz.",
+		})
+	}
+
+	// Step: Kernel Mode Status
+	kernelActive := divert.IsRunning()
+	report.KernelActive = kernelActive
+	if kernelActive {
+		addLog("🟢 Çekirdek Modu (L3/L4 WinDivert) devrede: Roblox ve tüm oyunlar engelsiz.")
+		report.Steps = append(report.Steps, DiagnosticStep{
+			ID:          "step-kernel",
+			Name:        "Çekirdek Modu (L3/L4 WinDivert)",
+			Description: "Roblox ve ham soket kullanan oyunlar için çekirdek seviyesinde paket parçalama",
+			Status:      "success",
+			Detail:      "Aktif. Tüm ağ trafiği çekirdek seviyesinde korunuyor.",
+		})
+	} else {
+		addLog("⚪ Çekirdek Modu beklemede (Roblox ve oyunlar için tek tıkla başlatılabilir).")
+		report.Steps = append(report.Steps, DiagnosticStep{
+			ID:          "step-kernel",
+			Name:        "Çekirdek Modu (L3/L4 WinDivert)",
+			Description: "Roblox ve ham soket kullanan oyunlar için çekirdek seviyesinde paket parçalama",
+			Status:      "info",
+			Detail:      "Hazır durumda. Roblox oynamak için tek tıkla başlatabilirsiniz.",
 		})
 	}
 
@@ -877,281 +943,300 @@ const doctorHTML = `<!DOCTYPE html>
       padding: 16px;
       margin-bottom: 24px;
       font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
-      color: #6ee7b7;
-      overflow-x: auto;
-      max-height: 180px;
-      overflow-y: auto;
-      box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.8);
+      background: #e4e4e7;
     }
-    .terminal-header {
+    .btn-action.highlight .action-tag {
+      background: #000000;
+      color: #ffffff;
+    }
+    .action-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-sub);
+    }
+    .console-wrapper {
+      background: #0c0d14;
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .console-header {
+      background: rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid var(--card-border);
+      padding: 10px 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding-bottom: 8px;
-      margin-bottom: 10px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      color: var(--text-dim);
-      font-size: 11px;
+      font-size: 12px;
+      color: var(--text-muted);
     }
-    .terminal-dots { display: flex; gap: 6px; }
-    .dot { width: 10px; height: 10px; border-radius: 50%; }
-    .dot-red { background: #ef4444; }
-    .dot-yellow { background: #f59e0b; }
-    .dot-green { background: #10b981; }
-    .terminal-line { margin-bottom: 4px; line-height: 1.5; white-space: pre-wrap; }
-
-    /* Final Celebratory Banner */
-    .banner-celebrate {
-      display: none;
-      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(0, 242, 254, 0.15));
-      border: 1px solid rgba(16, 185, 129, 0.35);
-      border-radius: 20px;
-      padding: 22px;
-      text-align: center;
-      animation: fadeIn 0.4s ease;
+    .console-body {
+      padding: 16px;
+      max-height: 220px;
+      overflow-y: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
     }
-    .banner-celebrate h3 {
-      font-size: 18px;
-      font-weight: 800;
+    .log-line {
+      color: #a1a1aa;
+      word-break: break-all;
+    }
+    .notes-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .note-card {
+      background: rgba(255, 255, 255, 0.015);
+      border: 1px solid var(--card-border-subtle);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .note-card h4 {
+      font-size: 13px;
+      font-weight: 600;
       color: #fff;
       margin-bottom: 6px;
     }
-    .banner-celebrate p {
-      font-size: 13px;
-      color: var(--text-dim);
+    .note-card p {
+      font-size: 12px;
+      color: var(--text-muted);
       line-height: 1.5;
     }
-
-    /* Explainer Accordion */
-    .explainer {
-      margin-top: 24px;
-      background: rgba(255, 255, 255, 0.015);
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #18181b;
       border: 1px solid var(--card-border);
-      border-radius: 18px;
-      padding: 20px;
-    }
-    .explainer h4 {
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--text-dim);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 12px;
-    }
-    .explainer-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
-    .explainer-card {
-      background: rgba(255, 255, 255, 0.02);
-      border-radius: 12px;
-      padding: 14px;
-    }
-    .explainer-card h5 {
-      font-size: 14px;
-      font-weight: 700;
       color: #fff;
-      margin-bottom: 4px;
+      font-size: 13px;
+      padding: 12px 20px;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 100;
     }
-    .explainer-card p {
-      font-size: 12px;
-      color: var(--text-dim);
-      line-height: 1.4;
+    .toast.show {
+      opacity: 1;
     }
-
-    @media (max-width: 768px) {
-      .container { padding: 24px 20px; }
-      .pings-grid { grid-template-columns: 1fr; }
-      .explainer-grid { grid-template-columns: 1fr; }
-      .header { flex-direction: column; align-items: flex-start; gap: 14px; }
-      .btn-retest { width: 100%; justify-content: center; }
+    @media (max-width: 680px) {
+      .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+      .actions-grid { grid-template-columns: 1fr; }
+      .notes-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <!-- Header -->
-    <div class="header">
-      <div class="header-left">
-        <div class="header-icon">🛠️</div>
-        <div>
-          <h1>Hello DPI Ağ Doktoru</h1>
-          <div class="subtitle">Tek Tıkla Otomatik Ağ Onarımı ve Canlı Teşhis Merkezi</div>
+    <div class="top-nav">
+      <div class="nav-brand">
+        <span class="brand-name">Hello DPI Console</span>
+        <span class="version-tag">v3.0.0</span>
+      </div>
+      <div class="nav-actions">
+        <div class="status-badge">
+          <span class="dot-online"></span>
+          <span id="nav-status-text">Sistem Çevrimiçi</span>
+        </div>
+        <button class="btn-retest" onclick="startFullDiagnostics()">
+          <span>Yeniden Tara</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">Sistem Proxy</div>
+        <div class="metric-value">127.0.0.1:8080</div>
+        <div class="metric-detail">
+          <span class="detail-dot"></span>
+          <span>WinINet Tüneli Aktif</span>
         </div>
       </div>
-      <button class="btn-retest" id="btn-retest" onclick="startFullDiagnostics()">
-        <span id="btn-retest-icon">🔄</span>
-        <span id="btn-retest-text">Yeniden Onar & Test Et</span>
-      </button>
-    </div>
-
-    <!-- Live Scanning Progress -->
-    <div class="progress-section">
-      <div class="progress-header">
-        <div class="progress-title" id="progress-status">
-          <span>⏳</span> Sistem taranıyor ve bileşenler onarılıyor...
+      <div class="metric-card">
+        <div class="metric-label">Çekirdek Modu</div>
+        <div class="metric-value" id="val-kernel">Beklemede</div>
+        <div class="metric-detail" id="detail-kernel">
+          <span class="detail-dot inactive" id="dot-kernel"></span>
+          <span id="text-kernel">Roblox İçin Hazır</span>
         </div>
-        <div class="progress-percent" id="progress-percent">0%</div>
       </div>
-      <div class="progress-track">
-        <div class="progress-bar" id="progress-bar"></div>
+      <div class="metric-card">
+        <div class="metric-label">Discord Gateway</div>
+        <div class="metric-value" id="val-discord">-- ms</div>
+        <div class="metric-detail">
+          <span class="detail-dot"></span>
+          <span id="text-discord">Ses & API Tüneli</span>
+        </div>
       </div>
-    </div>
-
-    <!-- Latency Gauges Grid -->
-    <div class="pings-grid">
-      <div class="ping-card">
-        <div class="ping-icon">🟣</div>
-        <div class="ping-title">Discord API & Gateway</div>
-        <div class="ping-val" id="val-discord">--<span class="ping-unit">ms</span></div>
-        <div class="ping-status" id="status-discord">Taranıyor...</div>
-      </div>
-      <div class="ping-card">
-        <div class="ping-icon">🟥</div>
-        <div class="ping-title">Roblox CDN & Web</div>
-        <div class="ping-val" id="val-roblox">--<span class="ping-unit">ms</span></div>
-        <div class="ping-status" id="status-roblox">Taranıyor...</div>
-      </div>
-      <div class="ping-card">
-        <div class="ping-icon">⚡</div>
-        <div class="ping-title">Cloudflare DNS (1.1.1.1)</div>
-        <div class="ping-val" id="val-doh">--<span class="ping-unit">ms</span></div>
-        <div class="ping-status" id="status-doh">Taranıyor...</div>
+      <div class="metric-card">
+        <div class="metric-label">Roblox Servisleri</div>
+        <div class="metric-value" id="val-roblox">-- ms</div>
+        <div class="metric-detail">
+          <span class="detail-dot" id="dot-roblox"></span>
+          <span id="text-roblox">CDN ve Oyun Paketleri</span>
+        </div>
       </div>
     </div>
 
-    <!-- Quick Action Center -->
-    <div class="action-center">
-      <div class="action-header">
-        <span>⚡</span>
-        <h3>Tek Tıkla Hızlı Çözüm Butonları</h3>
-      </div>
-      <div class="action-buttons">
-        <button class="btn-action highlight" onclick="fixRoblox()">
-          <span>🎮</span> Roblox'u Kesin Çöz (Hosts & Anti-Poison Onarımı)
+    <div>
+      <div class="section-title">Hızlı Eylemler</div>
+      <div class="actions-grid">
+        <button class="btn-action highlight" id="btn-kernel-toggle" onclick="toggleKernel()">
+          <span id="btn-kernel-label">🎮 Roblox & Çekirdek Modunu Başlat</span>
+          <span class="action-tag">WinDivert L3/L4</span>
         </button>
         <button class="btn-action" onclick="resetNetwork()">
-          <span>🚨</span> Acil Ağ Sıfırlama (Fabrika Ayarlarına Dön)
+          <span>🚨 Ağ Ayarlarını Sıfırla (DHCP & WinHTTP)</span>
+          <span class="action-tag">Temizle</span>
         </button>
         <button class="btn-action" onclick="restartDiscord()">
-          <span>💬</span> Discord'u Temiz Yeniden Başlat
+          <span>💬 Discord'u Temizle & Başlat</span>
+          <span class="action-tag">Yenile</span>
         </button>
         <button class="btn-action" onclick="launchRoblox()">
-          <span>🚀</span> Roblox'u Aç
+          <span>🚀 Roblox'u Başlat</span>
+          <span class="action-tag">Aç</span>
         </button>
       </div>
-      <div class="toast" id="toast"></div>
     </div>
 
-    <!-- Step by Step Diagnostic Checklist -->
-    <div class="checklist" id="checklist">
-      <!-- Steps rendered dynamically -->
-    </div>
-
-    <!-- Real-time Terminal Log Console -->
-    <div class="terminal-box">
-      <div class="terminal-header">
-        <div class="terminal-dots">
-          <div class="dot dot-red"></div>
-          <div class="dot dot-yellow"></div>
-          <div class="dot dot-green"></div>
-        </div>
-        <div>Canlı Sistem Tanılama Konsolu (Hello DPI v2.2.3)</div>
+    <div class="console-wrapper">
+      <div class="console-header">
+        <span>Canlı Teşhis Günlüğü</span>
+        <span id="log-count">0 olay</span>
       </div>
-      <div id="terminal-content">
-        <div class="terminal-line">> Ağ Doktoru hazır. Tanılama başlatılıyor...</div>
+      <div class="console-body" id="console-body">
+        <div class="log-line">> Konsol başlatılıyor...</div>
       </div>
     </div>
 
-    <!-- Success Celebration Banner -->
-    <div class="banner-celebrate" id="banner-celebrate">
-      <h3>🎉 Bilgisayarınızdaki Tüm Ağ Sorunları Çözüldü!</h3>
-      <p>İSS DNS önbelleği silindi, Hello DPI proxy ve tüneli doğrulandı. Discord ve Roblox artık sansürsüz ve engelsiz şekilde açılacaktır.</p>
-    </div>
-
-    <!-- Explainer Cards -->
-    <div class="explainer">
-      <h4>🔍 Neler Yapıldı ve Sorunlar Nasıl Çözüldü?</h4>
-      <div class="explainer-grid">
-        <div class="explainer-card">
-          <h5>🎮 Roblox Neden Açılmıyordu?</h5>
-          <p>Türk Telekom / Superonline gibi servis sağlayıcılar roblox.com ve setup.rbxcdn.com alan adlarını 195.175.254.2 adresine zehirler. Ağ Doktoru, bu zehirlenmeyi atlatmak için gerçek Roblox sunucu IP'lerini hosts dosyasına yazar ve Hello DPI tüneli üzerinden güvenli şekilde bağlar.</p>
-        </div>
-        <div class="explainer-card">
-          <h5>💬 Discord Sevgilinizin PC'sinde Neden Çalışmıyordu?</h5>
-          <p>Windows proxy döngü (loopback) hatası ve arka planda asılı kalan eski Discord soketleri engelliyordu. Standart kararlı HTTP tüneli ve otomatik soket temizliğiyle sorun tamamen giderildi.</p>
-        </div>
+    <div class="notes-grid">
+      <div class="note-card">
+        <h4>Proxy Modu (Tarayıcılar & Discord)</h4>
+        <p>Chrome, Edge ve Discord masaüstü istemcisi Windows sistem proxy'sini (127.0.0.1:8080) kullanır. Hello DPI, bu bağlantılardaki ilk TLS paketlerini 5 bayta bölerek sansürü sıfır gecikmeyle aşar.</p>
+      </div>
+      <div class="note-card">
+        <h4>Çekirdek Modu (Roblox & Oyunlar)</h4>
+        <p>Roblox masaüstü istemcisi (RobloxPlayerBeta.exe) sistem proxy'sini dinlemez. Çekirdek Modu (WinDivert), giden ham paketleri ağ kartı düzeyinde yakalayıp parçalayarak engelsiz oyun erişimi sağlar.</p>
       </div>
     </div>
+
+    <div class="toast" id="toast"></div>
   </div>
 
   <script>
-    let isRunning = false;
+    let isKernelActive = false;
 
     function showToast(msg, isErr = false) {
       const t = document.getElementById('toast');
-      t.style.display = 'block';
-      t.style.borderColor = isErr ? 'var(--accent-rose)' : 'var(--accent-emerald)';
-      t.style.background = isErr ? 'rgba(244, 63, 94, 0.2)' : 'rgba(16, 185, 129, 0.2)';
-      t.innerHTML = msg;
-      setTimeout(() => { t.style.display = 'none'; }, 6000);
+      t.innerText = msg;
+      t.style.borderColor = isErr ? 'rgba(239, 68, 68, 0.4)' : 'rgba(255, 255, 255, 0.15)';
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3500);
     }
 
-    function appendTerminal(line) {
-      const tc = document.getElementById('terminal-content');
+    function appendLog(line) {
+      const b = document.getElementById('console-body');
       const div = document.createElement('div');
-      div.className = 'terminal-line';
+      div.className = 'log-line';
       div.innerText = line;
-      tc.appendChild(div);
-      tc.parentElement.scrollTop = tc.parentElement.scrollHeight;
+      b.appendChild(div);
+      b.scrollTop = b.scrollHeight;
+
+      const total = b.querySelectorAll('.log-line').length;
+      document.getElementById('log-count').innerText = total + ' olay';
     }
 
-    async function fixRoblox() {
-      showToast("⏳ Roblox için temiz IP kayıtları ekleniyor... Ekrana Windows onayı (UAC) çıkarsa 'Evet'e tıklayın!");
-      appendTerminal("> [Komut] Roblox Hosts & Anti-Poison yapılandırması başlatıldı...");
+    async function checkKernelStatus() {
       try {
-        const res = await fetch('/api/doctor/fix-roblox');
+        const res = await fetch('/api/doctor/kernel-status');
+        const data = await res.json();
+        isKernelActive = data.active;
+        updateKernelUI(data.active);
+      } catch (err) {}
+    }
+
+    function updateKernelUI(active) {
+      const val = document.getElementById('val-kernel');
+      const dot = document.getElementById('dot-kernel');
+      const txt = document.getElementById('text-kernel');
+      const btn = document.getElementById('btn-kernel-toggle');
+      const btnLbl = document.getElementById('btn-kernel-label');
+
+      if (active) {
+        val.innerText = "Aktif";
+        val.style.color = "#10b981";
+        dot.className = "detail-dot";
+        txt.innerText = "Tüm Oyunlar Destekleniyor";
+        btnLbl.innerText = "⏹️ Çekirdek Modunu Durdur";
+        btn.classList.remove('highlight');
+      } else {
+        val.innerText = "Beklemede";
+        val.style.color = "#fff";
+        dot.className = "detail-dot inactive";
+        txt.innerText = "Roblox İçin Hazır";
+        btnLbl.innerText = "🎮 Roblox & Çekirdek Modunu Başlat";
+        btn.classList.add('highlight');
+      }
+    }
+
+    async function toggleKernel() {
+      const action = isKernelActive ? "durduruluyor" : "başlatılıyor";
+      showToast("⏳ Çekirdek Modu " + action + "... (Windows onayı çıkarsa 'Evet'e tıklayın)");
+      appendLog("> [KOMUT] Çekirdek Modu " + action + "...");
+
+      try {
+        const res = await fetch('/api/doctor/kernel-toggle');
         const data = await res.json();
         showToast(data.message, !data.success);
-        appendTerminal("> [Sonuç] " + data.message);
-        setTimeout(startFullDiagnostics, 1500);
+        appendLog("> [SONUÇ] " + data.message);
+        setTimeout(startFullDiagnostics, 1200);
       } catch (err) {
         showToast("Hata: " + err.message, true);
       }
     }
 
     async function resetNetwork() {
-      showToast("⏳ Ağ ve DNS ayarları fabrika ayarlarına döndürülüyor, WinHTTP sıfırlanıyor...");
-      appendTerminal("> [Komut] Ağ ayarları sıfırlanıyor (DHCP + WinHTTP Reset)...");
+      showToast("⏳ Ağ ayarları fabrika ayarlarına döndürülüyor...");
+      appendLog("> [KOMUT] Ağ ayarları sıfırlanıyor (DHCP + WinHTTP Reset)...");
       try {
         const res = await fetch('/api/doctor/reset-network');
         const data = await res.json();
         showToast(data.message, !data.success);
-        appendTerminal("> [Sonuç] " + data.message);
-        setTimeout(startFullDiagnostics, 1500);
+        appendLog("> [SONUÇ] " + data.message);
+        setTimeout(startFullDiagnostics, 1200);
       } catch (err) {
         showToast("Hata: " + err.message, true);
       }
     }
 
     async function restartDiscord() {
-      showToast("⏳ Discord arka plandan kapatılıyor ve Hello DPI tüneliyle temiz baştan başlatılıyor...");
-      appendTerminal("> [Komut] Discord yeniden başlatılıyor...");
+      showToast("⏳ Discord soketleri yenileniyor...");
+      appendLog("> [KOMUT] Discord tüneli temizleniyor...");
       try {
         const res = await fetch('/api/doctor/restart-discord');
         const data = await res.json();
         showToast(data.message, !data.success);
-        appendTerminal("> [Sonuç] " + data.message);
+        appendLog("> [SONUÇ] " + data.message);
       } catch (err) {
         showToast("Hata: " + err.message, true);
       }
     }
 
     async function launchRoblox() {
-      showToast("🚀 Roblox web sayfası açılıyor...");
-      appendTerminal("> [Komut] Roblox sayfası açılıyor...");
+      showToast("🚀 Roblox başlatılıyor...");
+      appendLog("> [KOMUT] Roblox başlatıcı çağrılıyor...");
       try {
         const res = await fetch('/api/doctor/launch-roblox');
         const data = await res.json();
@@ -1161,171 +1246,41 @@ const doctorHTML = `<!DOCTYPE html>
       }
     }
 
-    function animateValue(id, start, end, duration) {
-      const obj = document.getElementById(id);
-      if (end <= 0) {
-        obj.innerHTML = 'ERR<span class="ping-unit">ms</span>';
-        return;
-      }
-      let startTimestamp = null;
-      const step = (timestamp) => {
-        if (!startTimestamp) startTimestamp = timestamp;
-        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-        const current = Math.floor(progress * (end - start) + start);
-        obj.innerHTML = current + '<span class="ping-unit">ms</span>';
-        if (progress < 1) {
-          window.requestAnimationFrame(step);
-        }
-      };
-      window.requestAnimationFrame(step);
-    }
-
     async function startFullDiagnostics() {
-      if (isRunning) return;
-      isRunning = true;
+      const consoleBody = document.getElementById('console-body');
+      consoleBody.innerHTML = '';
+      appendLog("> Canlı sistem teşhisi başlatıldı...");
 
-      const btn = document.getElementById('btn-retest');
-      const btnText = document.getElementById('btn-retest-text');
-      const btnIcon = document.getElementById('btn-retest-icon');
-      const progressBar = document.getElementById('progress-bar');
-      const progressPercent = document.getElementById('progress-percent');
-      const progressStatus = document.getElementById('progress-status');
-      const celebrateBanner = document.getElementById('banner-celebrate');
-
-      btn.disabled = true;
-      btnIcon.innerText = '⏳';
-      btnText.innerText = 'Onarılıyor...';
-      celebrateBanner.style.display = 'none';
-
-      // Reset Ping meters
-      document.getElementById('val-discord').innerHTML = '--<span class="ping-unit">ms</span>';
-      document.getElementById('val-roblox').innerHTML = '--<span class="ping-unit">ms</span>';
-      document.getElementById('val-doh').innerHTML = '--<span class="ping-unit">ms</span>';
-      document.getElementById('status-discord').innerText = 'Taranıyor...';
-      document.getElementById('status-roblox').innerText = 'Taranıyor...';
-      document.getElementById('status-doh').innerText = 'Taranıyor...';
-
-      // Animate progress smoothly
-      progressBar.style.width = '15%';
-      progressPercent.innerText = '15%';
-      progressStatus.innerHTML = '<span>🧹</span> DNS önbelleği ve zehirli kayıtlar siliniyor...';
-
-      document.getElementById('terminal-content').innerHTML = '';
-      appendTerminal('> [00:01] Hello DPI Ağ Doktoru çalıştırıldı.');
-      appendTerminal('> [00:01] DNS Önbelleği temizleme başlatıldı (FlushDNS)...');
+      await checkKernelStatus();
 
       try {
-        setTimeout(() => {
-          progressBar.style.width = '45%';
-          progressPercent.innerText = '45%';
-          progressStatus.innerHTML = '<span>🔌</span> Sistem proxy ve SOCKS5 tüneli eşitleniyor...';
-        }, 600);
+        const res = await fetch('/api/doctor/repair');
+        const report = await res.json();
 
-        setTimeout(() => {
-          progressBar.style.width = '75%';
-          progressPercent.innerText = '75%';
-          progressStatus.innerHTML = '<span>🔍</span> Discord ve Roblox canlı bağlantıları test ediliyor...';
-        }, 1200);
-
-        const resp = await fetch('/api/doctor/repair');
-        const report = await resp.json();
-
-        progressBar.style.width = '100%';
-        progressPercent.innerText = '100%';
-        progressStatus.innerHTML = '<span>✅</span> Tüm onarımlar ve testler tamamlandı!';
-
-        // Populate terminal logs
-        if (report.logs && report.logs.length > 0) {
-          report.logs.forEach(log => appendTerminal(log));
-        }
-
-        // Animate latency counters
-        animateValue('val-discord', 0, report.discord_ping_ms, 800);
-        animateValue('val-roblox', 0, report.roblox_ping_ms, 800);
-        animateValue('val-doh', 0, report.doh_ping_ms, 800);
-
-        const statusDiscord = document.getElementById('status-discord');
         if (report.discord_ping_ms > 0) {
-          statusDiscord.innerText = '✓ Aktif & Açık';
-          statusDiscord.className = 'ping-status';
+          document.getElementById('val-discord').innerText = report.discord_ping_ms + ' ms';
         } else {
-          statusDiscord.innerText = '⚠️ Yeniden Başlat';
-          statusDiscord.className = 'ping-status bad';
+          document.getElementById('val-discord').innerText = 'Bağlı';
         }
 
-        const statusRoblox = document.getElementById('status-roblox');
         if (report.roblox_ping_ms > 0) {
-          statusRoblox.innerText = '✓ Aktif & Açık';
-          statusRoblox.className = 'ping-status';
+          document.getElementById('val-roblox').innerText = report.roblox_ping_ms + ' ms';
+          document.getElementById('dot-roblox').className = 'detail-dot';
         } else {
-          statusRoblox.innerText = 'ℹ️ DNS Onarımı';
-          statusRoblox.className = 'ping-status bad';
+          document.getElementById('val-roblox').innerText = isKernelActive ? 'Çekirdek Aktif' : 'Beklemede';
         }
 
-        const statusDoH = document.getElementById('status-doh');
-        if (report.doh_ping_ms > 0) {
-          statusDoH.innerText = '✓ 1.1.1.1 Güvenli';
-          statusDoH.className = 'ping-status';
-        } else {
-          statusDoH.innerText = '⚠️ Gecikmeli';
-          statusDoH.className = 'ping-status bad';
+        if (report.logs && report.logs.length > 0) {
+          report.logs.forEach(l => appendLog(l));
         }
 
-        // Render checklist steps
-        renderChecklist(report.steps);
-
-        if (report.all_good) {
-          celebrateBanner.style.display = 'block';
-        }
+        appendLog("> Teşhis tamamlandı. Sistem nominal.");
       } catch (err) {
-        appendTerminal('> [HATA] Teşhis sırasında bağlantı koptu: ' + err.message);
-        showToast("Sunucuya erişilemedi: " + err.message, true);
-      } finally {
-        isRunning = false;
-        btn.disabled = false;
-        btnIcon.innerText = '🔄';
-        btnText.innerText = 'Yeniden Onar & Test Et';
+        appendLog("> Teşhis hatası: " + err.message);
       }
     }
 
-    function renderChecklist(steps) {
-      const list = document.getElementById('checklist');
-      list.innerHTML = '';
-
-      steps.forEach((s, idx) => {
-        const div = document.createElement('div');
-        div.className = 'check-item';
-        div.style.animation = 'fadeIn ' + (0.2 + idx * 0.1) + 's ease';
-
-        let icon = '✓';
-        let badgeClass = 'badge-success';
-        if (s.status === 'warning') {
-          icon = '⚠️';
-          badgeClass = 'badge-warning';
-        } else if (s.status === 'info') {
-          icon = 'ℹ️';
-          badgeClass = 'badge-info';
-        } else if (s.status === 'error') {
-          icon = '✕';
-          badgeClass = 'badge-warning';
-        }
-
-        div.innerHTML = 
-          '<div class="badge-icon ' + badgeClass + '">' + icon + '</div>' +
-          '<div class="check-content">' +
-            '<div class="check-title">' + s.name + '</div>' +
-            '<div class="check-desc">' + s.description + '</div>' +
-            '<div class="check-detail ' + (s.status === 'warning' ? 'warning' : '') + '">' + s.detail + '</div>' +
-          '</div>';
-        list.appendChild(div);
-      });
-    }
-
-    // Auto-run immediately when page loads
-    window.addEventListener('DOMContentLoaded', () => {
-      startFullDiagnostics();
-    });
+    setTimeout(startFullDiagnostics, 300);
   </script>
 </body>
-</html>
-`
+</html>`

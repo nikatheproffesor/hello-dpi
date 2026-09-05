@@ -11,6 +11,7 @@ import (
 
 	"github.com/gogpu/systray"
 	"github.com/hellodpi/hellodpi/internal/autostart"
+	"github.com/hellodpi/hellodpi/internal/divert"
 	"github.com/hellodpi/hellodpi/internal/doctor"
 	"github.com/hellodpi/hellodpi/internal/doh"
 	"github.com/hellodpi/hellodpi/internal/dpi"
@@ -52,14 +53,14 @@ func main() {
 	// Setup tray
 	tray := systray.New()
 	tray.SetAppName(appTitle)
-	tray.SetTooltip("Hello DPI: Aktif (Sansürsüz İnternet)")
+	tray.SetTooltip("Hello DPI: Aktif (v" + version.Version + ")")
 	tray.SetTemplateIcon(icon.ActiveIconPNG())
 	tray.SetIcon(icon.ActiveIconPNG())
 
 	menu := systray.NewMenu()
 
 	// 1. Status Label
-	statusItem := menu.Add(fmt.Sprintf("👋 Hello DPI: Aktif (v%s)", version.Version), nil)
+	statusItem := menu.Add(fmt.Sprintf("● Hello DPI: Aktif (v%s)", version.Version), nil)
 	statusItem.SetDisabled(true)
 
 	// 2. Protection Toggle (Instant 0ms UI feedback + Async sysproxy toggle)
@@ -67,35 +68,33 @@ func main() {
 	var toggleMu sync.Mutex
 	var toggleItem *systray.MenuItem
 
-	toggleItem = menu.Add("⏸️ Korumayı Duraklat", func() {
+	toggleItem = menu.Add("Korumayı Duraklat", func() {
 		toggleMu.Lock()
 		defer toggleMu.Unlock()
 
 		if isActive {
-			// Pause protection: Update UI INSTANTLY (0ms)
+			// Pause protection
 			isActive = false
 			tray.SetTemplateIcon(icon.PausedIconPNG())
 			tray.SetIcon(icon.PausedIconPNG())
 			tray.SetTooltip("Hello DPI: Duraklatıldı")
-			statusItem.SetLabel("⏸️ Hello DPI: Duraklatıldı")
-			toggleItem.SetLabel("▶️ Korumayı Başlat")
+			statusItem.SetLabel("○ Hello DPI: Duraklatıldı")
+			toggleItem.SetLabel("Korumayı Başlat")
 			tray.ShowNotification(appTitle, "Koruma geçici olarak duraklatıldı.")
 
-			// Execute system proxy restoration asynchronously in background
 			go func() {
 				_ = sysproxy.ClearSystemProxy()
 			}()
 		} else {
-			// Resume protection: Update UI INSTANTLY (0ms)
+			// Resume protection
 			isActive = true
 			tray.SetTemplateIcon(icon.ActiveIconPNG())
 			tray.SetIcon(icon.ActiveIconPNG())
-			tray.SetTooltip("Hello DPI: Aktif (Sansürsüz İnternet)")
-			statusItem.SetLabel(fmt.Sprintf("👋 Hello DPI: Aktif (v%s)", version.Version))
-			toggleItem.SetLabel("⏸️ Korumayı Duraklat")
-			tray.ShowNotification(appTitle, "Hello DPI devrede! Discord ve tüm siteler açık.")
+			tray.SetTooltip("Hello DPI: Aktif (v" + version.Version + ")")
+			statusItem.SetLabel(fmt.Sprintf("● Hello DPI: Aktif (v%s)", version.Version))
+			toggleItem.SetLabel("Korumayı Duraklat")
+			tray.ShowNotification(appTitle, "Hello DPI devrede. Discord ve tüm siteler açık.")
 
-			// Execute system proxy configuration asynchronously in background
 			go func() {
 				_ = sysproxy.SetSystemProxy("127.0.0.1", 8080)
 			}()
@@ -104,20 +103,36 @@ func main() {
 
 	menu.AddSeparator()
 
-	// 3. One-Click Network Troubleshooter & Doctor (Discord, Roblox, GSB WiFi)
-	menu.Add("🛠️ Ağ Sorunlarını Gider (Otomatik Onar)", func() {
-		tray.ShowNotification(appTitle, "Ağ sorunları taranıyor ve otomatik gideriliyor...")
+	// 3. Kernel Divert Engine (Roblox & Direct Socket Games)
+	var kernelItem *systray.MenuItem
+	kernelItem = menu.Add("🎮 Çekirdek Modu (Roblox)", func() {
+		if divert.IsRunning() {
+			_ = divert.Stop()
+			kernelItem.SetLabel("🎮 Çekirdek Modu (Roblox)")
+			tray.ShowNotification(appTitle, "Çekirdek Modu durduruldu.")
+		} else {
+			err := divert.Start()
+			if err != nil {
+				tray.ShowNotification(appTitle, "Çekirdek Modu başlatılamadı: "+err.Error())
+			} else {
+				kernelItem.SetLabel("🎮 Çekirdek Modu: Aktif (Roblox)")
+				tray.ShowNotification(appTitle, "Çekirdek Modu (WinDivert) devrede! Roblox engelsiz açılacaktır.")
+			}
+		}
+	})
+
+	menu.AddSeparator()
+
+	// 4. One-Click Network Troubleshooter & Doctor
+	menu.Add("🩺 Ağ Doktoru & Teşhis", func() {
 		go func() {
 			doctor.OpenDoctor(proxyPort)
 		}()
 	})
 
-	menu.AddSeparator()
-
-	// 4. Custom Animated Speedtest
-	menu.Add("⚡ Hız Testi Yap (Speedtest)", func() {
+	// 5. Custom Minimalist Speedtest
+	menu.Add("⚡ Hız Testi (Speedtest)", func() {
 		speedtest.OpenSpeedtest(proxyPort)
-		tray.ShowNotification(appTitle, "Özel Hız Testi paneli tarayıcınızda açıldı.")
 	})
 
 	menu.AddSeparator()
@@ -217,7 +232,8 @@ func main() {
 	menu.AddSeparator()
 
 	// 6. Quit
-	menu.Add("❌ Çıkış", func() {
+	menu.Add("Çıkış", func() {
+		_ = divert.Stop()
 		_ = sysproxy.ClearSystemProxy()
 		_ = server.Close()
 		tray.Remove()
@@ -231,6 +247,7 @@ func main() {
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-sigChan
+		_ = divert.Stop()
 		_ = sysproxy.ClearSystemProxy()
 		_ = server.Close()
 		tray.Remove()

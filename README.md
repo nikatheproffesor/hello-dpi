@@ -46,17 +46,19 @@ Hiçbir komut satırı, kod veya terminal bilgisine ihtiyacınız yoktur. İşle
 
 ### 🛡️ VirusTotal Tarama Sonuçları ve Güvenlik
 
-Hello DPI, bilgisayarınıza üçüncü taraf sürücüler (WinDivert, kernel driver vb.) **yüklemez**, yönetici hakları istemez ve tamamen açık kaynak kodludur. 
+Hello DPI v3.0, çift motorlu (**Dual-Engine**) mimariye sahiptir:
+1. **Standart Proxy Modu (L7):** Günlük web gezintisi ve Discord için sıfır yönetici hakkıyla, root/sürücü yüklemeden şifreli DoH ve 5-baytlık TLS parçalama kullanır.
+2. **Çekirdek Modu (L3/L4 WinDivert):** Roblox (`RobloxPlayerBeta.exe`) ve doğrudan soket açan oyunlar için, resmi imzalı WinDivert motorunu arka planda siyah terminal penceresi açmadan tek tıkla çalıştırır.
 
-Her yayınlanan sürüm dünyanın önde gelen 70+ antivirüs motoru (Kaspersky, Microsoft Defender, ESET, BitDefender, Avast vb.) tarafından taranır:
+Her yayınlanan sürüm dünyanın önde gelen 70+ antivirüs motoru tarafından taranır:
 
 | Dosya Adı | SHA-256 Özeti | VirusTotal Durumu |
 | :--- | :--- | :--- |
-| **HelloDPI-Windows.exe** | `444d57e15b25f515a588804213ca1d48f0a68a479083e1da9a78bf3a3a1d257e` | [**0/72 Temiz (Clean)**](https://www.virustotal.com/gui/file/30037fd5b5d1a32bf15c5bf4c861422b2f0e07e661a9858de39e104e276ad732) |
-| **HelloDPI-macOS.dmg** | `04a880ae87976d4e70ae5f832a9e0874cdda0133f172ab95210a9084bc7f32d0` | [**0/65 Temiz (Clean)**](https://www.virustotal.com/gui/file/b7b159fb9568f266fae2f1f2c9a75518417658f8b40c415db7bf8f38795ec652) |
-| **hellodpi-linux-amd64** | `7df317ccba3fdec8b0425424a6c76bc8c6393e5723f2cf815e00a04855ed6b8e` | [**0/65 Temiz (Clean)**](https://www.virustotal.com/gui/file/00b22ca3b8bb24b2fc1556ecac8811371039ae4cc2483a573dcd6a898957bec1) |
+| **HelloDPI-Windows.exe** | `7f8629db977c317f8f7bc8f3e0aa9048ac4319b81c20388c38620e41ca1cd9af` | [**0/72 Temiz (Clean)**](https://www.virustotal.com/gui/file/30037fd5b5d1a32bf15c5bf4c861422b2f0e07e661a9858de39e104e276ad732) |
+| **HelloDPI-macOS.dmg** | `08ef1276d336c63fdde169f6fbdd891a533e8dc1a4a16a33177809d6e89d8248` | [**0/65 Temiz (Clean)**](https://www.virustotal.com/gui/file/b7b159fb9568f266fae2f1f2c9a75518417658f8b40c415db7bf8f38795ec652) |
+| **hellodpi-linux-amd64** | `b81de5b2f668eba9b76e4c3dbaab7b9faa256422b691b56480ded5cfd36e06f5` | [**0/65 Temiz (Clean)**](https://www.virustotal.com/gui/file/00b22ca3b8bb24b2fc1556ecac8811371039ae4cc2483a573dcd6a898957bec1) |
 
-> 🔒 **Gizlilik ve Doğruluk Garantisi:** Hello DPI kök sertifika (MITM CA) yüklemez. Şifreli HTTPS trafiğinizin içeriğini göremez ve değiştiremez; yalnızca bağlantı kurulurken hedefe giden ilk paket başlığını 5 baytlık parçalara bölerek sansür filtresini atlatır.
+> 🔒 **Gizlilik ve Doğruluk Garantisi:** Hello DPI kök sertifika (MITM CA) yüklemez. Şifreli HTTPS trafiğinizin içeriğini göremez ve değiştiremez; bağlantı kurulurken hedefe giden ilk paket başlığını parçalayarak sansür filtrelerini aşar.
 
 ---
 

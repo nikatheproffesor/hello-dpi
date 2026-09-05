@@ -94,24 +94,23 @@ const dashboardHTML = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hello DPI - İnternet Hız Testi</title>
+  <title>Hello DPI · Hız Testi</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #090b10;
-      --card-bg: rgba(18, 24, 38, 0.7);
+      --bg: #090a0f;
+      --card-bg: #0f1118;
       --card-border: rgba(255, 255, 255, 0.08);
-      --accent-cyan: #00f2fe;
-      --accent-purple: #9d4edd;
-      --accent-glow: rgba(0, 242, 254, 0.25);
-      --text-main: #f8fafc;
-      --text-dim: #94a3b8;
+      --text-main: #f4f4f5;
+      --text-muted: #71717a;
+      --text-sub: #a1a1aa;
+      --accent-green: #10b981;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: 'Outfit', sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: var(--bg);
       color: var(--text-main);
       min-height: 100vh;
@@ -120,19 +119,16 @@ const dashboardHTML = `<!DOCTYPE html>
       align-items: center;
       justify-content: center;
       padding: 24px;
-      overflow-x: hidden;
-      background-image: radial-gradient(circle at 50% 0%, rgba(157, 78, 221, 0.15) 0%, transparent 60%),
-                        radial-gradient(circle at 50% 100%, rgba(0, 242, 254, 0.1) 0%, transparent 60%);
+      -webkit-font-smoothing: antialiased;
     }
     .container {
       width: 100%;
-      max-width: 780px;
+      max-width: 680px;
       background: var(--card-bg);
       border: 1px solid var(--card-border);
-      border-radius: 28px;
-      padding: 40px;
-      backdrop-filter: blur(24px);
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+      border-radius: 20px;
+      padding: 44px 36px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -141,148 +137,178 @@ const dashboardHTML = `<!DOCTYPE html>
     .header {
       display: flex;
       align-items: center;
-      gap: 12px;
-      margin-bottom: 28px;
+      justify-content: space-between;
+      width: 100%;
+      margin-bottom: 32px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     }
-    .logo-badge {
-      font-size: 28px;
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
-    h1 {
-      font-size: 26px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      background: linear-gradient(135deg, #ffffff 40%, var(--accent-cyan));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+    .brand-title {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+      color: #fff;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-sub);
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--card-border);
+      padding: 4px 10px;
+      border-radius: 9999px;
+    }
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-green);
     }
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
+      gap: 12px;
       width: 100%;
       margin-bottom: 36px;
     }
     .stat-card {
-      background: rgba(255, 255, 255, 0.03);
+      background: rgba(255, 255, 255, 0.02);
       border: 1px solid var(--card-border);
-      border-radius: 18px;
-      padding: 16px;
+      border-radius: 12px;
+      padding: 14px 12px;
       text-align: center;
-      transition: all 0.3s ease;
+      transition: border-color 0.2s ease;
     }
     .stat-card.active {
-      border-color: var(--accent-cyan);
-      box-shadow: 0 0 20px var(--accent-glow);
+      border-color: rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.04);
     }
     .stat-title {
-      font-size: 13px;
+      font-size: 11px;
       font-weight: 600;
-      color: var(--text-dim);
+      color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.6px;
       margin-bottom: 6px;
     }
     .stat-value {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 24px;
-      font-weight: 700;
+      font-size: 20px;
+      font-weight: 600;
       color: #fff;
     }
     .stat-unit {
-      font-size: 12px;
-      color: var(--text-dim);
+      font-size: 11px;
+      color: var(--text-muted);
       margin-left: 2px;
     }
-    .gauge-wrapper {
+    .display-area {
       position: relative;
-      width: 320px;
-      height: 320px;
+      width: 260px;
+      height: 260px;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      margin: 10px 0 30px;
+      margin-bottom: 32px;
     }
-    canvas {
+    .ring-svg {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
+      transform: rotate(-90deg);
     }
-    .gauge-center {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 2;
+    .ring-bg {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.05);
+      stroke-width: 4;
+    }
+    .ring-progress {
+      fill: none;
+      stroke: #ffffff;
+      stroke-width: 4;
+      stroke-linecap: round;
+      stroke-dasharray: 754;
+      stroke-dashoffset: 754;
+      transition: stroke-dashoffset 0.15s ease;
     }
     .speed-number {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 56px;
-      font-weight: 800;
+      font-size: 64px;
+      font-weight: 600;
       line-height: 1;
       color: #fff;
-      text-shadow: 0 0 24px rgba(0, 242, 254, 0.4);
+      letter-spacing: -2px;
     }
     .speed-unit {
-      font-size: 16px;
+      font-size: 12px;
       font-weight: 600;
-      color: var(--accent-cyan);
-      letter-spacing: 1px;
-      margin-top: 6px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-top: 8px;
     }
     .speed-phase {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text-dim);
+      font-size: 13px;
+      color: var(--text-sub);
       margin-top: 4px;
+      min-height: 18px;
     }
     .btn-start {
-      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
-      color: #000;
-      font-size: 17px;
-      font-weight: 700;
-      padding: 16px 44px;
-      border-radius: 99px;
+      background: #ffffff;
+      color: #000000;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 12px 32px;
+      border-radius: 9999px;
       border: none;
       cursor: pointer;
-      box-shadow: 0 10px 30px rgba(0, 242, 254, 0.3);
-      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-      display: flex;
+      transition: all 0.2s ease;
+      display: inline-flex;
       align-items: center;
-      gap: 10px;
+      gap: 6px;
     }
     .btn-start:hover {
-      transform: translateY(-2px) scale(1.03);
-      box-shadow: 0 15px 40px rgba(0, 242, 254, 0.5);
+      background: #e4e4e7;
+      transform: translateY(-1px);
     }
     .btn-start:disabled {
-      opacity: 0.5;
+      opacity: 0.4;
       cursor: not-allowed;
       transform: none;
     }
-    .status-badge {
-      margin-top: 20px;
-      font-size: 13px;
-      color: var(--text-dim);
-      display: flex;
-      align-items: center;
-      gap: 8px;
+    .footer-note {
+      margin-top: 28px;
+      font-size: 12px;
+      color: var(--text-muted);
     }
-    .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #10b981;
-      box-shadow: 0 0 10px #10b981;
+    @media (max-width: 640px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .container { padding: 28px 20px; }
+      .speed-number { font-size: 48px; }
+      .display-area { width: 220px; height: 220px; }
     }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <span class="logo-badge">👋</span>
-      <h1>Hello DPI Hız Testi</h1>
+      <div class="brand">
+        <span class="brand-title">Hello DPI</span>
+      </div>
+      <div class="status-pill">
+        <span class="dot"></span>
+        <span>Tünel Aktif (v3.0.0)</span>
+      </div>
     </div>
 
     <div class="stats-grid">
@@ -304,66 +330,36 @@ const dashboardHTML = `<!DOCTYPE html>
       </div>
     </div>
 
-    <div class="gauge-wrapper">
-      <canvas id="gaugeCanvas" width="640" height="640"></canvas>
-      <div class="gauge-center">
-        <div class="speed-number" id="liveSpeed">0.0</div>
-        <div class="speed-unit">Mbps</div>
-        <div class="speed-phase" id="phaseText">Hazır</div>
-      </div>
+    <div class="display-area">
+      <svg class="ring-svg" viewBox="0 0 260 260">
+        <circle class="ring-bg" cx="130" cy="130" r="120" />
+        <circle class="ring-progress" id="ringProgress" cx="130" cy="130" r="120" />
+      </svg>
+      <div class="speed-number" id="liveSpeed">0.0</div>
+      <div class="speed-unit">Mbps</div>
+      <div class="speed-phase" id="phaseText">Hazır</div>
     </div>
 
     <button class="btn-start" id="startBtn" onclick="runSpeedtest()">
-      <span>⚡ Testi Başlat</span>
+      Testi Başlat
     </button>
 
-    <div class="status-badge">
-      <span class="dot"></span>
-      <span>Hello DPI v2.1 • TLS Record Splitting & WebSockets Aktif • GSB WiFi Hazır</span>
+    <div class="footer-note">
+      Hello DPI v3.0.0 · Doğrudan Yerel Ölçüm · Sıfır Paket Kaybı
     </div>
   </div>
 
   <script>
-    const canvas = document.getElementById('gaugeCanvas');
-    const ctx = canvas.getContext('2d');
-    let currentAngle = 0;
-    let targetAngle = 0;
+    const circumference = 2 * Math.PI * 120; // 753.98
+    const ring = document.getElementById('ringProgress');
 
-    function drawGauge(val = 0, maxVal = 200) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const cx = canvas.width / 2;
-      const cy = canvas.height / 2;
-      const r = 240;
-
-      // Background Arc
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, Math.PI * 0.75, Math.PI * 2.25);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-      ctx.lineWidth = 20;
-      ctx.lineCap = 'round';
-      ctx.stroke();
-
-      // Progress Arc
+    function updateProgress(val = 0, maxVal = 200) {
       const pct = Math.min(Math.max(val / maxVal, 0), 1);
-      const endAngle = Math.PI * 0.75 + pct * (Math.PI * 1.5);
-
-      if (pct > 0) {
-        const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-        grad.addColorStop(0, '#00f2fe');
-        grad.addColorStop(1, '#9d4edd');
-        ctx.beginPath();
-        ctx.arc(cx, cy, r, Math.PI * 0.75, endAngle);
-        ctx.strokeStyle = grad;
-        ctx.lineWidth = 20;
-        ctx.lineCap = 'round';
-        ctx.shadowColor = '#00f2fe';
-        ctx.shadowBlur = 18;
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-      }
+      const offset = circumference - (pct * circumference);
+      ring.style.strokeDashoffset = offset;
     }
 
-    drawGauge(0);
+    updateProgress(0);
 
     function setActiveCard(cardId) {
       document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active'));
@@ -372,7 +368,7 @@ const dashboardHTML = `<!DOCTYPE html>
 
     async function measurePing() {
       const pings = [];
-      document.getElementById('phaseText').innerText = 'Gecikme Ölçülüyor...';
+      document.getElementById('phaseText').innerText = 'Gecikme ölçülüyor';
       setActiveCard('card-ping');
 
       for (let i = 0; i < 6; i++) {
@@ -397,10 +393,10 @@ const dashboardHTML = `<!DOCTYPE html>
     }
 
     async function measureDownload() {
-      document.getElementById('phaseText').innerText = 'İndirme Testi...';
+      document.getElementById('phaseText').innerText = 'İndirme testi';
       setActiveCard('card-download');
 
-      const durationMs = 7000;
+      const durationMs = 6000;
       const startTime = performance.now();
       let totalBytes = 0;
 
@@ -420,7 +416,7 @@ const dashboardHTML = `<!DOCTYPE html>
           if (elapsedSec > 0.2) {
             const curMbps = ((totalBytes * 8) / elapsedSec) / 1000000;
             document.getElementById('liveSpeed').innerText = curMbps.toFixed(1);
-            drawGauge(curMbps, 200);
+            updateProgress(curMbps, 200);
           }
         }
       } catch (e) {}
@@ -431,10 +427,10 @@ const dashboardHTML = `<!DOCTYPE html>
     }
 
     async function measureUpload() {
-      document.getElementById('phaseText').innerText = 'Yükleme Testi...';
+      document.getElementById('phaseText').innerText = 'Yükleme testi';
       setActiveCard('card-upload');
 
-      const chunk = new Uint8Array(256 * 1024); // 256KB chunks
+      const chunk = new Uint8Array(256 * 1024);
       let totalBytes = 0;
       const durationMs = 5000;
       const startTime = performance.now();
@@ -450,7 +446,7 @@ const dashboardHTML = `<!DOCTYPE html>
         if (elapsedSec > 0.2) {
           const curMbps = ((totalBytes * 8) / elapsedSec) / 1000000;
           document.getElementById('liveSpeed').innerText = curMbps.toFixed(1);
-          drawGauge(curMbps, 100);
+          updateProgress(curMbps, 100);
         }
       }
 
@@ -474,18 +470,17 @@ const dashboardHTML = `<!DOCTYPE html>
         setActiveCard(null);
       } catch (err) {
         console.error(err);
-        document.getElementById('phaseText').innerText = 'Hata Oluştu';
+        document.getElementById('phaseText').innerText = 'Hata oluştu';
       } finally {
         btn.disabled = false;
         setTimeout(() => {
           document.getElementById('liveSpeed').innerText = '0.0';
-          drawGauge(0);
+          updateProgress(0);
         }, 1500);
       }
     }
 
-    // Auto-start on first load
-    setTimeout(runSpeedtest, 600);
+    setTimeout(runSpeedtest, 500);
   </script>
 </body>
 </html>`
