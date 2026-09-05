@@ -40,7 +40,6 @@ DMG_TMP="dmg_tmp"
 rm -rf "$DMG_TMP" "$DMG_PATH"
 mkdir -p "$DMG_TMP"
 cp -R "$BUNDLE_DIR" "$DMG_TMP/"
-cp "bin/Başlat.command" "$DMG_TMP/" 2>/dev/null || true
 ln -s /Applications "$DMG_TMP/Applications"
 hdiutil create -volname "Hello DPI" -srcfolder "$DMG_TMP" -ov -format UDZO "$DMG_PATH" -quiet
 rm -rf "$DMG_TMP"

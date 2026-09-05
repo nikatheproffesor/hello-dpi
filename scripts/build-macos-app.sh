@@ -39,9 +39,9 @@ cat <<EOF > "$CONTENTS_DIR/Info.plist"
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.1.0</string>
+    <string>2.0.0</string>
     <key>CFBundleVersion</key>
-    <string>1.1.0</string>
+    <string>2.0.0</string>
     <key>LSMinimumSystemVersion</key>
     <string>11.0</string>
     <key>LSUIElement</key>
@@ -60,18 +60,9 @@ xattr -cr "$BUNDLE_DIR" 2>/dev/null || true
 
 mkdir -p bin
 
-# Create helper launch script for Gatekeeper bypass
-cat <<'EOF' > "bin/Başlat.command"
-#!/bin/bash
-DIR="$(cd "$(dirname "$0")" && pwd)"
-xattr -cr "$DIR/Hello DPI.app" 2>/dev/null || true
-open "$DIR/Hello DPI.app"
-EOF
-chmod +x "bin/Başlat.command"
-
 echo "Creating macOS release ZIP..."
 rm -f "bin/HelloDPI-macOS.zip"
-zip -r -q "bin/HelloDPI-macOS.zip" "$BUNDLE_DIR" "bin/Başlat.command"
+zip -r -q "bin/HelloDPI-macOS.zip" "$BUNDLE_DIR"
 
 echo "Creating macOS release DMG..."
 rm -f "bin/HelloDPI-macOS.dmg"
@@ -79,7 +70,6 @@ DMG_TMP="dmg_tmp"
 rm -rf "$DMG_TMP"
 mkdir -p "$DMG_TMP"
 cp -R "$BUNDLE_DIR" "$DMG_TMP/"
-cp "bin/Başlat.command" "$DMG_TMP/"
 ln -s /Applications "$DMG_TMP/Applications"
 hdiutil create -volname "Hello DPI" -srcfolder "$DMG_TMP" -ov -format UDZO "bin/HelloDPI-macOS.dmg" -quiet
 rm -rf "$DMG_TMP"
