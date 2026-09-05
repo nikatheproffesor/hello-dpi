@@ -5,6 +5,7 @@ package sysproxy
 import (
 	"fmt"
 	"log"
+	"os/exec"
 	"sync"
 	"syscall"
 
@@ -59,7 +60,7 @@ func (m *windowsManager) Enable(host string, port int) error {
 		m.prevOverride = val
 	}
 
-	proxyAddr := fmt.Sprintf("%s:%d", host, port)
+	proxyAddr := fmt.Sprintf("http=%s:%d;https=%s:%d;socks=%s:%d", host, port, host, port, host, port)
 	log.Printf("[Hello DPI] Configuring Windows Internet Settings proxy to %s (instant Win32 Registry)", proxyAddr)
 
 	_ = key.SetDWordValue("ProxyEnable", 1)
@@ -67,6 +68,12 @@ func (m *windowsManager) Enable(host string, port int) error {
 	_ = key.SetStringValue("ProxyOverride", bypassList)
 
 	notifyWinINet()
+
+	// Automatically flush Windows DNS cache to clear poisoned ISP records (e.g. 195.175.254.2)
+	go func() {
+		_ = exec.Command("ipconfig", "/flushdns").Run()
+	}()
+
 	return nil
 }
 
