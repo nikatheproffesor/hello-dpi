@@ -60,7 +60,7 @@ func (m *windowsManager) Enable(host string, port int) error {
 		m.prevOverride = val
 	}
 
-	proxyAddr := fmt.Sprintf("http=%s:%d;https=%s:%d;socks=%s:%d", host, port, host, port, host, port)
+	proxyAddr := fmt.Sprintf("%s:%d", host, port)
 	log.Printf("[Hello DPI] Configuring Windows Internet Settings proxy to %s (instant Win32 Registry)", proxyAddr)
 
 	_ = key.SetDWordValue("ProxyEnable", 1)
@@ -69,10 +69,10 @@ func (m *windowsManager) Enable(host string, port int) error {
 
 	notifyWinINet()
 
-	// Automatically flush Windows DNS cache & sync WinHTTP proxy for background apps (Roblox / Discord)
+	// Automatically flush Windows DNS cache & ensure WinHTTP is reset to clean direct state
 	go func() {
 		_ = exec.Command("ipconfig", "/flushdns").Run()
-		_ = exec.Command("netsh", "winhttp", "import", "proxy", "source=ie").Run()
+		_ = exec.Command("netsh", "winhttp", "reset", "proxy").Run()
 	}()
 
 	return nil

@@ -223,9 +223,11 @@ func (s *Server) handleHTTP(clientConn net.Conn, reader *bufio.Reader) {
 		}
 	}
 
-	// SSRF & Loopback Protection: prevent proxying back to self
-	if (host == "127.0.0.1" || host == "localhost" || host == "::1") && (port == "8080" || s.isProxyAddr(host, port)) {
-		_, _ = clientConn.Write([]byte("HTTP/1.1 403 Forbidden\r\n\r\nLoopback proxying forbidden"))
+	// Anti-Poison Protection: if the client was tricked by poisoned ISP DNS into connecting
+	// to 195.175.254.x (BTK court order block page), intercept it, read the real SNI,
+	// and connect to the real server via DoH!
+	if req.Method == http.MethodConnect && strings.HasPrefix(host, "195.175.254.") {
+		s.handlePoisonedConnect(clientConn, reader, port)
 		return
 	}
 
@@ -307,6 +309,44 @@ func (s *Server) handleHTTP(clientConn net.Conn, reader *bufio.Reader) {
 
 		s.pipe(clientBuffered, targetConn)
 	}
+}
+
+// handlePoisonedConnect recovers connections hijacked by Turkish ISP DNS to 195.175.254.x
+func (s *Server) handlePoisonedConnect(clientConn net.Conn, reader *bufio.Reader, port string) {
+	_, err := clientConn.Write([]byte("HTTP/1.1 200 Connection Established\r\n\r\n"))
+	if err != nil {
+		return
+	}
+
+	initialPayload, err := readInitialPayload(reader)
+	if err != nil || len(initialPayload) == 0 {
+		return
+	}
+
+	info := dpi.ParsePacket(initialPayload)
+	realHost := info.Host
+	if realHost == "" {
+		return
+	}
+
+	realIP, err := s.Resolver.Resolve(context.Background(), realHost)
+	if err != nil || realIP == "" || strings.HasPrefix(realIP, "195.175.254.") {
+		return
+	}
+
+	destAddr := net.JoinHostPort(realIP, port)
+	targetConn, err := net.DialTimeout("tcp", destAddr, 10*time.Second)
+	if err != nil {
+		return
+	}
+	defer targetConn.Close()
+
+	if err := s.Engine.SendFragmented(targetConn, initialPayload); err != nil {
+		return
+	}
+
+	clientBuffered := &bufferedConn{r: reader, Conn: clientConn}
+	s.pipe(clientBuffered, targetConn)
 }
 
 // handleSOCKS5 implements RFC 1928 SOCKS5 protocol with DPI fragmentation and QUIC block

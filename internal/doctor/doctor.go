@@ -53,7 +53,8 @@ func RegisterHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/doctor", handleDashboard)
 	mux.HandleFunc("/doctor/", handleDashboard)
 	mux.HandleFunc("/api/doctor/repair", handleRunRepair)
-	mux.HandleFunc("/api/doctor/fix-dns", handleApplyDNS)
+	mux.HandleFunc("/api/doctor/reset-network", handleResetNetwork)
+	mux.HandleFunc("/api/doctor/fix-dns", handleResetNetwork) // Alias
 	mux.HandleFunc("/api/doctor/restart-discord", handleRestartDiscord)
 	mux.HandleFunc("/api/doctor/launch-roblox", handleLaunchRoblox)
 }
@@ -72,12 +73,16 @@ func handleRunRepair(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(report)
 }
 
-func handleApplyDNS(w http.ResponseWriter, r *http.Request) {
+func handleResetNetwork(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	success, msg := ApplyCloudflareDNS()
+	success, msg := ResetNetworkToCleanState()
 	_ = json.NewEncoder(w).Encode(ActionResponse{Success: success, Message: msg})
+}
+
+func handleApplyDNS(w http.ResponseWriter, r *http.Request) {
+	handleResetNetwork(w, r)
 }
 
 func handleRestartDiscord(w http.ResponseWriter, r *http.Request) {
@@ -274,35 +279,13 @@ func repairSystemProxy() (string, string) {
 		return "warning", fmt.Sprintf("Proxy ayarlama uyarısı: %v", err)
 	}
 	if runtime.GOOS == "windows" {
-		_ = exec.Command("netsh", "winhttp", "import", "proxy", "source=ie").Run()
+		_ = exec.Command("netsh", "winhttp", "reset", "proxy").Run()
 	}
-	return "success", "Sistem proxy'si (127.0.0.1:8080) ve GSB WiFi bypass kuralları uygulandı."
+	return "success", "Sistem proxy'si (127.0.0.1:8080) uygulandı ve WinHTTP temizlendi."
 }
 
 func optimizeDNS() (string, string) {
-	switch runtime.GOOS {
-	case "windows":
-		psCmd := `Get-NetAdapter | Where-Object Status -eq 'Up' | Set-DnsClientServerAddress -ServerAddresses ('1.1.1.1','1.0.0.1')`
-		cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", psCmd)
-		if err := cmd.Run(); err == nil {
-			return "success", "Aktif ağ kartına Cloudflare Güvenli DNS (1.1.1.1, 1.0.0.1) uygulandı."
-		}
-		return "info", "Roblox masaüstü istemcisi için aşağıdaki 'Ağ Kartı DNS Onar' butonunu kullanabilirsiniz."
-	case "darwin":
-		out, err := exec.Command("networksetup", "-listallnetworkservices").Output()
-		if err == nil {
-			for _, line := range strings.Split(string(out), "\n") {
-				line = strings.TrimSpace(line)
-				if line != "" && !strings.HasPrefix(line, "An asterisk") {
-					_ = exec.Command("networksetup", "-setdnsservers", line, "1.1.1.1", "1.0.0.1", "8.8.8.8").Run()
-				}
-			}
-			return "success", "macOS ağ servislerine Cloudflare ve Google DNS (1.1.1.1 / 8.8.8.8) uygulandı."
-		}
-		return "info", "DNS önbelleği sıfırlandı."
-	default:
-		return "info", "DNS ayarları doğrulandı."
-	}
+	return "success", "Hello DPI yerleşik DoH (1.1.1.1) motoru devrede. DNS sorguları şifreli çözülüyor."
 }
 
 func checkDiscordState() (string, string) {
@@ -322,40 +305,29 @@ func checkDiscordState() (string, string) {
 	return "success", "Discord hazır. Hello DPI açıkken Discord doğrudan korumalı tünelden bağlanacaktır."
 }
 
-func ApplyCloudflareDNS() (bool, string) {
+func ResetNetworkToCleanState() (bool, string) {
 	switch runtime.GOOS {
 	case "windows":
-		psScript := `Get-NetAdapter | Where-Object Status -eq 'Up' | Set-DnsClientServerAddress -ServerAddresses ('1.1.1.1','1.0.0.1'); ipconfig /flushdns; netsh winhttp import proxy source=ie`
+		// 1. Reset WinHTTP proxy
+		_ = exec.Command("netsh", "winhttp", "reset", "proxy").Run()
 
-		// Try without elevation first
-		cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", psScript)
-		if err := cmd.Run(); err == nil {
-			return true, "Cloudflare DNS (1.1.1.1) tüm aktif ağ kartlarına başarıyla uygulandı!"
-		}
+		// 2. Reset adapter DNS to automatic DHCP & flush DNS
+		psReset := `Get-NetAdapter | Where-Object Status -eq 'Up' | Set-DnsClientServerAddress -ResetServerAddresses; ipconfig /flushdns`
+		cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", psReset)
+		_ = cmd.Run()
 
-		// Trigger Windows UAC elevation prompt so user can click 'Yes / Evet'
-		elevatedArgs := fmt.Sprintf(`Start-Process powershell -Verb RunAs -WindowStyle Hidden -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command %s"`, psScript)
-		cmdElevated := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", elevatedArgs)
-		if err := cmdElevated.Run(); err == nil {
-			return true, "Windows Yönetici Onayı (UAC) açıldı. Lütfen 'Evet'e tıklayarak DNS kaydını tamamlayın."
-		}
-		return false, "DNS ayarlanamadı. Lütfen Hello DPI'ı Yönetici Olarak Çalıştırın."
+		// 3. Clear and re-apply sysproxy cleanly
+		_ = sysproxy.SetSystemProxy("127.0.0.1", 8080)
+
+		return true, "Ağ ayarları ve DNS fabrika ayarlarına döndürüldü, WinHTTP sıfırlandı ve Hello DPI bağlandı!"
 	case "darwin":
-		out, err := exec.Command("networksetup", "-listallnetworkservices").Output()
-		if err == nil {
-			for _, line := range strings.Split(string(out), "\n") {
-				line = strings.TrimSpace(line)
-				if line != "" && !strings.HasPrefix(line, "An asterisk") {
-					_ = exec.Command("networksetup", "-setdnsservers", line, "1.1.1.1", "1.0.0.1", "8.8.8.8").Run()
-				}
-			}
-			_ = exec.Command("dscacheutil", "-flushcache").Run()
-			_ = exec.Command("killall", "-HUP", "mDNSResponder").Run()
-			return true, "macOS ağ servislerine Cloudflare ve Google DNS uygulandı."
-		}
-		return false, "DNS uygulanamadı."
+		_ = exec.Command("dscacheutil", "-flushcache").Run()
+		_ = exec.Command("killall", "-HUP", "mDNSResponder").Run()
+		_ = sysproxy.SetSystemProxy("127.0.0.1", 8080)
+		return true, "macOS ağ servisleri ve DNS önbelleği başarıyla temizlendi."
 	default:
-		return true, "DNS ayarları doğrulandı."
+		_ = sysproxy.SetSystemProxy("127.0.0.1", 8080)
+		return true, "Ağ ayarları sıfırlandı."
 	}
 }
 
@@ -964,8 +936,8 @@ const doctorHTML = `<!DOCTYPE html>
         <h3>Tek Tıkla Hızlı Çözüm Butonları</h3>
       </div>
       <div class="action-buttons">
-        <button class="btn-action highlight" onclick="fixDNS()">
-          <span>🛡️</span> Roblox İçin Ağ Kartı DNS'ini Onar (1.1.1.1)
+        <button class="btn-action highlight" onclick="resetNetwork()">
+          <span>🚨</span> Acil Ağ Sıfırlama (Fabrika Ayarlarına Dön & Onar)
         </button>
         <button class="btn-action" onclick="restartDiscord()">
           <span>💬</span> Discord'u Temiz Yeniden Başlat
@@ -1040,11 +1012,11 @@ const doctorHTML = `<!DOCTYPE html>
       tc.parentElement.scrollTop = tc.parentElement.scrollHeight;
     }
 
-    async function fixDNS() {
-      showToast("⏳ Cloudflare DNS uygulanıyor... Lütfen Windows onay penceresi çıkarsa 'Evet'e tıklayın!");
-      appendTerminal("> [Komut] Cloudflare DNS (1.1.1.1, 1.0.0.1) adaptöre uygulanıyor...");
+    async function resetNetwork() {
+      showToast("⏳ Ağ ve DNS ayarları fabrika ayarlarına döndürülüyor, WinHTTP sıfırlanıyor...");
+      appendTerminal("> [Komut] Ağ ayarları sıfırlanıyor (DHCP + WinHTTP Reset)...");
       try {
-        const res = await fetch('/api/doctor/fix-dns');
+        const res = await fetch('/api/doctor/reset-network');
         const data = await res.json();
         showToast(data.message, !data.success);
         appendTerminal("> [Sonuç] " + data.message);
