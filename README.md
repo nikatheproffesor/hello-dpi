@@ -52,9 +52,9 @@ Her yayınlanan sürüm dünyanın önde gelen 70+ antivirüs motoru (Kaspersky,
 
 | Dosya Adı | SHA-256 Özeti | VirusTotal Durumu |
 | :--- | :--- | :--- |
-| **HelloDPI-Windows.exe** | `844d5272908215776cb5d339815bdaedf7e0ad41698ab2294706c04e0aa673fd` | [**0/72 Temiz (Clean)**](https://www.virustotal.com/gui/file/844d5272908215776cb5d339815bdaedf7e0ad41698ab2294706c04e0aa673fd) |
-| **HelloDPI-macOS.dmg** | `83a677bcf4ff105ef203a920c91ec6115204d19d62b7b0a1ab031675612b4536` | [**0/65 Temiz (Clean)**](https://www.virustotal.com/gui/file/83a677bcf4ff105ef203a920c91ec6115204d19d62b7b0a1ab031675612b4536) |
-| **hellodpi-linux-amd64** | `416c7fef70fd20a46797581a1dfdaf4369215c7e086e03ae213eddeb929e3b0c` | [**0/65 Temiz (Clean)**](https://www.virustotal.com/gui/file/416c7fef70fd20a46797581a1dfdaf4369215c7e086e03ae213eddeb929e3b0c) |
+| **HelloDPI-Windows.exe** | `145b0c5fd3f5cd82e7f9799df4978da447cec970cf94b94651d1f73e5860f66d` | [**0/72 Temiz (Clean)**](https://www.virustotal.com/gui/file/145b0c5fd3f5cd82e7f9799df4978da447cec970cf94b94651d1f73e5860f66d) |
+| **HelloDPI-macOS.dmg** | `b2b7531bb2c10784efcfa8c9d49e5680606b67924bf969496feafdd043f003a1` | [**0/65 Temiz (Clean)**](https://www.virustotal.com/gui/file/b2b7531bb2c10784efcfa8c9d49e5680606b67924bf969496feafdd043f003a1) |
+| **hellodpi-linux-amd64** | `f1c70f22619f74a57243cd3f1e05bc17fb872d1afbfa2a4c87707dc3ee6e661a` | [**0/65 Temiz (Clean)**](https://www.virustotal.com/gui/file/f1c70f22619f74a57243cd3f1e05bc17fb872d1afbfa2a4c87707dc3ee6e661a) |
 
 > 🔒 **Gizlilik ve Doğruluk Garantisi:** Hello DPI kök sertifika (MITM CA) yüklemez. Şifreli HTTPS trafiğinizin içeriğini göremez ve değiştiremez; yalnızca bağlantı kurulurken hedefe giden ilk paket başlığını 5 baytlık parçalara bölerek sansür filtresini atlatır.
 
@@ -341,8 +341,8 @@ Hello DPI is an ultra-lightweight, zero-latency Deep Packet Inspection (DPI) cir
 
 Hello DPI does not install third-party drivers or kernel modules (no WinDivert) and does not require administrative privileges.
 
-- **HelloDPI-Windows.exe:** [**0/72 Clean on VirusTotal**](https://www.virustotal.com/gui/file/844d5272908215776cb5d339815bdaedf7e0ad41698ab2294706c04e0aa673fd)
-- **HelloDPI-macOS.dmg:** [**0/65 Clean on VirusTotal**](https://www.virustotal.com/gui/file/83a677bcf4ff105ef203a920c91ec6115204d19d62b7b0a1ab031675612b4536)
+- **HelloDPI-Windows.exe:** [**0/72 Clean on VirusTotal**](https://www.virustotal.com/gui/file/145b0c5fd3f5cd82e7f9799df4978da447cec970cf94b94651d1f73e5860f66d)
+- **HelloDPI-macOS.dmg:** [**0/65 Clean on VirusTotal**](https://www.virustotal.com/gui/file/b2b7531bb2c10784efcfa8c9d49e5680606b67924bf969496feafdd043f003a1)
 
 ---
 
