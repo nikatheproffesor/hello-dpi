@@ -41,6 +41,17 @@ type ReleaseInfo struct {
 
 // CheckUpdate checks GitHub for newer releases than current version
 func CheckUpdate() (*ReleaseInfo, bool, error) {
+	// 1. Try standard GitHub API
+	rel, isNew, err := checkViaAPI()
+	if err == nil {
+		return rel, isNew, nil
+	}
+
+	// 2. Fallback to GitHub Web 302 Redirect (Immune to GitHub API 60 req/hr rate limits!)
+	return checkViaWebRedirect()
+}
+
+func checkViaAPI() (*ReleaseInfo, bool, error) {
 	client := &http.Client{Timeout: requestTimeout}
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
@@ -72,6 +83,66 @@ func CheckUpdate() (*ReleaseInfo, bool, error) {
 	}
 
 	return &rel, true, nil
+}
+
+func checkViaWebRedirect() (*ReleaseInfo, bool, error) {
+	client := &http.Client{
+		Timeout: requestTimeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	webURL := "https://github.com/" + githubRepo + "/releases/latest"
+	req, err := http.NewRequest("HEAD", webURL, nil)
+	if err != nil {
+		return nil, false, err
+	}
+	req.Header.Set("User-Agent", "HelloDPI/"+version.Version)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to check latest release: %w", err)
+	}
+	defer resp.Body.Close()
+
+	loc := resp.Header.Get("Location")
+	if loc == "" {
+		return nil, false, fmt.Errorf("no release redirect location found")
+	}
+
+	idx := strings.LastIndex(loc, "/")
+	if idx == -1 {
+		return nil, false, fmt.Errorf("invalid release location: %s", loc)
+	}
+	tagName := loc[idx+1:]
+
+	rel := &ReleaseInfo{
+		TagName: tagName,
+		Name:    "Hello DPI " + tagName,
+		HTMLURL: loc,
+	}
+
+	var assetName string
+	switch runtime.GOOS {
+	case "windows":
+		assetName = "HelloDPI-Windows.exe"
+	case "darwin":
+		assetName = "HelloDPI-macOS.dmg"
+	default:
+		assetName = "hellodpi-linux-amd64"
+	}
+
+	rel.TargetAsset = &ReleaseAsset{
+		Name:               assetName,
+		BrowserDownloadURL: fmt.Sprintf("https://github.com/%s/releases/download/%s/%s", githubRepo, tagName, assetName),
+	}
+
+	if !IsNewerVersion(rel.TagName, version.Version) {
+		return rel, false, nil
+	}
+
+	return rel, true, nil
 }
 
 // IsNewerVersion compares remote version tag with current version

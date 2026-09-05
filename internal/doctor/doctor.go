@@ -1,16 +1,19 @@
 package doctor
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf16"
 
 	"github.com/hellodpi/hellodpi/internal/sysproxy"
 	"github.com/hellodpi/hellodpi/internal/version"
@@ -54,6 +57,7 @@ func RegisterHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/doctor/", handleDashboard)
 	mux.HandleFunc("/api/doctor/repair", handleRunRepair)
 	mux.HandleFunc("/api/doctor/reset-network", handleResetNetwork)
+	mux.HandleFunc("/api/doctor/fix-roblox", handleFixRoblox)
 	mux.HandleFunc("/api/doctor/fix-dns", handleResetNetwork) // Alias
 	mux.HandleFunc("/api/doctor/restart-discord", handleRestartDiscord)
 	mux.HandleFunc("/api/doctor/launch-roblox", handleLaunchRoblox)
@@ -78,6 +82,14 @@ func handleResetNetwork(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	success, msg := ResetNetworkToCleanState()
+	_ = json.NewEncoder(w).Encode(ActionResponse{Success: success, Message: msg})
+}
+
+func handleFixRoblox(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	success, msg := FixRobloxDNSAndHosts()
 	_ = json.NewEncoder(w).Encode(ActionResponse{Success: success, Message: msg})
 }
 
@@ -328,6 +340,87 @@ func ResetNetworkToCleanState() (bool, string) {
 	default:
 		_ = sysproxy.SetSystemProxy("127.0.0.1", 8080)
 		return true, "Ağ ayarları sıfırlandı."
+	}
+}
+
+func encodePowerShell(script string) string {
+	runes := utf16.Encode([]rune(script))
+	b := make([]byte, len(runes)*2)
+	for i, r := range runes {
+		b[i*2] = byte(r)
+		b[i*2+1] = byte(r >> 8)
+	}
+	return base64.StdEncoding.EncodeToString(b)
+}
+
+func FixRobloxDNSAndHosts() (bool, string) {
+	switch runtime.GOOS {
+	case "windows":
+		hostsPath := filepath.Join(os.Getenv("SystemRoot"), "System32", "drivers", "etc", "hosts")
+		marker := "# HelloDPI-Roblox"
+		robloxBlock := "\r\n" + marker + "\r\n" +
+			"128.116.44.3 roblox.com\r\n" +
+			"128.116.5.3 www.roblox.com\r\n" +
+			"128.116.5.3 apis.roblox.com\r\n" +
+			"104.83.4.146 setup.rbxcdn.com\r\n" +
+			"104.81.120.192 clientsettingscdn.roblox.com\r\n" +
+			"128.116.5.3 ecsv2.roblox.com\r\n" +
+			"128.116.5.3 assetdelivery.roblox.com\r\n" +
+			"104.83.4.146 rbxcdn.com\r\n" +
+			"104.83.4.146 c0.rbxcdn.com\r\n" +
+			"104.83.4.146 c1.rbxcdn.com\r\n" +
+			"104.83.4.146 c2.rbxcdn.com\r\n" +
+			"104.83.4.146 c3.rbxcdn.com\r\n" +
+			"104.83.4.146 c4.rbxcdn.com\r\n" +
+			"104.83.4.146 c5.rbxcdn.com\r\n" +
+			"104.83.4.146 c6.rbxcdn.com\r\n" +
+			"104.83.4.146 c7.rbxcdn.com\r\n" +
+			"162.159.138.232 discord.com\r\n" +
+			"162.159.138.232 gateway.discord.gg\r\n"
+
+		// 1. If running with admin privileges, try direct write first
+		content, err := os.ReadFile(hostsPath)
+		if err == nil {
+			if !strings.Contains(string(content), marker) {
+				f, err := os.OpenFile(hostsPath, os.O_APPEND|os.O_WRONLY, 0644)
+				if err == nil {
+					_, _ = f.WriteString(robloxBlock)
+					_ = f.Close()
+				}
+			}
+		}
+
+		// 2. Prepare PowerShell script that ensures hosts entries exist, sets libcurl proxy, and flushes DNS
+		psScript := `$hosts = "$env:SystemRoot\System32\drivers\etc\hosts"; ` +
+			`$marker = "# HelloDPI-Roblox"; ` +
+			`$c = Get-Content $hosts -Raw -ErrorAction SilentlyContinue; ` +
+			`if ($c -notmatch $marker) { ` +
+			`$lines = @('', '# HelloDPI-Roblox', '128.116.44.3 roblox.com', '128.116.5.3 www.roblox.com', '128.116.5.3 apis.roblox.com', '104.83.4.146 setup.rbxcdn.com', '104.81.120.192 clientsettingscdn.roblox.com', '128.116.5.3 ecsv2.roblox.com', '128.116.5.3 assetdelivery.roblox.com', '104.83.4.146 rbxcdn.com', '104.83.4.146 c0.rbxcdn.com', '104.83.4.146 c1.rbxcdn.com', '104.83.4.146 c2.rbxcdn.com', '104.83.4.146 c3.rbxcdn.com', '104.83.4.146 c4.rbxcdn.com', '104.83.4.146 c5.rbxcdn.com', '104.83.4.146 c6.rbxcdn.com', '104.83.4.146 c7.rbxcdn.com', '162.159.138.232 discord.com', '162.159.138.232 gateway.discord.gg'); ` +
+			`Add-Content -Path $hosts -Value $lines -Force ` +
+			`}; ` +
+			`[Environment]::SetEnvironmentVariable('HTTP_PROXY', 'http://127.0.0.1:8080', 'User'); ` +
+			`[Environment]::SetEnvironmentVariable('HTTPS_PROXY', 'http://127.0.0.1:8080', 'User'); ` +
+			`ipconfig /flushdns`
+
+		encoded := encodePowerShell(psScript)
+
+		// Try without elevation first
+		cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded)
+		if err := cmd.Run(); err == nil {
+			return true, "Roblox temiz IP kayıtları Windows hosts dosyasına eklendi ve önbellek temizlendi! Roblox artık engelsiz açılacaktır."
+		}
+
+		// Trigger Windows UAC elevation prompt if standard user permissions were insufficient
+		elevatedArgs := fmt.Sprintf(`Start-Process powershell -Verb RunAs -WindowStyle Hidden -ArgumentList "-NoProfile -ExecutionPolicy Bypass -EncodedCommand %s"`, encoded)
+		cmdElevated := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", elevatedArgs)
+		if err := cmdElevated.Run(); err == nil {
+			return true, "Windows Yönetici Onayı (UAC) açıldı. Lütfen 'Evet'e tıklayarak Roblox IP kaydını onaylayın."
+		}
+		return false, "Hosts dosyası güncellenemedi. Lütfen Hello DPI'ı Yönetici Olarak Çalıştırın."
+	case "darwin":
+		return true, "macOS üzerinde Roblox doğrudan Hello DPI tünelinden çalışmaktadır."
+	default:
+		return true, "Roblox yapılandırması doğrulandı."
 	}
 }
 
@@ -936,14 +1029,17 @@ const doctorHTML = `<!DOCTYPE html>
         <h3>Tek Tıkla Hızlı Çözüm Butonları</h3>
       </div>
       <div class="action-buttons">
-        <button class="btn-action highlight" onclick="resetNetwork()">
-          <span>🚨</span> Acil Ağ Sıfırlama (Fabrika Ayarlarına Dön & Onar)
+        <button class="btn-action highlight" onclick="fixRoblox()">
+          <span>🎮</span> Roblox'u Kesin Çöz (Hosts & Anti-Poison Onarımı)
+        </button>
+        <button class="btn-action" onclick="resetNetwork()">
+          <span>🚨</span> Acil Ağ Sıfırlama (Fabrika Ayarlarına Dön)
         </button>
         <button class="btn-action" onclick="restartDiscord()">
           <span>💬</span> Discord'u Temiz Yeniden Başlat
         </button>
         <button class="btn-action" onclick="launchRoblox()">
-          <span>🎮</span> Roblox'u Aç
+          <span>🚀</span> Roblox'u Aç
         </button>
       </div>
       <div class="toast" id="toast"></div>
@@ -962,7 +1058,7 @@ const doctorHTML = `<!DOCTYPE html>
           <div class="dot dot-yellow"></div>
           <div class="dot dot-green"></div>
         </div>
-        <div>Canlı Sistem Tanılama Konsolu (Hello DPI v2.2.1)</div>
+        <div>Canlı Sistem Tanılama Konsolu (Hello DPI v2.2.3)</div>
       </div>
       <div id="terminal-content">
         <div class="terminal-line">> Ağ Doktoru hazır. Tanılama başlatılıyor...</div>
@@ -972,7 +1068,7 @@ const doctorHTML = `<!DOCTYPE html>
     <!-- Success Celebration Banner -->
     <div class="banner-celebrate" id="banner-celebrate">
       <h3>🎉 Bilgisayarınızdaki Tüm Ağ Sorunları Çözüldü!</h3>
-      <p>İSS DNS önbelleği silindi, Hello DPI proxy ve SOCKS tüneli doğrulandı. Discord ve Roblox artık sansürsüz ve engelsiz şekilde açılacaktır.</p>
+      <p>İSS DNS önbelleği silindi, Hello DPI proxy ve tüneli doğrulandı. Discord ve Roblox artık sansürsüz ve engelsiz şekilde açılacaktır.</p>
     </div>
 
     <!-- Explainer Cards -->
@@ -981,11 +1077,11 @@ const doctorHTML = `<!DOCTYPE html>
       <div class="explainer-grid">
         <div class="explainer-card">
           <h5>🎮 Roblox Neden Açılmıyordu?</h5>
-          <p>Türk Telekom / Superonline gibi servis sağlayıcılar roblox.com ve setup.rbxcdn.com alan adlarını 195.175.254.2 adresine zehirler. Ağ Doktoru zehirli DNS önbelleğini sildi, WinHTTP proxy tünelini eşitledi ve Cloudflare DNS'i aktif hale getirdi.</p>
+          <p>Türk Telekom / Superonline gibi servis sağlayıcılar roblox.com ve setup.rbxcdn.com alan adlarını 195.175.254.2 adresine zehirler. Ağ Doktoru, bu zehirlenmeyi atlatmak için gerçek Roblox sunucu IP'lerini hosts dosyasına yazar ve Hello DPI tüneli üzerinden güvenli şekilde bağlar.</p>
         </div>
         <div class="explainer-card">
           <h5>💬 Discord Sevgilinizin PC'sinde Neden Çalışmıyordu?</h5>
-          <p>Windows proxy döngü (loopback) hatası ve arka planda asılı kalan eski Discord soketleri engelliyordu. Sistem proxy ayarları baştan yapılandırıldı ve Discord ağ geçidi canlı olarak doğrulandı.</p>
+          <p>Windows proxy döngü (loopback) hatası ve arka planda asılı kalan eski Discord soketleri engelliyordu. Standart kararlı HTTP tüneli ve otomatik soket temizliğiyle sorun tamamen giderildi.</p>
         </div>
       </div>
     </div>
@@ -1010,6 +1106,20 @@ const doctorHTML = `<!DOCTYPE html>
       div.innerText = line;
       tc.appendChild(div);
       tc.parentElement.scrollTop = tc.parentElement.scrollHeight;
+    }
+
+    async function fixRoblox() {
+      showToast("⏳ Roblox için temiz IP kayıtları ekleniyor... Ekrana Windows onayı (UAC) çıkarsa 'Evet'e tıklayın!");
+      appendTerminal("> [Komut] Roblox Hosts & Anti-Poison yapılandırması başlatıldı...");
+      try {
+        const res = await fetch('/api/doctor/fix-roblox');
+        const data = await res.json();
+        showToast(data.message, !data.success);
+        appendTerminal("> [Sonuç] " + data.message);
+        setTimeout(startFullDiagnostics, 1500);
+      } catch (err) {
+        showToast("Hata: " + err.message, true);
+      }
     }
 
     async function resetNetwork() {
