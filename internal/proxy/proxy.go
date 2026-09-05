@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hellodpi/hellodpi/internal/doctor"
 	"github.com/hellodpi/hellodpi/internal/doh"
 	"github.com/hellodpi/hellodpi/internal/dpi"
 	"github.com/hellodpi/hellodpi/internal/speedtest"
@@ -91,6 +92,7 @@ type Config struct {
 func NewServer(cfg Config) *Server {
 	mux := http.NewServeMux()
 	speedtest.RegisterHandlers(mux)
+	doctor.RegisterHandlers(mux)
 
 	return &Server{
 		Addr:         cfg.Addr,
@@ -189,8 +191,8 @@ func (s *Server) handleHTTP(clientConn net.Conn, reader *bufio.Reader) {
 		return
 	}
 
-	// Intercept local Speedtest endpoints
-	if req.Method != http.MethodConnect && (req.URL.Path == "/speedtest" || strings.HasPrefix(req.URL.Path, "/api/speedtest")) {
+	// Intercept local Speedtest and Doctor endpoints
+	if req.Method != http.MethodConnect && (req.URL.Path == "/speedtest" || strings.HasPrefix(req.URL.Path, "/api/speedtest") || req.URL.Path == "/doctor" || strings.HasPrefix(req.URL.Path, "/api/doctor")) {
 		w := newConnResponseWriter(clientConn)
 		s.speedtestMux.ServeHTTP(w, req)
 		w.flushHeaders()

@@ -11,6 +11,7 @@ import (
 
 	"github.com/gogpu/systray"
 	"github.com/hellodpi/hellodpi/internal/autostart"
+	"github.com/hellodpi/hellodpi/internal/doctor"
 	"github.com/hellodpi/hellodpi/internal/doh"
 	"github.com/hellodpi/hellodpi/internal/dpi"
 	"github.com/hellodpi/hellodpi/internal/icon"
@@ -103,7 +104,17 @@ func main() {
 
 	menu.AddSeparator()
 
-	// 3. Custom Animated Speedtest
+	// 3. One-Click Network Troubleshooter & Doctor (Discord, Roblox, GSB WiFi)
+	menu.Add("🛠️ Ağ Sorunlarını Gider (Otomatik Onar)", func() {
+		tray.ShowNotification(appTitle, "Ağ sorunları taranıyor ve otomatik gideriliyor...")
+		go func() {
+			doctor.OpenDoctor(proxyPort)
+		}()
+	})
+
+	menu.AddSeparator()
+
+	// 4. Custom Animated Speedtest
 	menu.Add("⚡ Hız Testi Yap (Speedtest)", func() {
 		speedtest.OpenSpeedtest(proxyPort)
 		tray.ShowNotification(appTitle, "Özel Hız Testi paneli tarayıcınızda açıldı.")

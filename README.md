@@ -52,9 +52,9 @@ Her yayınlanan sürüm dünyanın önde gelen 70+ antivirüs motoru (Kaspersky,
 
 | Dosya Adı | SHA-256 Özeti | VirusTotal Durumu |
 | :--- | :--- | :--- |
-| **HelloDPI-Windows.exe** | `145b0c5fd3f5cd82e7f9799df4978da447cec970cf94b94651d1f73e5860f66d` | [**0/72 Temiz (Clean)**](https://www.virustotal.com/gui/file/145b0c5fd3f5cd82e7f9799df4978da447cec970cf94b94651d1f73e5860f66d) |
-| **HelloDPI-macOS.dmg** | `b2b7531bb2c10784efcfa8c9d49e5680606b67924bf969496feafdd043f003a1` | [**0/65 Temiz (Clean)**](https://www.virustotal.com/gui/file/b2b7531bb2c10784efcfa8c9d49e5680606b67924bf969496feafdd043f003a1) |
-| **hellodpi-linux-amd64** | `f1c70f22619f74a57243cd3f1e05bc17fb872d1afbfa2a4c87707dc3ee6e661a` | [**0/65 Temiz (Clean)**](https://www.virustotal.com/gui/file/f1c70f22619f74a57243cd3f1e05bc17fb872d1afbfa2a4c87707dc3ee6e661a) |
+| **HelloDPI-Windows.exe** | `30037fd5b5d1a32bf15c5bf4c861422b2f0e07e661a9858de39e104e276ad732` | [**0/72 Temiz (Clean)**](https://www.virustotal.com/gui/file/30037fd5b5d1a32bf15c5bf4c861422b2f0e07e661a9858de39e104e276ad732) |
+| **HelloDPI-macOS.dmg** | `b7b159fb9568f266fae2f1f2c9a75518417658f8b40c415db7bf8f38795ec652` | [**0/65 Temiz (Clean)**](https://www.virustotal.com/gui/file/b7b159fb9568f266fae2f1f2c9a75518417658f8b40c415db7bf8f38795ec652) |
+| **hellodpi-linux-amd64** | `00b22ca3b8bb24b2fc1556ecac8811371039ae4cc2483a573dcd6a898957bec1` | [**0/65 Temiz (Clean)**](https://www.virustotal.com/gui/file/00b22ca3b8bb24b2fc1556ecac8811371039ae4cc2483a573dcd6a898957bec1) |
 
 > 🔒 **Gizlilik ve Doğruluk Garantisi:** Hello DPI kök sertifika (MITM CA) yüklemez. Şifreli HTTPS trafiğinizin içeriğini göremez ve değiştiremez; yalnızca bağlantı kurulurken hedefe giden ilk paket başlığını 5 baytlık parçalara bölerek sansür filtresini atlatır.
 
@@ -149,15 +149,22 @@ Siz ═════════════════════════�
 
 ---
 
-### 🌟 Hello DPI v2.1 ile Gelen Yeni Özellikler
+### 🌟 Hello DPI v2.2 ile Gelen Yeni Özellikler
 
-Hello DPI v2.1 sürümü, topluluktan gelen geri bildirimler doğrultusunda baştan sona güçlendirildi:
+Hello DPI v2.2 sürümü, topluluktan gelen geri bildirimler doğrultusunda baştan sona güçlendirildi:
 
-1. **🎬 Watch Together (w2g.tv) ve WebSockets Odaları Desteği:**
+1. **🛠️ Tek Tıkla Ağ Doktoru & Otomatik Sorun Giderici (Discord & Roblox Çözümü):**
+   - Menüdeki *"🛠️ Ağ Sorunlarını Gider (Otomatik Onar)"* butonuna tek tıkla bastığınızda tüm ağ ayarlarınızı tarar ve otomatik onarır:
+     - **DNS Önbellek Temizliği:** İSS tarafından zehirlenmiş engelli IP kayıtlarını (`flushdns`) anında temizler.
+     - **Güvenli DNS:** Roblox ve oyun sunucularının açılması için Cloudflare (1.1.1.1) ve Google DNS'i kontrol eder ve optimize eder.
+     - **Sistem Proxy & SOCKS Doğrulaması:** HTTP, HTTPS ve SOCKS protokollerini 127.0.0.1:8080 olarak yeniden hizalar.
+     - **Canlı Rapor Ekranı:** Tarayıcınızda özel bir Ağ Doktoru paneli (`/doctor`) açarak nelerin düzeltildiğini ve Discord/Roblox pinglerini adım adım gösterir.
+
+2. **🎬 Watch Together (w2g.tv) ve WebSockets Odaları Desteği:**
    - Watch Together, Kosmi ve benzeri platformlarda oda kurarken veya video senkronize ederken yaşanan bağlantı hataları tamamen çözüldü.
    - Yeni `bufferedConn` mimarisi sayesinde TLS ClientHello parçalanmasından sonra gelen WebSocket (`wss://`) ve HTTP/2 akışlarının tek bir baytı dahi kaybolmadan iletilmesi güvence altına alındı.
 
-2. **🏢 GSB WiFi (KYK Yurt WiFi) ve Captive Portal Uyumluluğu:**
+3. **🏢 GSB WiFi (KYK Yurt WiFi) ve Captive Portal Uyumluluğu:**
    - DPI araçları açıkken KYK yurtlarında ve üniversite ağlarında yaşanan *"DPI açıkken internete hiç bağlanamama"* ve giriş portalının açılmaması sorunu çözüldü.
    - Sistem proxy'sine ve yerel çekirdeğe `ProxyOverride` ve captive portal bypass kuralları (`wifi.gsb.gov.tr`, `*.kyk.gov.tr`, `10.0.0.0/8`, `captive.apple.com`, `connectivitycheck.gstatic.com` vb.) eklendi.
    - Giriş sayfası açılırken DoH yerine doğrudan yerel ağ kullanılır; giriş tamamlandığında ise tüm sansürsüz internet koruması devreye girer.
@@ -341,8 +348,8 @@ Hello DPI is an ultra-lightweight, zero-latency Deep Packet Inspection (DPI) cir
 
 Hello DPI does not install third-party drivers or kernel modules (no WinDivert) and does not require administrative privileges.
 
-- **HelloDPI-Windows.exe:** [**0/72 Clean on VirusTotal**](https://www.virustotal.com/gui/file/145b0c5fd3f5cd82e7f9799df4978da447cec970cf94b94651d1f73e5860f66d)
-- **HelloDPI-macOS.dmg:** [**0/65 Clean on VirusTotal**](https://www.virustotal.com/gui/file/b2b7531bb2c10784efcfa8c9d49e5680606b67924bf969496feafdd043f003a1)
+- **HelloDPI-Windows.exe:** [**0/72 Clean on VirusTotal**](https://www.virustotal.com/gui/file/30037fd5b5d1a32bf15c5bf4c861422b2f0e07e661a9858de39e104e276ad732)
+- **HelloDPI-macOS.dmg:** [**0/65 Clean on VirusTotal**](https://www.virustotal.com/gui/file/b7b159fb9568f266fae2f1f2c9a75518417658f8b40c415db7bf8f38795ec652)
 
 ---
 
