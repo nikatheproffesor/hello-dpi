@@ -295,8 +295,8 @@ func (s *Server) handleHTTP(clientConn net.Conn, reader *bufio.Reader) {
 		// Read complete initial packet (e.g. complete TLS ClientHello via io.ReadFull)
 		initialPayload, err := readInitialPayload(reader)
 		if err == nil && len(initialPayload) > 0 {
-			// Fragment and transmit the initial TLS handshake
-			if err := s.Engine.SendFragmented(targetConn, initialPayload); err != nil {
+			// Fragment and transmit the initial TLS handshake with advanced evasion
+			if err := s.Engine.SendAdvancedEvasion(targetConn, initialPayload); err != nil {
 				return
 			}
 		}
@@ -318,7 +318,7 @@ func (s *Server) handleHTTP(clientConn net.Conn, reader *bufio.Reader) {
 		_ = req.Write(&b)
 		reqBuf := []byte(b.String())
 
-		if err := s.Engine.SendFragmented(targetConn, reqBuf); err != nil {
+		if err := s.Engine.SendAdvancedEvasion(targetConn, reqBuf); err != nil {
 			return
 		}
 
@@ -356,7 +356,7 @@ func (s *Server) handlePoisonedConnect(clientConn net.Conn, reader *bufio.Reader
 	}
 	defer targetConn.Close()
 
-	if err := s.Engine.SendFragmented(targetConn, initialPayload); err != nil {
+	if err := s.Engine.SendAdvancedEvasion(targetConn, initialPayload); err != nil {
 		return
 	}
 
@@ -474,7 +474,7 @@ func (s *Server) handleSOCKS5(clientConn net.Conn, reader *bufio.Reader) {
 	// Read complete initial payload from client (e.g. TLS ClientHello)
 	initialPayload, err := readInitialPayload(reader)
 	if err == nil && len(initialPayload) > 0 {
-		_ = s.Engine.SendFragmented(targetConn, initialPayload)
+		_ = s.Engine.SendAdvancedEvasion(targetConn, initialPayload)
 	}
 
 	s.pipe(clientBuffered, targetConn)

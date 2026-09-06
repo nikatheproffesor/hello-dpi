@@ -132,3 +132,48 @@ func (m *MobileEngine) TestVoiceConnectivity() (responding bool, latencyMs int64
 func (m *MobileEngine) ResolveHost(host string) (string, error) {
 	return m.server.Resolver.Resolve(context.Background(), host)
 }
+
+var (
+	defaultMobileEngine   *MobileEngine
+	defaultMobileEngineMu sync.Mutex
+)
+
+// StartMobileDefault starts the global Hello DPI mobile core proxy on 127.0.0.1:port
+func StartMobileDefault(port int) error {
+	defaultMobileEngineMu.Lock()
+	defer defaultMobileEngineMu.Unlock()
+
+	if defaultMobileEngine != nil && defaultMobileEngine.IsRunning() {
+		return nil
+	}
+	if port <= 0 {
+		port = 8080
+	}
+	defaultMobileEngine = NewEngine(Config{
+		ListenAddr: fmt.Sprintf("127.0.0.1:%d", port),
+		SplitMode:  "auto",
+		DelayMs:    5,
+	})
+	return defaultMobileEngine.Start()
+}
+
+// StopMobileDefault stops the active mobile engine
+func StopMobileDefault() error {
+	defaultMobileEngineMu.Lock()
+	defer defaultMobileEngineMu.Unlock()
+
+	if defaultMobileEngine != nil {
+		err := defaultMobileEngine.Stop()
+		defaultMobileEngine = nil
+		return err
+	}
+	return nil
+}
+
+// IsMobileRunning returns true if the default mobile engine is active
+func IsMobileRunning() bool {
+	defaultMobileEngineMu.Lock()
+	defer defaultMobileEngineMu.Unlock()
+
+	return defaultMobileEngine != nil && defaultMobileEngine.IsRunning()
+}

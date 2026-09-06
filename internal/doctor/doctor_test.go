@@ -7,6 +7,7 @@ import (
 )
 
 func TestRunRepair(t *testing.T) {
+	defer ResetNetworkToCleanState()
 	report := RunRepair()
 	if report == nil {
 		t.Fatalf("expected report, got nil")

@@ -88,6 +88,7 @@ func RegisterHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/api/doctor/sync-rules", handleSyncRules)
 	mux.HandleFunc("/api/doctor/rules-status", handleRulesStatus)
 	mux.HandleFunc("/api/doctor/voice-test", handleVoiceTest)
+	mux.HandleFunc("/api/doctor/live-ping", handleLivePing)
 }
 
 func handleDashboard(w http.ResponseWriter, r *http.Request) {
@@ -244,6 +245,14 @@ func handleVoiceTest(w http.ResponseWriter, r *http.Request) {
 
 	st := globalVoice.TestVoiceConnectivity()
 	_ = json.NewEncoder(w).Encode(st)
+}
+
+func handleLivePing(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	report := RunLivePingBenchmark()
+	_ = json.NewEncoder(w).Encode(report)
 }
 
 // OpenDoctor opens the diagnostic dashboard in the default browser
@@ -1019,6 +1028,38 @@ const doctorHTML = `<!DOCTYPE html>
       </div>
     </div>
 
+    <div class="info-card" style="border: 1px solid var(--card-border); background: #131316;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+        <div>
+          <h4 style="font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Canli Gecikme & Ses Monitöru</h4>
+          <p style="font-size:12px; color:var(--text-sub); margin-top:2px;">Hello DPI VPN degildir; 0 ms ek gecikmeyle dogrudan ISS hattinizin dogal pinginde calisir.</p>
+        </div>
+        <button class="btn-action" style="padding:6px 14px; font-size:11px; width:auto; text-transform:uppercase;" onclick="runLivePing()">Gecikmeyi Olc</button>
+      </div>
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap:10px;" id="live-ping-grid">
+        <div class="metric-card" style="padding:10px 14px; background: #0c0c0e;">
+          <div class="metric-label">Discord (Frankfurt)</div>
+          <div class="metric-value" id="ping-discord-fra" style="font-size:16px;">-- ms</div>
+          <div class="metric-sub">Ek VPN Yuku: +0 ms</div>
+        </div>
+        <div class="metric-card" style="padding:10px 14px; background: #0c0c0e;">
+          <div class="metric-label">Discord (Rotterdam)</div>
+          <div class="metric-value" id="ping-discord-ams" style="font-size:16px;">-- ms</div>
+          <div class="metric-sub">Ek VPN Yuku: +0 ms</div>
+        </div>
+        <div class="metric-card" style="padding:10px 14px; background: #0c0c0e;">
+          <div class="metric-label">Roblox Cloud</div>
+          <div class="metric-value" id="ping-roblox" style="font-size:16px;">-- ms</div>
+          <div class="metric-sub">Ek VPN Yuku: +0 ms</div>
+        </div>
+        <div class="metric-card" style="padding:10px 14px; background: #0c0c0e;">
+          <div class="metric-label">Cloudflare DoH</div>
+          <div class="metric-value" id="ping-cloudflare" style="font-size:16px;">-- ms</div>
+          <div class="metric-sub">Ek VPN Yuku: +0 ms</div>
+        </div>
+      </div>
+    </div>
+
     <div class="console-wrapper">
       <div class="console-bar">
         <span>Canli Teshis Gunlugu</span>
@@ -1221,8 +1262,33 @@ const doctorHTML = `<!DOCTYPE html>
         }
 
         appendLog("> Teshis tamamlandi. Sistem hazir.");
+        await runLivePing();
       } catch (err) {
         appendLog("> Teshis hatasi: " + err.message);
+      }
+    }
+
+    async function runLivePing() {
+      appendLog('> [PING] Discord ve oyun sunuculari icin canli gecikme olculuyor...');
+      try {
+        const res = await fetch('/api/doctor/live-ping');
+        const data = await res.json();
+        if (data.targets) {
+          data.targets.forEach(t => {
+            if (t.name.includes('Discord') && t.region.includes('Frankfurt')) {
+              document.getElementById('ping-discord-fra').innerText = t.rtt_ms > 0 ? t.rtt_ms + ' ms' : 'Erisildi';
+            } else if (t.name.includes('Discord') && t.region.includes('Rotterdam')) {
+              document.getElementById('ping-discord-ams').innerText = t.rtt_ms > 0 ? t.rtt_ms + ' ms' : 'Erisildi';
+            } else if (t.name.includes('Roblox')) {
+              document.getElementById('ping-roblox').innerText = t.rtt_ms > 0 ? t.rtt_ms + ' ms' : 'Erisildi';
+            } else if (t.name.includes('Cloudflare')) {
+              document.getElementById('ping-cloudflare').innerText = t.rtt_ms > 0 ? t.rtt_ms + ' ms' : 'Erisildi';
+            }
+          });
+        }
+        appendLog('> [PING] Ortalama gecikme: ' + data.avg_rtt_ms + ' ms | ' + data.advantage);
+      } catch (e) {
+        appendLog('> [PING] Test hatasi: ' + e.message);
       }
     }
 
