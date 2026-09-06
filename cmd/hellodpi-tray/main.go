@@ -64,10 +64,8 @@ func main() {
 	// Activate system proxy
 	_ = sysproxy.SetSystemProxy("127.0.0.1", 8080)
 
-	// Auto-start core divert engine in background
-	go func() {
-		_ = divert.Start()
-	}()
+	// WinDivert operates selectively: L7 is default (zero admin prompt);
+	// Kernel divert engages silently only when needed by direct socket games (Roblox)
 
 	// Setup tray
 	tray := systray.New()

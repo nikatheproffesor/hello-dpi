@@ -3,6 +3,7 @@ package rules
 import (
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -18,6 +19,8 @@ const (
 	ActionDefault  Action = iota // Standard routing
 	ActionDirect                 // Direct pass-through: zero manipulation, native latency
 	ActionProxyDPI               // DPI bypass: fragmentation and DoH resolution
+	ActionKernel                 // Kernel divert required (L3/L4 WinDivert for direct socket apps)
+	ActionBlock                  // Block request (e.g. telemetry or rogue UDP QUIC)
 )
 
 // RuleSet defines the structured rules loaded dynamically or embedded
@@ -26,21 +29,39 @@ type RuleSet struct {
 	UpdatedAt     string   `json:"updated_at"`
 	DirectList    []string `json:"direct_list"`
 	InterceptList []string `json:"intercept_list"`
+	KernelList    []string `json:"kernel_list,omitempty"`
+	DirectCIDRs   []string `json:"direct_cidrs,omitempty"`
 }
 
-// Engine evaluates hostnames against smart routing rules
+// Engine evaluates hostnames, IP/CIDR, process names, and ports against smart routing rules
 type Engine struct {
 	mu           sync.RWMutex
 	directSet    map[string]bool
 	directSuffix []string
 	interSet     map[string]bool
 	interSuffix  []string
+	kernelSet    map[string]bool
+	directCIDRs  []*net.IPNet
 	version      string
 	lastSync     time.Time
 	cachePath    string
 }
 
-// DefaultRules embedded into the binary
+// Anti-cheat process deny-list: NEVER intercept or divert these processes to prevent bans
+var antiCheatProcesses = map[string]bool{
+	"vgc.exe":               true, // Riot Vanguard
+	"vgtray.exe":            true,
+	"easyanticheat.exe":     true, // EasyAntiCheat
+	"easyanticheat_eos.exe": true,
+	"beservice.exe":         true, // BattlEye
+	"bedaisy.sys":           true,
+	"cs2.exe":               true, // Counter-Strike 2
+	"valorant.exe":          true, // Valorant
+	"r5apex.exe":            true, // Apex Legends
+	"leagueclient.exe":      true, // League of Legends
+}
+
+// Default rules embedded into binary
 var defaultDirectList = []string{
 	// Turkish Banking & Financial Institutions (0ms ping, untampered)
 	"ziraatbank.com.tr",
@@ -131,12 +152,28 @@ var defaultInterceptList = []string{
 	"youtu.be",
 }
 
+var defaultKernelList = []string{
+	"robloxplayerbeta.exe",
+	"robloxplayerlauncher.exe",
+	"roblox.exe",
+}
+
+var defaultDirectCIDRs = []string{
+	"127.0.0.0/8",    // IPv4 loopback
+	"::1/128",        // IPv6 loopback
+	"10.0.0.0/8",     // RFC1918 (GSB WiFi / KYK dorm networks)
+	"172.16.0.0/12",  // RFC1918
+	"192.168.0.0/16", // RFC1918
+	"169.254.0.0/16", // RFC3927 link-local
+}
+
 // NewEngine initializes the smart rule engine with embedded defaults and local cache
 func NewEngine() *Engine {
 	eng := &Engine{
 		directSet: make(map[string]bool),
 		interSet:  make(map[string]bool),
-		version:   "4.0.0-embedded",
+		kernelSet: make(map[string]bool),
+		version:   "5.0.0-embedded",
 		lastSync:  time.Now(),
 	}
 
@@ -147,15 +184,15 @@ func NewEngine() *Engine {
 		eng.cachePath = filepath.Join(dir, "rules.json")
 	}
 
-	// Load defaults first
-	eng.loadLists(defaultDirectList, defaultInterceptList)
+	// Load defaults
+	eng.loadLists(defaultDirectList, defaultInterceptList, defaultKernelList, defaultDirectCIDRs)
 
 	// Attempt to load from disk cache if exists
 	if eng.cachePath != "" {
 		if data, err := os.ReadFile(eng.cachePath); err == nil {
 			var rs RuleSet
 			if json.Unmarshal(data, &rs) == nil && len(rs.DirectList) > 0 {
-				eng.loadLists(rs.DirectList, rs.InterceptList)
+				eng.loadLists(rs.DirectList, rs.InterceptList, rs.KernelList, rs.DirectCIDRs)
 				eng.version = rs.Version
 			}
 		}
@@ -164,8 +201,51 @@ func NewEngine() *Engine {
 	return eng
 }
 
+func cleanProcessBase(processName string) string {
+	p := strings.ToLower(strings.TrimSpace(processName))
+	if idx := strings.LastIndexAny(p, `/\`); idx != -1 {
+		p = p[idx+1:]
+	}
+	return p
+}
+
+// IsAntiCheatProcess checks if a process is on the strict deny-list
+func IsAntiCheatProcess(processName string) bool {
+	p := cleanProcessBase(processName)
+	return antiCheatProcesses[p]
+}
+
+// RequiresKernel checks whether traffic from this process requires L3/L4 WinDivert
+func (e *Engine) RequiresKernel(processName string, host string) bool {
+	if IsAntiCheatProcess(processName) {
+		return false
+	}
+	p := cleanProcessBase(processName)
+
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	if e.kernelSet[p] {
+		return true
+	}
+	if strings.Contains(strings.ToLower(host), "roblox") {
+		return true
+	}
+	return false
+}
+
 // Evaluate determines the routing action for a given hostname
 func (e *Engine) Evaluate(host string) Action {
+	return e.EvaluateTarget(host, 0, "")
+}
+
+// EvaluateTarget determines the routing action considering host, port, and process name
+func (e *Engine) EvaluateTarget(host string, port int, processName string) Action {
+	// 1. Anti-cheat protection check
+	if processName != "" && IsAntiCheatProcess(processName) {
+		return ActionDirect
+	}
+
 	h := strings.ToLower(strings.TrimSpace(host))
 	if colon := strings.IndexByte(h, ':'); colon != -1 {
 		h = h[:colon]
@@ -176,10 +256,25 @@ func (e *Engine) Evaluate(host string) Action {
 		return ActionDirect
 	}
 
+	// 2. IP / CIDR check
+	if ip := net.ParseIP(h); ip != nil {
+		if e.isDirectIP(ip) {
+			return ActionDirect
+		}
+	}
+
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
-	// 1. Direct pass-through checks (Exact + Suffix)
+	// 3. Process check
+	if processName != "" {
+		p := cleanProcessBase(processName)
+		if e.kernelSet[p] {
+			return ActionKernel
+		}
+	}
+
+	// 4. Direct pass-through checks (Exact + Suffix)
 	if e.directSet[h] {
 		return ActionDirect
 	}
@@ -192,17 +287,35 @@ func (e *Engine) Evaluate(host string) Action {
 		}
 	}
 
-	// 2. Intercept / DPI bypass checks (Exact + Suffix)
+	// 5. Intercept / DPI bypass checks (Exact + Suffix)
 	if e.interSet[h] {
+		if strings.Contains(h, "roblox") {
+			return ActionKernel
+		}
 		return ActionProxyDPI
 	}
 	for _, suf := range e.interSuffix {
 		if strings.HasSuffix(h, suf) {
+			if strings.Contains(suf, "roblox") {
+				return ActionKernel
+			}
 			return ActionProxyDPI
 		}
 	}
 
 	return ActionDefault
+}
+
+func (e *Engine) isDirectIP(ip net.IP) bool {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	for _, block := range e.directCIDRs {
+		if block.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }
 
 // SyncRemote updates rules from a remote URL or GitHub Releases
@@ -233,7 +346,7 @@ func (e *Engine) SyncRemote(url string) error {
 	}
 
 	e.mu.Lock()
-	e.loadLists(rs.DirectList, rs.InterceptList)
+	e.loadLists(rs.DirectList, rs.InterceptList, rs.KernelList, rs.DirectCIDRs)
 	e.version = rs.Version
 	e.lastSync = time.Now()
 	e.mu.Unlock()
@@ -246,12 +359,14 @@ func (e *Engine) SyncRemote(url string) error {
 	return nil
 }
 
-// loadLists loads and compiles direct and intercept lists into fast maps and suffixes
-func (e *Engine) loadLists(direct, intercept []string) {
+// loadLists loads and compiles direct and intercept lists into fast maps, suffixes, and CIDR blocks
+func (e *Engine) loadLists(direct, intercept, kernel, cidrs []string) {
 	e.directSet = make(map[string]bool)
 	e.directSuffix = nil
 	e.interSet = make(map[string]bool)
 	e.interSuffix = nil
+	e.kernelSet = make(map[string]bool)
+	e.directCIDRs = nil
 
 	for _, d := range direct {
 		item := strings.ToLower(strings.TrimSpace(d))
@@ -259,7 +374,7 @@ func (e *Engine) loadLists(direct, intercept []string) {
 			continue
 		}
 		if strings.HasPrefix(item, "*.") {
-			e.directSuffix = append(e.directSuffix, item[1:]) // e.g. ".bank.com.tr"
+			e.directSuffix = append(e.directSuffix, item[1:])
 		} else {
 			e.directSet[item] = true
 			e.directSuffix = append(e.directSuffix, "."+item)
@@ -276,6 +391,23 @@ func (e *Engine) loadLists(direct, intercept []string) {
 		} else {
 			e.interSet[item] = true
 			e.interSuffix = append(e.interSuffix, "."+item)
+		}
+	}
+
+	for _, k := range kernel {
+		item := strings.ToLower(strings.TrimSpace(k))
+		if item != "" {
+			e.kernelSet[item] = true
+		}
+	}
+
+	if len(cidrs) == 0 {
+		cidrs = defaultDirectCIDRs
+	}
+	for _, cidr := range cidrs {
+		_, block, err := net.ParseCIDR(cidr)
+		if err == nil {
+			e.directCIDRs = append(e.directCIDRs, block)
 		}
 	}
 }

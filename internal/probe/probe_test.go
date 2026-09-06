@@ -1,7 +1,10 @@
 package probe
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestBuildClientHello(t *testing.T) {
@@ -33,7 +36,51 @@ func TestProbeEngine_Fallback(t *testing.T) {
 	if res.BestMode == "" {
 		t.Error("Expected non-empty BestMode")
 	}
+	if res.BestStrategy == "" {
+		t.Error("Expected non-empty BestStrategy")
+	}
 	if res.BestDelayMs <= 0 {
 		t.Error("Expected positive delay")
+	}
+}
+
+func TestProbeEngine_Persistence(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "hellodpi_probe_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	cacheFile := filepath.Join(tmpDir, "tuning.json")
+
+	eng := NewEngine()
+	eng.cachePath = cacheFile
+
+	sample := &Result{
+		Timestamp:      time.Now(),
+		ISPName:        "Test Fiber ISP",
+		BestStrategy:   "sni",
+		BestMode:       "sni",
+		BestSplitPos:   5,
+		BestDelayMs:    3,
+		BestLatencyMs:  15,
+		BypassVerified: true,
+	}
+
+	eng.savePersisted(sample)
+
+	// Create new engine pointing to same cache file
+	eng2 := &Engine{cachePath: cacheFile}
+	eng2.loadPersisted()
+
+	loaded := eng2.GetLastResult()
+	if loaded.ISPName != "Test Fiber ISP" {
+		t.Errorf("Expected ISP 'Test Fiber ISP', got '%s'", loaded.ISPName)
+	}
+	if loaded.BestStrategy != "sni" {
+		t.Errorf("Expected BestStrategy 'sni', got '%s'", loaded.BestStrategy)
+	}
+	if loaded.BestLatencyMs != 15 {
+		t.Errorf("Expected latency 15ms, got %d", loaded.BestLatencyMs)
 	}
 }

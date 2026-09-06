@@ -41,17 +41,21 @@ func NewFragmentEngine(mode SplitMode, delayMs int) *FragmentEngine {
 	}
 }
 
-// SendFragmented sends the initial payload to the target server in fragmented form
+// SendFragmented sends the initial payload to the target server using the configured bypass strategy
 func (fe *FragmentEngine) SendFragmented(conn net.Conn, data []byte) error {
 	if tcpConn, ok := conn.(*net.TCPConn); ok {
-		// Disable Nagle's algorithm so chunks are sent immediately in individual packets
 		_ = tcpConn.SetNoDelay(true)
 	}
 
 	info := ParsePacket(data)
 
-	var chunks [][]byte
+	// If a custom offset or mode is specified, prefer registered strategy
+	if strat, ok := GetStrategy(string(fe.Mode)); ok {
+		return strat.Apply(conn, data, info)
+	}
 
+	// Fallback to internal splitting
+	var chunks [][]byte
 	switch info.Type {
 	case TypeTLSClientHello:
 		chunks = fe.fragmentTLS(data, info)
@@ -61,7 +65,6 @@ func (fe *FragmentEngine) SendFragmented(conn net.Conn, data []byte) error {
 		chunks = fe.splitFirstByte(data)
 	}
 
-	// Transmit each chunk over the connection
 	for i, chunk := range chunks {
 		if len(chunk) == 0 {
 			continue
@@ -70,13 +73,10 @@ func (fe *FragmentEngine) SendFragmented(conn net.Conn, data []byte) error {
 		if err != nil {
 			return fmt.Errorf("failed writing fragment %d: %w", i, err)
 		}
-
-		// Wait briefly between chunks to prevent the OS TCP stack from merging them
 		if i < len(chunks)-1 && fe.ChunkDelay > 0 {
 			time.Sleep(fe.ChunkDelay)
 		}
 	}
-
 	return nil
 }
 

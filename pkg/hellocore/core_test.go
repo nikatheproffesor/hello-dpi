@@ -44,3 +44,31 @@ func TestMobileEngine_Lifecycle(t *testing.T) {
 		t.Error("Engine should not be running after Stop()")
 	}
 }
+
+func TestPlatformAdapters(t *testing.T) {
+	android := NewAndroidVPNAdapter()
+	if android.Name() != "android-vpn" {
+		t.Errorf("Expected android-vpn, got %s", android.Name())
+	}
+	_ = android.OnStart()
+	if !android.IsActive() {
+		t.Errorf("Expected android adapter to be active")
+	}
+	_ = android.OnStop()
+	if android.IsActive() {
+		t.Errorf("Expected android adapter to be inactive")
+	}
+
+	ios := NewIOSNetworkExtensionAdapter()
+	if ios.Name() != "ios-network-extension" {
+		t.Errorf("Expected ios-network-extension, got %s", ios.Name())
+	}
+	_ = ios.OnStart()
+	if !ios.IsActive() {
+		t.Errorf("Expected ios adapter to be active")
+	}
+	_ = ios.OnStop()
+	if ios.IsActive() {
+		t.Errorf("Expected ios adapter to be inactive")
+	}
+}

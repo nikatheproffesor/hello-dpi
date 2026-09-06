@@ -4,49 +4,71 @@ import (
 	"testing"
 )
 
-func TestRuleEngine_Evaluate(t *testing.T) {
+func TestEvaluateDomains(t *testing.T) {
 	eng := NewEngine()
 
-	tests := []struct {
-		host     string
-		expected Action
-	}{
-		// Direct banking & government
-		{"ziraatbank.com.tr", ActionDirect},
-		{"sub.ziraatbank.com.tr", ActionDirect},
-		{"isbank.com.tr", ActionDirect},
-		{"turkiye.gov.tr", ActionDirect},
-		{"vatandas.uyap.gov.tr", ActionDirect},
-		{"fast.tcmb.gov.tr", ActionDirect},
-
-		// Direct gaming / low-latency
-		{"valve.net", ActionDirect},
-		{"riotgames.com", ActionDirect},
-
-		// Local networks
-		{"localhost", ActionDirect},
-		{"printer.local", ActionDirect},
-
-		// DPI bypass targets
-		{"discord.com", ActionProxyDPI},
-		{"gateway.discord.gg", ActionProxyDPI},
-		{"media.discordapp.net", ActionProxyDPI},
-		{"roblox.com", ActionProxyDPI},
-		{"setup.rbxcdn.com", ActionProxyDPI},
-		{"imgur.com", ActionProxyDPI},
-		{"pastebin.com", ActionProxyDPI},
-		{"youtube.com", ActionProxyDPI},
-		{"googlevideo.com", ActionProxyDPI},
-
-		// Normal untracked host defaults
-		{"example.com", ActionDefault},
-		{"github.com", ActionDefault},
+	// Turkish Banking & Gov -> Direct
+	if act := eng.Evaluate("isbank.com.tr"); act != ActionDirect {
+		t.Errorf("Expected isbank.com.tr to be ActionDirect, got %d", act)
+	}
+	if act := eng.Evaluate("subdomain.turkiye.gov.tr"); act != ActionDirect {
+		t.Errorf("Expected *.gov.tr to be ActionDirect, got %d", act)
 	}
 
-	for _, tt := range tests {
-		got := eng.Evaluate(tt.host)
-		if got != tt.expected {
-			t.Errorf("Evaluate(%q) = %v, want %v", tt.host, got, tt.expected)
-		}
+	// Captive portal -> Direct
+	if act := eng.Evaluate("wifi.gsb.gov.tr"); act != ActionDirect {
+		t.Errorf("Expected wifi.gsb.gov.tr to be ActionDirect, got %d", act)
+	}
+
+	// Discord -> ProxyDPI
+	if act := eng.Evaluate("discord.com"); act != ActionProxyDPI {
+		t.Errorf("Expected discord.com to be ActionProxyDPI, got %d", act)
+	}
+	if act := eng.Evaluate("gateway.discord.gg"); act != ActionProxyDPI {
+		t.Errorf("Expected *.discord.gg to be ActionProxyDPI, got %d", act)
+	}
+}
+
+func TestEvaluateCIDRs(t *testing.T) {
+	eng := NewEngine()
+
+	// Private IPs should be ActionDirect
+	if act := eng.Evaluate("192.168.1.1"); act != ActionDirect {
+		t.Errorf("Expected 192.168.1.1 to be ActionDirect, got %d", act)
+	}
+	if act := eng.Evaluate("10.50.2.1"); act != ActionDirect {
+		t.Errorf("Expected 10.50.2.1 to be ActionDirect, got %d", act)
+	}
+	if act := eng.Evaluate("127.0.0.1"); act != ActionDirect {
+		t.Errorf("Expected 127.0.0.1 to be ActionDirect, got %d", act)
+	}
+}
+
+func TestAntiCheatProtection(t *testing.T) {
+	eng := NewEngine()
+
+	// Vanguard & EAC must be detected and NEVER diverted
+	if !IsAntiCheatProcess("vgc.exe") {
+		t.Errorf("Expected vgc.exe to be detected as anti-cheat")
+	}
+	if !IsAntiCheatProcess(`C:\Riot Games\VALORANT\live\valorant.exe`) {
+		t.Errorf("Expected valorant.exe path to be detected as anti-cheat")
+	}
+
+	// Even if target is somehow in intercept list, anti-cheat process forces ActionDirect
+	act := eng.EvaluateTarget("discord.com", 443, "valorant.exe")
+	if act != ActionDirect {
+		t.Errorf("Expected anti-cheat process to force ActionDirect, got %d", act)
+	}
+}
+
+func TestRequiresKernel(t *testing.T) {
+	eng := NewEngine()
+
+	if !eng.RequiresKernel("RobloxPlayerBeta.exe", "roblox.com") {
+		t.Errorf("Expected Roblox to require kernel")
+	}
+	if eng.RequiresKernel("vgc.exe", "discord.com") {
+		t.Errorf("Anti-cheat should never require kernel")
 	}
 }

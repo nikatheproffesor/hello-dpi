@@ -2,8 +2,6 @@ package proxy
 
 import (
 	"bufio"
-	"context"
-	"encoding/binary"
 	"fmt"
 	"io"
 	"log"
@@ -14,74 +12,27 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hellodpi/hellodpi/internal/doctor"
-	"github.com/hellodpi/hellodpi/internal/doh"
+	"github.com/hellodpi/hellodpi/internal/control"
+	"github.com/hellodpi/hellodpi/internal/dns"
 	"github.com/hellodpi/hellodpi/internal/dpi"
+	"github.com/hellodpi/hellodpi/internal/engine"
 	"github.com/hellodpi/hellodpi/internal/rules"
-	"github.com/hellodpi/hellodpi/internal/speedtest"
 )
 
-var privateIPBlocks []*net.IPNet
-
-func init() {
-	for _, cidr := range []string{
-		"127.0.0.0/8",    // IPv4 loopback
-		"::1/128",        // IPv6 loopback
-		"10.0.0.0/8",     // RFC1918 (GSB WiFi / KYK dorm networks)
-		"172.16.0.0/12",  // RFC1918
-		"192.168.0.0/16", // RFC1918
-		"169.254.0.0/16", // RFC3927 link-local
-	} {
-		_, block, _ := net.ParseCIDR(cidr)
-		privateIPBlocks = append(privateIPBlocks, block)
-	}
-}
-
-func isPrivateOrLocalIP(ipStr string) bool {
-	ip := net.ParseIP(ipStr)
-	if ip == nil {
-		return false
-	}
-	for _, block := range privateIPBlocks {
-		if block.Contains(ip) {
-			return true
-		}
-	}
-	return false
-}
-
-// isDirectPassThrough checks if a host should bypass DPI fragmentation and DoH (GSB WiFi / Captive Portals)
-func isDirectPassThrough(host string) bool {
-	h := strings.ToLower(strings.TrimSuffix(host, "."))
-	if h == "localhost" || strings.HasSuffix(h, ".local") || strings.HasSuffix(h, ".lan") || strings.HasSuffix(h, ".home") {
-		return true
-	}
-	if strings.Contains(h, "gsb.gov.tr") ||
-		strings.Contains(h, "kyk.gov.tr") ||
-		h == "captive.apple.com" ||
-		h == "connectivitycheck.gstatic.com" ||
-		h == "connectivitycheck.android.com" ||
-		h == "msftconnecttest.com" ||
-		h == "ipv6.msftconnecttest.com" {
-		return true
-	}
-	return isPrivateOrLocalIP(h)
-}
-
-// Server is the core Hello DPI proxy server
+// Server is the clean L7 proxy server focusing strictly on accepting connections,
+// parsing SOCKS5 / HTTP protocols, and delegating to the orchestration engine.
 type Server struct {
 	Addr         string
-	Engine       *dpi.FragmentEngine
-	Resolver     *doh.Resolver
+	Orchestrator *engine.Orchestrator
 	Rules        *rules.Engine
-	speedtestMux *http.ServeMux
+	Resolver     *dns.Resolver
+	Control      *control.Server
 	listener     net.Listener
-	bufferPool   sync.Pool
 	mu           sync.Mutex
 	closed       bool
 }
 
-// Config holds configuration options for Server
+// Config holds initialization parameters for the Server
 type Config struct {
 	Addr        string
 	SplitMode   dpi.SplitMode
@@ -90,45 +41,44 @@ type Config struct {
 	EnableDoH   bool
 }
 
-// NewServer initializes a new Server
+// NewServer initializes a new clean proxy Server
 func NewServer(cfg Config) *Server {
-	mux := http.NewServeMux()
-	speedtest.RegisterHandlers(mux)
-	doctor.RegisterHandlers(mux)
+	if cfg.Addr == "" {
+		cfg.Addr = "127.0.0.1:8080"
+	}
+
+	engCfg := engine.Config{
+		StrategyName: string(cfg.SplitMode),
+		SplitOffset:  5,
+		DelayMs:      cfg.DelayMs,
+		DoHEndpoint:  cfg.DoHEndpoint,
+		EnableDoH:    cfg.EnableDoH,
+	}
+
+	orch := engine.NewOrchestrator(engCfg)
+	ctrl := control.NewServer()
 
 	return &Server{
 		Addr:         cfg.Addr,
-		Engine:       dpi.NewFragmentEngine(cfg.SplitMode, cfg.DelayMs),
-		Resolver:     doh.NewResolver(cfg.DoHEndpoint, cfg.EnableDoH),
-		Rules:        rules.NewEngine(),
-		speedtestMux: mux,
-		bufferPool: sync.Pool{
-			New: func() interface{} {
-				b := make([]byte, 32*1024) // 32KB buffer for high throughput
-				return &b
-			},
-		},
+		Orchestrator: orch,
+		Rules:        orch.Rules,
+		Resolver:     orch.Resolver,
+		Control:      ctrl,
 	}
 }
 
-// UpdateEngineConfig dynamically reconfigures the fragment engine on the fly
+// UpdateEngineConfig dynamically reconfigures the bypass strategy
 func (s *Server) UpdateEngineConfig(mode dpi.SplitMode, splitOffset int, delayMs int) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.Engine = &dpi.FragmentEngine{
-		Mode:         mode,
-		ChunkDelay:   time.Duration(delayMs) * time.Millisecond,
-		CustomOffset: splitOffset,
-	}
-	log.Printf("[Hello DPI] Fragment engine auto-tuned: mode=%s, splitPos=%d, delay=%dms", mode, splitOffset, delayMs)
+	s.Orchestrator.UpdateStrategy(string(mode), splitOffset, delayMs)
 }
 
-// Start listens for incoming connections and serves them
+// Start begins accepting connections on the configured address
 func (s *Server) Start() error {
 	l, err := net.Listen("tcp", s.Addr)
 	if err != nil {
 		return fmt.Errorf("failed to listen on %s: %w", s.Addr, err)
 	}
+
 	s.mu.Lock()
 	s.listener = l
 	s.mu.Unlock()
@@ -156,6 +106,7 @@ func (s *Server) Start() error {
 func (s *Server) Close() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	s.closed = true
 	if s.listener != nil {
 		return s.listener.Close()
@@ -163,21 +114,11 @@ func (s *Server) Close() error {
 	return nil
 }
 
-// bufferedConn guarantees that unread bytes buffered in bufio.Reader are never lost
-type bufferedConn struct {
-	r io.Reader
-	net.Conn
-}
-
-func (b *bufferedConn) Read(p []byte) (int, error) {
-	return b.r.Read(p)
-}
-
-// handleConnection auto-detects between HTTP CONNECT / plain HTTP and SOCKS5
+// handleConnection discriminates between SOCKS5 and HTTP protocols
 func (s *Server) handleConnection(clientConn net.Conn) {
 	defer clientConn.Close()
 
-	// 15-second handshake deadline to prevent slowloris socket exhaustion
+	// Initial handshake deadline to avoid socket slowloris starvation
 	_ = clientConn.SetDeadline(time.Now().Add(15 * time.Second))
 
 	reader := bufio.NewReader(clientConn)
@@ -186,7 +127,7 @@ func (s *Server) handleConnection(clientConn net.Conn) {
 		return
 	}
 
-	// Clear deadline for streaming phase
+	// Reset deadline for streaming phase
 	_ = clientConn.SetDeadline(time.Time{})
 
 	// SOCKS5 starts with byte 0x05
@@ -195,30 +136,22 @@ func (s *Server) handleConnection(clientConn net.Conn) {
 		return
 	}
 
-	// Otherwise handle as HTTP / HTTPS CONNECT
+	// Otherwise process as HTTP / HTTPS CONNECT
 	s.handleHTTP(clientConn, reader)
 }
 
-// handleHTTP handles HTTP CONNECT (HTTPS), regular HTTP proxy requests, and internal speedtest
+// handleHTTP parses HTTP requests, routes local management endpoints to control,
+// and delegates HTTPS CONNECT / plain HTTP to the orchestrator.
 func (s *Server) handleHTTP(clientConn net.Conn, reader *bufio.Reader) {
 	req, err := http.ReadRequest(reader)
 	if err != nil {
 		return
 	}
 
-	// Intercept local Speedtest and Doctor endpoints
-	pathLower := strings.ToLower(req.URL.Path)
-	if req.Method != http.MethodConnect && (pathLower == "/speedtest" || strings.HasPrefix(pathLower, "/speedtest/") ||
-		strings.HasPrefix(pathLower, "/api/speedtest") || pathLower == "/doctor" ||
-		strings.HasPrefix(pathLower, "/doctor/") || strings.HasPrefix(pathLower, "/api/doctor")) {
+	// Route local management endpoints (/doctor, /speedtest, /api/status) to control server
+	if control.IsControlPath(req.Method, req.URL.Path) {
 		w := newConnResponseWriter(clientConn)
-		s.speedtestMux.ServeHTTP(w, req)
-		return
-	}
-
-	if req.URL.Path == "/favicon.ico" {
-		w := newConnResponseWriter(clientConn)
-		w.WriteHeader(http.StatusNoContent)
+		s.Control.ServeHTTP(w, req)
 		return
 	}
 
@@ -227,7 +160,6 @@ func (s *Server) handleHTTP(clientConn net.Conn, reader *bufio.Reader) {
 		targetHost = req.URL.Host
 	}
 
-	// Ensure port is present
 	host, port, err := net.SplitHostPort(targetHost)
 	if err != nil {
 		host = targetHost
@@ -238,133 +170,23 @@ func (s *Server) handleHTTP(clientConn net.Conn, reader *bufio.Reader) {
 		}
 	}
 
-	// Anti-Poison Protection: if the client was tricked by poisoned ISP DNS into connecting
-	// to 195.175.254.x (BTK court order block page), intercept it, read the real SNI,
-	// and connect to the real server via DoH!
-	if req.Method == http.MethodConnect && strings.HasPrefix(host, "195.175.254.") {
-		s.handlePoisonedConnect(clientConn, reader, port)
+	// Self-loop prevention: abort if target is proxy's own address
+	if s.isProxyLoop(host, port) {
 		return
 	}
-
-	directPass := isDirectPassThrough(host) || (s.Rules != nil && s.Rules.Evaluate(host) == rules.ActionDirect)
-
-	// Resolve target using DoH or system DNS
-	var resolvedIP string
-	if directPass {
-		// Captive portal / local network: use OS DNS directly
-		ips, err := net.DefaultResolver.LookupHost(context.Background(), host)
-		if err == nil && len(ips) > 0 {
-			resolvedIP = ips[0]
-		} else {
-			resolvedIP = host
-		}
-	} else {
-		resolvedIP, err = s.Resolver.Resolve(context.Background(), host)
-		if err != nil {
-			resolvedIP = host
-		}
-	}
-	destAddr := net.JoinHostPort(resolvedIP, port)
-
-	// Dial target server
-	targetConn, err := net.DialTimeout("tcp", destAddr, 10*time.Second)
-	if err != nil {
-		if req.Method == http.MethodConnect {
-			_, _ = clientConn.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
-		}
-		return
-	}
-	defer targetConn.Close()
-
-	// Wrap clientConn with bufferedConn so any bytes in reader are drained first!
-	clientBuffered := &bufferedConn{r: reader, Conn: clientConn}
 
 	if req.Method == http.MethodConnect {
-		// Respond 200 OK to the client
-		_, err = clientConn.Write([]byte("HTTP/1.1 200 Connection Established\r\n\r\n"))
-		if err != nil {
+		// Respond 200 Connection Established to the client
+		if _, err := clientConn.Write([]byte("HTTP/1.1 200 Connection Established\r\n\r\n")); err != nil {
 			return
 		}
-
-		if directPass {
-			// Direct pass-through for GSB WiFi / local networks: zero fragmentation
-			s.pipe(clientBuffered, targetConn)
-			return
-		}
-
-		// Read complete initial packet (e.g. complete TLS ClientHello via io.ReadFull)
-		initialPayload, err := readInitialPayload(reader)
-		if err == nil && len(initialPayload) > 0 {
-			// Fragment and transmit the initial TLS handshake with advanced evasion
-			if err := s.Engine.SendAdvancedEvasion(targetConn, initialPayload); err != nil {
-				return
-			}
-		}
-
-		// Stream bidirectional data at full line rate with buffer preservation for WebSockets (w2g.tv)
-		s.pipe(clientBuffered, targetConn)
+		_ = s.Orchestrator.HandleTunnel(clientConn, reader, host, port)
 	} else {
-		// Plain HTTP or WebSocket Upgrade
-		isWS := strings.EqualFold(req.Header.Get("Upgrade"), "websocket")
-
-		if isWS || directPass {
-			_ = req.Write(targetConn)
-			s.pipe(clientBuffered, targetConn)
-			return
-		}
-
-		// Plain HTTP: serialize and fragment request
-		var b strings.Builder
-		_ = req.Write(&b)
-		reqBuf := []byte(b.String())
-
-		if err := s.Engine.SendAdvancedEvasion(targetConn, reqBuf); err != nil {
-			return
-		}
-
-		s.pipe(clientBuffered, targetConn)
+		_ = s.Orchestrator.HandleHTTP(clientConn, reader, req, host, port)
 	}
 }
 
-// handlePoisonedConnect recovers connections hijacked by Turkish ISP DNS to 195.175.254.x
-func (s *Server) handlePoisonedConnect(clientConn net.Conn, reader *bufio.Reader, port string) {
-	_, err := clientConn.Write([]byte("HTTP/1.1 200 Connection Established\r\n\r\n"))
-	if err != nil {
-		return
-	}
-
-	initialPayload, err := readInitialPayload(reader)
-	if err != nil || len(initialPayload) == 0 {
-		return
-	}
-
-	info := dpi.ParsePacket(initialPayload)
-	realHost := info.Host
-	if realHost == "" {
-		return
-	}
-
-	realIP, err := s.Resolver.Resolve(context.Background(), realHost)
-	if err != nil || realIP == "" || strings.HasPrefix(realIP, "195.175.254.") {
-		return
-	}
-
-	destAddr := net.JoinHostPort(realIP, port)
-	targetConn, err := net.DialTimeout("tcp", destAddr, 10*time.Second)
-	if err != nil {
-		return
-	}
-	defer targetConn.Close()
-
-	if err := s.Engine.SendAdvancedEvasion(targetConn, initialPayload); err != nil {
-		return
-	}
-
-	clientBuffered := &bufferedConn{r: reader, Conn: clientConn}
-	s.pipe(clientBuffered, targetConn)
-}
-
-// handleSOCKS5 implements RFC 1928 SOCKS5 protocol with DPI fragmentation and QUIC block
+// handleSOCKS5 implements RFC 1928 SOCKS5 protocol handshake
 func (s *Server) handleSOCKS5(clientConn net.Conn, reader *bufio.Reader) {
 	// 1. Negotiation
 	ver, err := reader.ReadByte()
@@ -380,7 +202,7 @@ func (s *Server) handleSOCKS5(clientConn net.Conn, reader *bufio.Reader) {
 		return
 	}
 
-	// Respond with NO AUTHENTICATION REQUIRED (0x00)
+	// 0x00 = NO AUTHENTICATION REQUIRED
 	if _, err := clientConn.Write([]byte{0x05, 0x00}); err != nil {
 		return
 	}
@@ -392,10 +214,10 @@ func (s *Server) handleSOCKS5(clientConn net.Conn, reader *bufio.Reader) {
 	}
 
 	cmd := header[1]
-	// If client asks for UDP ASSOCIATE (0x03) e.g. for QUIC / HTTP-3:
-	// Reject with 0x07 (Command not supported) so client automatically falls back to TCP + TLS!
+	// If client requests UDP ASSOCIATE (0x03) for QUIC: reject with 0x07 (Command not supported)
+	// forcing client to fallback cleanly to TCP + TLS!
 	if cmd != 0x01 { // 0x01 = CONNECT
-		_, _ = clientConn.Write([]byte{0x05, 0x07, 0x00, 0x01, 0, 0, 0, 0, 0, 0}) // Command not supported
+		_, _ = clientConn.Write([]byte{0x05, 0x07, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
 		return
 	}
 
@@ -435,53 +257,21 @@ func (s *Server) handleSOCKS5(clientConn net.Conn, reader *bufio.Reader) {
 	}
 	port := strconv.Itoa(int(portBytes[0])<<8 | int(portBytes[1]))
 
-	directPass := isDirectPassThrough(targetHost) || (s.Rules != nil && s.Rules.Evaluate(targetHost) == rules.ActionDirect)
-
-	// Resolve target
-	var resolvedIP string
-	if directPass {
-		ips, err := net.DefaultResolver.LookupHost(context.Background(), targetHost)
-		if err == nil && len(ips) > 0 {
-			resolvedIP = ips[0]
-		} else {
-			resolvedIP = targetHost
-		}
-	} else {
-		resolvedIP, err = s.Resolver.Resolve(context.Background(), targetHost)
-		if err != nil {
-			resolvedIP = targetHost
-		}
-	}
-	destAddr := net.JoinHostPort(resolvedIP, port)
-
-	targetConn, err := net.DialTimeout("tcp", destAddr, 10*time.Second)
-	if err != nil {
-		_, _ = clientConn.Write([]byte{0x05, 0x04, 0x00, 0x01, 0, 0, 0, 0, 0, 0}) // Host unreachable
+	// Self-loop prevention
+	if s.isProxyLoop(targetHost, port) {
+		_, _ = clientConn.Write([]byte{0x05, 0x04, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
 		return
 	}
-	defer targetConn.Close()
 
 	// SOCKS5 success reply
-	_, _ = clientConn.Write([]byte{0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
-
-	clientBuffered := &bufferedConn{r: reader, Conn: clientConn}
-
-	if directPass {
-		s.pipe(clientBuffered, targetConn)
+	if _, err := clientConn.Write([]byte{0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0}); err != nil {
 		return
 	}
 
-	// Read complete initial payload from client (e.g. TLS ClientHello)
-	initialPayload, err := readInitialPayload(reader)
-	if err == nil && len(initialPayload) > 0 {
-		_ = s.Engine.SendAdvancedEvasion(targetConn, initialPayload)
-	}
-
-	s.pipe(clientBuffered, targetConn)
+	_ = s.Orchestrator.HandleTunnel(clientConn, reader, targetHost, port)
 }
 
-// isProxyAddr checks if the target matches the proxy's own address
-func (s *Server) isProxyAddr(host, port string) bool {
+func (s *Server) isProxyLoop(host, port string) bool {
 	sHost, sPort, err := net.SplitHostPort(s.Addr)
 	if err != nil {
 		return false
@@ -492,55 +282,7 @@ func (s *Server) isProxyAddr(host, port string) bool {
 	return false
 }
 
-// readInitialPayload guarantees reading the entire TLS ClientHello packet even if chunked by OS
-func readInitialPayload(reader *bufio.Reader) ([]byte, error) {
-	hdr, err := reader.Peek(5)
-	if err != nil {
-		buf := make([]byte, 2048)
-		n, err := reader.Read(buf)
-		return buf[:n], err
-	}
-
-	// Check if this is a TLS Record (0x16 Handshake)
-	if hdr[0] == 0x16 {
-		recLen := int(binary.BigEndian.Uint16(hdr[3:5]))
-		// Valid TLS record length check (up to 16KB)
-		if recLen > 0 && recLen <= 16384 {
-			totalLen := 5 + recLen
-			buf := make([]byte, totalLen)
-			_, err := io.ReadFull(reader, buf)
-			return buf, err
-		}
-	}
-
-	buf := make([]byte, 8192)
-	n, err := reader.Read(buf)
-	return buf[:n], err
-}
-
-// pipe streams traffic bidirectionally with zero-copy buffer pooling and clean half-close
-func (s *Server) pipe(src, dst net.Conn) {
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	cp := func(to, from net.Conn) {
-		defer wg.Done()
-		bufPtr := s.bufferPool.Get().(*[]byte)
-		defer s.bufferPool.Put(bufPtr)
-
-		_, _ = io.CopyBuffer(to, from, *bufPtr)
-		if tc, ok := to.(*net.TCPConn); ok {
-			_ = tc.CloseWrite()
-		}
-	}
-
-	go cp(dst, src)
-	go cp(src, dst)
-
-	wg.Wait()
-}
-
-// connResponseWriter implements http.ResponseWriter and http.Flusher directly over net.Conn
+// connResponseWriter adapts net.Conn to http.ResponseWriter for local control endpoints
 type connResponseWriter struct {
 	conn          net.Conn
 	headers       http.Header
@@ -574,10 +316,6 @@ func (w *connResponseWriter) Write(data []byte) (int, error) {
 		w.WriteHeader(http.StatusOK)
 	}
 	return w.conn.Write(data)
-}
-
-func (w *connResponseWriter) Flush() {
-	// TCP socket flushes automatically when TCP_NODELAY is enabled
 }
 
 func (w *connResponseWriter) flushHeaders() {

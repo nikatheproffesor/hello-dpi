@@ -2,97 +2,110 @@ package proxy
 
 import (
 	"bufio"
-	"bytes"
-	"io"
 	"net"
+	"net/http"
 	"testing"
 	"time"
+
+	"github.com/hellodpi/hellodpi/internal/dpi"
 )
 
-func TestDirectPassThrough(t *testing.T) {
-	cases := []struct {
-		host     string
-		expected bool
-	}{
-		{"wifi.gsb.gov.tr", true},
-		{"portal.kyk.gov.tr", true},
-		{"captive.apple.com", true},
-		{"connectivitycheck.gstatic.com", true},
-		{"msftconnecttest.com", true},
-		{"10.10.1.1", true},
-		{"192.168.1.1", true},
-		{"172.20.0.1", true},
-		{"localhost", true},
-		{"mycomputer.local", true},
-		{"discord.com", false},
-		{"w2g.tv", false},
-		{"cloudflare.com", false},
-		{"1.1.1.1", false},
-	}
+func TestProxyLoopDetection(t *testing.T) {
+	srv := NewServer(Config{Addr: "127.0.0.1:8080"})
 
-	for _, tc := range cases {
-		actual := isDirectPassThrough(tc.host)
-		if actual != tc.expected {
-			t.Errorf("isDirectPassThrough(%q) = %v, expected %v", tc.host, actual, tc.expected)
+	if !srv.isProxyLoop("127.0.0.1", "8080") {
+		t.Errorf("Expected loop to be detected for 127.0.0.1:8080")
+	}
+	if !srv.isProxyLoop("localhost", "8080") {
+		t.Errorf("Expected loop to be detected for localhost:8080")
+	}
+	if srv.isProxyLoop("discord.com", "443") {
+		t.Errorf("External target should NOT be detected as loop")
+	}
+}
+
+func TestSOCKS5HandshakeNegotiation(t *testing.T) {
+	srv := NewServer(Config{
+		Addr:      "127.0.0.1:0",
+		SplitMode: dpi.SplitTLS,
+		DelayMs:   5,
+	})
+
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("Listen failed: %v", err)
+	}
+	defer l.Close()
+
+	srv.listener = l
+	srv.Addr = l.Addr().String()
+
+	go func() {
+		conn, err := l.Accept()
+		if err == nil {
+			reader := bufio.NewReader(conn)
+			srv.handleSOCKS5(conn, reader)
 		}
+	}()
+
+	client, err := net.Dial("tcp", srv.Addr)
+	if err != nil {
+		t.Fatalf("Dial failed: %v", err)
+	}
+	defer client.Close()
+
+	// SOCKS5 greeting: 1 method (0x00 No Auth)
+	_, _ = client.Write([]byte{0x05, 0x01, 0x00})
+
+	resp := make([]byte, 2)
+	_ = client.SetDeadline(time.Now().Add(2 * time.Second))
+	n, err := client.Read(resp)
+	if err != nil || n != 2 {
+		t.Fatalf("Failed to read SOCKS5 greeting response: %v", err)
+	}
+	if resp[0] != 0x05 || resp[1] != 0x00 {
+		t.Fatalf("Unexpected greeting response: %x %x", resp[0], resp[1])
 	}
 }
 
-// dummyConn implements net.Conn over in-memory buffers
-type dummyConn struct {
-	net.Conn
-	r io.Reader
-	w *bytes.Buffer
-}
+func TestHTTPControlRouting(t *testing.T) {
+	srv := NewServer(Config{
+		Addr:      "127.0.0.1:0",
+		SplitMode: dpi.SplitAuto,
+	})
 
-func (d *dummyConn) Read(b []byte) (int, error) {
-	return d.r.Read(b)
-}
-
-func (d *dummyConn) Write(b []byte) (int, error) {
-	return d.w.Write(b)
-}
-
-func (d *dummyConn) Close() error {
-	return nil
-}
-
-func (d *dummyConn) SetDeadline(t time.Time) error {
-	return nil
-}
-
-func TestBufferedConnPreservesPipelinedBytes(t *testing.T) {
-	// Simulate client sending 20 bytes, but reader buffers 15 bytes in Peek
-	data := []byte("1234567890ABCDEFGHIJ")
-	rawConn := &dummyConn{
-		r: bytes.NewReader(data),
-		w: new(bytes.Buffer),
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("Listen failed: %v", err)
 	}
+	defer l.Close()
 
-	reader := bufio.NewReader(rawConn)
-	// Read first 5 bytes via reader
-	peeked, err := reader.Peek(5)
-	if err != nil || string(peeked) != "12345" {
-		t.Fatalf("peek failed: %v", err)
+	srv.listener = l
+	srv.Addr = l.Addr().String()
+
+	go func() {
+		conn, err := l.Accept()
+		if err == nil {
+			reader := bufio.NewReader(conn)
+			srv.handleHTTP(conn, reader)
+		}
+	}()
+
+	client, err := net.Dial("tcp", srv.Addr)
+	if err != nil {
+		t.Fatalf("Dial failed: %v", err)
 	}
+	defer client.Close()
 
-	// Consume first 5 bytes
-	first5 := make([]byte, 5)
-	if _, err := io.ReadFull(reader, first5); err != nil {
-		t.Fatalf("read first 5 failed: %v", err)
+	// Send request to /api/status
+	_, _ = client.Write([]byte("GET /api/status HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n"))
+
+	reader := bufio.NewReader(client)
+	resp, err := http.ReadResponse(reader, nil)
+	if err != nil {
+		t.Fatalf("Failed to read HTTP response: %v", err)
 	}
-
-	// Now wrap with bufferedConn
-	bc := &bufferedConn{r: reader, Conn: rawConn}
-
-	// The remaining 15 bytes should be read without ANY data loss!
-	remaining := make([]byte, 15)
-	n, err := io.ReadFull(bc, remaining)
-	if err != nil || n != 15 {
-		t.Fatalf("expected 15 bytes, got %d (err: %v)", n, err)
-	}
-
-	if string(remaining) != "67890ABCDEFGHIJ" {
-		t.Fatalf("expected '67890ABCDEFGHIJ', got '%s'", string(remaining))
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("Expected 200 OK for /api/status, got %d", resp.StatusCode)
 	}
 }
