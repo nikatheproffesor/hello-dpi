@@ -26,6 +26,12 @@ jobs:
           go-version: '1.23'
           cache: true
 
+      - name: Prepare Embedded Assets
+        run: |
+          mkdir -p cmd/hellodpi-installer/embedded
+          touch cmd/hellodpi-installer/embedded/HelloDPI.exe
+          touch cmd/hellodpi-installer/embedded/Baslat.bat
+
       - name: Run Tests
         run: |
           go test -v ./...
