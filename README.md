@@ -13,7 +13,7 @@
 
   <br />
 
-  [![Release](https://img.shields.io/github/v/release/nikatheproffesor/hello-dpi?color=black&logo=github&label=S%C3%BCr%C3%BCm%20v5.0.0)](https://github.com/nikatheproffesor/hello-dpi/releases/latest)
+  [![Release](https://img.shields.io/github/v/release/nikatheproffesor/hello-dpi?color=black&logo=github&label=S%C3%BCr%C3%BCm%20v5.1.0)](https://github.com/nikatheproffesor/hello-dpi/releases/latest)
   [![VirusTotal](https://img.shields.io/badge/VirusTotal-0%2F72%20Temiz-brightgreen?logo=virustotal)](https://www.virustotal.com/gui/file/30037fd5b5d1a32bf15c5bf4c861422b2f0e07e661a9858de39e104e276ad732)
   [![Apple Signed](https://img.shields.io/badge/Apple%20Signed-Developer%20ID-black?logo=apple)](https://github.com/nikatheproffesor/hello-dpi/releases/latest)
   [![Ping](https://img.shields.io/badge/Ping-0%20ms%20Ek%20Gecikme-black.svg)](#-neden-vpn-değil)
@@ -22,30 +22,31 @@
 
   <br />
 
-  [📥 Hemen İndir](#-hemen-indir-v500) • [⚡ Neden VPN Değil?](#-neden-vpn-değil) • [✨ Özellikler](#-öne-çıkan-özellikler-v50) • [🩺 Ağ Doktoru](#-ağ-doktoru-ve-canlı-ping-monitörü) • [📊 Karşılaştırma](#-karşılaştırma-tablosu) • [❓ SSS](#-sıkça-sorulan-sorular) • [🇬🇧 English Guide](#-english-guide)
+  [📥 Hemen İndir](#-hemen-indir-v510) • [⚡ Neden VPN Değil?](#-neden-vpn-değil) • [✨ Özellikler](#-öne-çıkan-özellikler-v51) • [🩺 Ağ Doktoru](#-ağ-doktoru-ve-canlı-ping-monitörü) • [📊 Karşılaştırma](#-karşılaştırma-tablosu) • [❓ SSS](#-sıkça-sorulan-sorular) • [🇬🇧 English Guide](#-english-guide)
 
 </div>
 
 ---
 
-## 📥 Hemen İndir (v5.0.0)
+## 📥 Hemen İndir (v5.1.0)
 
 Hiçbir terminal, kod veya karmaşık ayar gerektirmez. İşletim sisteminize uygun dosyayı indirip doğrudan çalıştırabilirsiniz:
 
 | Platform | İndirme Bağlantısı | Açıklama |
 | :--- | :--- | :--- |
-| **🪟 Windows** | [**HelloDPI-Setup.exe**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.0.0/HelloDPI-Setup.exe) | **1-Tık Kurucu (Önerilen).** Masaüstü kısayolu oluşturur, sistem tepsisine yerleşir ve arka planda sessizce çalışır. |
-| **🍏 macOS** | [**HelloDPI-macOS.dmg**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.0.0/HelloDPI-macOS.dmg) | **Resmi Apple İmzalı DMG.** Applications klasörüne sürükleyin, menü çubuğundan tek tıkla kontrol edin. |
-| **🤖 Android** | [**HelloDPI-Android.apk**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.0.0/HelloDPI-Android.apk) | **1-Dokunuş Kurulum.** Bildirim paneli Hızlı Ayarlar kutucuğu (Quick Settings Tile), sessiz arka plan servisi. |
-| **🐧 Linux** | [**hellodpi-linux-amd64**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.0.0/hellodpi-linux-amd64) | **64-bit Bağımsız İkili.** GNOME / KDE masaüstü tepsisi veya bağımsız komut satırı servisi. |
+| **🪟 Windows** | [**HelloDPI-Setup.exe**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/HelloDPI-Setup.exe) | **1-Tık Kurucu (Önerilen).** Masaüstü kısayolu oluşturur, sistem tepsisine yerleşir ve arka planda sessizce çalışır. |
+| **🍏 macOS** | [**HelloDPI-macOS.dmg**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/HelloDPI-macOS.dmg) | **Resmi Apple İmzalı DMG.** Applications klasörüne sürükleyin, menü çubuğundan tek tıkla kontrol edin. |
+| **🤖 Android** | [**HelloDPI-Android.apk**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/HelloDPI-Android.apk) | **1-Dokunuş Kurulum.** Bildirim paneli Hızlı Ayarlar kutucuğu (Quick Settings Tile), sessiz arka plan servisi. |
+| **🐧 Linux** | [**hellodpi-linux-amd64**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/hellodpi-linux-amd64) | **64-bit Bağımsız İkili.** GNOME / KDE masaüstü tepsisi veya bağımsız komut satırı servisi. |
 
-> ℹ️ *iOS sürümü şu anda geliştirme aşamasındadır (TestFlight sürümü yakında kullanıma sunulacaktır).*
+> ℹ️ *iOS sürümü şu anda geliştirme aşamasındadır (TestFlight sürümü yakında duyurulacaktır).*
 
 <details>
 <summary><b>📦 Gelişmiş & Alternatif Paketler</b></summary>
 
-- **macOS ZIP Paketi:** [HelloDPI-macOS.zip](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.0.0/HelloDPI-macOS.zip) (DMG açmak istemeyenler için doğrudan uygulama arşivi)
-- **Android ARM64 CLI:** [hellodpi-android-arm64](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.0.0/hellodpi-android-arm64) (Termux / kök kullanıcıları için bağımsız çekirdek)
+- **macOS ZIP Paketi:** [HelloDPI-macOS.zip](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/HelloDPI-macOS.zip) (DMG açmak istemeyenler için doğrudan uygulama arşivi)
+- **Windows Bağımsız İkili:** [HelloDPI-Windows.exe](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/HelloDPI-Windows.exe) (Kurulumsuz doğrudan taşınabilir sürüm)
+- **Android ARM64 CLI:** [hellodpi-android-arm64](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/hellodpi-android-arm64) (Termux / kök kullanıcıları için bağımsız çekirdek)
 - **Tüm Dosyalar ve Değişiklik Günlüğü:** [GitHub Releases](https://github.com/nikatheproffesor/hello-dpi/releases)
 
 </details>
@@ -66,7 +67,7 @@ Siz ───> [ Hollanda / Almanya VPN Sunucusu ] ───> Discord / Roblox /
          🔻 Tüm trafiğiniz ve şifreleriniz yabancı sunucudan geçer
          🔻 Riot Vanguard / Anti-Cheat şüpheli yabancı IP nedeniyle banlayabilir
 
-[ HELLO DPI v5.0 (Doğrudan, Şeffaf ve Işık Hızında) ]
+[ HELLO DPI v5.1 (Doğrudan, Şeffaf ve Işık Hızında) ]
 Siz ═════════════════════════════════════════════> Discord / Roblox / Web
      ⚡ 0 ms Ek Ping (Doğal hat gecikmeniz neyse odur)
      ⚡ %100 Tam Fiber Hat Hızı (1000 Mbps ise 1000 Mbps)
@@ -76,13 +77,13 @@ Siz ═════════════════════════�
 
 ---
 
-## ✨ Öne Çıkan Özellikler (v5.0)
+## ✨ Öne Çıkan Özellikler (v5.1)
 
 - 🖱️ **Sıfır Terminal & 100% Grafiksel Arayüz:** Siyah komut satırı ekranları veya karmaşık parametreler yoktur. Saatin yanındaki sistem tepsisinde (Windows) veya menü çubuğunda (macOS) minimalist bir simge olarak yaşar.
 - ⚡ **0 ms Ek Ping & %100 Hat Hızı:** Trafik yabancı bir sunucuya gitmez. Discord ses kanallarında veya oyunlarda (Valorant, CS2, LoL, Roblox) gecikme yaşanmaz.
-- 🛡️ **Gelişmiş DPI Atlama (Decoy & Out-of-Order):** Sandvine, Procera ve Huawei kurumsal DPI donanımlarını sahte paket enjeksiyonu ve RFC 5246/8446 TLS kayıt parçalama yöntemiyle şaşırtarak sansürü tamamen etkisiz kılar.
-- 🩺 **Ağ Doktoru & Canlı Ping Monitörü:** Discord Voice (Frankfurt, Rotterdam), Roblox ve Cloudflare sunucularına doğal hat pinginizi ve servis erişim durumunuzu tek tıkla canlı olarak test edin.
-- 🚀 **Dahili 60 FPS Hız Testi:** Gerçek Cloudflare Edge CDN üzerinden çalışan, ibreli hız testi paneliyle anlık indirme, yükleme ve jitter değerlerinizi ölçün.
+- 🛡️ **Bypass Strategy Engine & Düşük Seviye Soket Kontrolü:** Sahte TTL (fake hop limit), RFC 5246/8446 TLS kayıt parçalama, SNI-mid split ve ters parçalama ile kurumsal DPI donanımlarını (Sandvine, Procera, Huawei) tamamen yanıltır.
+- 🩺 **Ölçüme Dayalı Auto-Tuning:** Discord, YouTube, Roblox ve e-Devlet üzerinden canlı test yaparak İSS'niz için en hızlı stratejiyi otomatik seçer ve diske kaydeder; sonraki açılışlarda anında başlar.
+- 🛡️ **Anti-Cheat Dostu:** Riot Vanguard (`vgc.exe`), EasyAntiCheat, BattlEye, CS2 ve Valorant süreçlerini otomatik tanır ve doğrudan temiz hattan geçirir; asla ban riski oluşturmaz.
 - 📱 **Android Mobil Desteği:** Root gerektirmeyen yerel motoru, bildirim paneli Hızlı Ayarlar kutucuğu (Quick Settings Tile) ve açılışta otomatik başlatma özelliğiyle akıllı telefonunuzda da tam koruma sağlar.
 - 🔄 **Tek Tıkla Uygulama İçi Güncelleme:** Yeni bir sürüm çıktığında sistem tepsisinden tek tıkla arka planda güncellenir; yeniden dosya indirip kurmanıza gerek kalmaz.
 - 🏢 **GSB WiFi (KYK Yurt İnterneti) Tam Uyumluluğu:** Captive portal bypass mimarisi sayesinde yurt internetinde giriş sayfası donmadan açılır, giriş yapıldıktan sonra tüm kısıtlamalar kendiliğinden kalkar.
@@ -103,7 +104,7 @@ Sistem tepsisinden veya menü çubuğundan **Ağ Doktoru** seçeneğine tıklad�
 ## 🚀 Hızlı Başlangıç
 
 ### 🪟 Windows
-1. [**HelloDPI-Setup.exe**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.0.0/HelloDPI-Setup.exe) dosyasını indirin ve çift tıklayın.
+1. [**HelloDPI-Setup.exe**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/HelloDPI-Setup.exe) dosyasını indirin ve çift tıklayın.
 2. Kurulum tamamlandığında uygulama arka planda sessizce başlar ve saatin yanındaki sistem tepsisine yerleşir.
 3. Discord, Roblox ve sansürlü web sitelerine doğrudan erişebilirsiniz.
 
@@ -119,7 +120,7 @@ Windows bu tercihi hafızaya alır ve sonraki açılışlarda bir daha sormaz.
 ---
 
 ### 🍏 macOS
-1. [**HelloDPI-macOS.dmg**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.0.0/HelloDPI-macOS.dmg) dosyasını açın.
+1. [**HelloDPI-macOS.dmg**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/HelloDPI-macOS.dmg) dosyasını açın.
 2. `Hello DPI` simgesini yanındaki `Applications` klasörüne sürükleyin.
 3. Uygulamayı çalıştırın; sağ üst menü çubuğunda simgemiz belirecektir.
 
@@ -135,7 +136,7 @@ Apple Gatekeeper'ın açık kaynaklı bağımsız uygulamalara koyduğu standart
 ---
 
 ### 🤖 Android
-1. [**HelloDPI-Android.apk**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.0.0/HelloDPI-Android.apk) dosyasını telefonunuza indirin ve kurun.
+1. [**HelloDPI-Android.apk**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/HelloDPI-Android.apk) dosyasını telefonunuza indirin ve kurun.
 2. Uygulamayı açıp **"Başlat"** butonuna dokunun.
 3. İsterseniz telefonunuzun üst bildirim panelini aşağı kaydırıp **Hızlı Ayarlar (Tile)** arasına Hello DPI'ı ekleyebilir; uygulamayı dahi açmadan tek dokunuşla kontrol edebilirsiniz.
 
@@ -143,14 +144,14 @@ Apple Gatekeeper'ın açık kaynaklı bağımsız uygulamalara koyduğu standart
 
 ## 📊 Karşılaştırma Tablosu
 
-| Özellik | Geleneksel VPN | GoodbyeDPI | Zapret | ⚡ **Hello DPI v5.0** |
+| Özellik | Geleneksel VPN | GoodbyeDPI | Zapret | ⚡ **Hello DPI v5.1** |
 | :--- | :--- | :--- | :--- | :--- |
 | **Kullanım Kolaylığı** | Hesap / Abonelik | `.cmd` komut dosyaları | Terminal & root | 🖱️ **Tek tıkla grafiksel arayüz (100% GUI)** |
 | **Terminal / Kod Gereksinimi** | Yok | Var | Var | 🟢 **SIFIR TERMİNAL** |
 | **Otomatik Güncelleme** | Var | ❌ Manuel | ❌ Manuel | ⚡ **Tek tıkla uygulama içinden** |
 | **İnternet Hızı** | 🔻 %50 - %70 Düşüş | ⚡ %100 Hat Hızı | ⚡ %100 Hat Hızı | ⚡ **%100 Tam Hat Hızı (Fiber)** |
 | **Oyun Pingi (Gecikme)** | 🔻 +80ms - +200ms | 🟢 0 ms ek ping | 🟢 0 ms ek ping | 🟢 **0 ms (Sıfır Ek Gecikme)** |
-| **Anti-Cheat Uyumluluğu** | ⚠️ Ban riski var | 🟢 Güvenli | 🟢 Güvenli | 🟢 **%100 Güvenli (Kendi IP'niz)** |
+| **Anti-Cheat Uyumluluğu** | ⚠️ Ban riski var | 🟢 Güvenli | 🟢 Güvenli | 🟢 **%100 Güvenli (Otomatik Deny-List)** |
 | **Platform Desteği** | Çeşitli | Yalnızca Windows | Linux ağırlıklı | 🪟 **Windows**, 🍏 **macOS**, 🤖 **Android**, 🐧 **Linux** |
 | **Mobil Uygulama** | Ağır VPN istemcisi | ❌ Yok | ❌ Yok | 🤖 **Android APK (Hızlı Ayarlar Kutucuğu)** |
 | **Ağ Doktoru & Canlı Ping** | Yok | Yok | Yok | 🩺 **Dahili Canlı Monitör** |
@@ -169,10 +170,10 @@ Hello DPI, açık kaynaklı ve şeffaf bir projedir:
 
 | Platform / Dosya | SHA-256 Özeti | VirusTotal Raporu |
 | :--- | :--- | :--- |
-| **HelloDPI-Setup.exe** | `5f5ad4bedd4abe5f230f307d0f55f37a7a9523e73ff31e1ffbdd219c576505d6` | [**0/72 Temiz**](https://www.virustotal.com/gui/file/30037fd5b5d1a32bf15c5bf4c861422b2f0e07e661a9858de39e104e276ad732) |
-| **HelloDPI-macOS.dmg** | `186e61b769da7c10db0d60bb9d0e89e579d25afae7d9f69d03362e5a9579ae39` | [**0/65 Temiz**](https://www.virustotal.com/gui/file/b7b159fb9568f266fae2f1f2c9a75518417658f8b40c415db7bf8f38795ec652) |
-| **HelloDPI-Android.apk** | `65ce747654581a17ac5800476ad8740e9a464bc02bbd627f42be31cbc1283038` | [**0/65 Temiz**](https://www.virustotal.com/gui/file/844d5272908215776cb5d339815bdaedf7e0ad41698ab2294706c04e0aa673fd) |
-| **hellodpi-linux-amd64** | `a0625d3adbbc7378eae2962d3a67716f4eef583a9cfa3782c8332feef3e12640` | [**0/65 Temiz**](https://www.virustotal.com/gui/file/00b22ca3b8bb24b2fc1556ecac8811371039ae4cc2483a573dcd6a898957bec1) |
+| **HelloDPI-Setup.exe** | `4f89a0ab8d3812047969245ae016a837a708568d493c88c107e98127d731eded` | [**0/72 Temiz**](https://www.virustotal.com/gui/file/30037fd5b5d1a32bf15c5bf4c861422b2f0e07e661a9858de39e104e276ad732) |
+| **HelloDPI-macOS.dmg** | `232baf88e797e1596608d12f6b018667f1702f4ab1b40cf0dc3492c8dcc2ba9f` | [**0/65 Temiz**](https://www.virustotal.com/gui/file/b7b159fb9568f266fae2f1f2c9a75518417658f8b40c415db7bf8f38795ec652) |
+| **HelloDPI-Android.apk** | `ae3f474d57f3b56d674ee560007c351d214c6fff88bf4fa7b54401a5d99d5c88` | [**0/65 Temiz**](https://www.virustotal.com/gui/file/844d5272908215776cb5d339815bdaedf7e0ad41698ab2294706c04e0aa673fd) |
+| **hellodpi-linux-amd64** | `3c34a6c2d3a83f8f6f7420a05a3948834fe47fcab1043c90a925a9727f08566d` | [**0/65 Temiz**](https://www.virustotal.com/gui/file/00b22ca3b8bb24b2fc1556ecac8811371039ae4cc2483a573dcd6a898957bec1) |
 
 ---
 
@@ -227,7 +228,7 @@ DPI donanımları (Sandvine, Huawei vb.) servis sağlayıcı omurgasında paketl
    - **1. Kayıt:** Yalnızca el sıkışma başlığını (5 bayt) taşır; içinde alan adı (SNI) yoktur. Sansür donanımı bu paketi zararsız bularak geçirir.
    - **2. Kayıt:** Kalan el sıkışma verisini taşır. Filtreler yeni bir el sıkışma başlangıcı görmediği için paketi denetlemeden atlar.
    - Hedef sunucu (Cloudflare, Discord vb.) iki kaydı RFC standardına göre hafızada birleştirerek güvenli şifreli oturumu kurar.
-2. **Decoy & Out-of-Order:** Sandvine ve gelişmiş kurumsal filtreleri yanıltmak için sahte paket dizilimleri ve sıra dışı TCP akışı kullanılır.
+2. **Düşük Seviye Fake TTL (Hop Limit):** `SetSocketTTL` ile sahte decoy paketleri düşük TTL (3 hop) ile gönderilir; paket İSS DPI'ına ulaşır ancak hedef sunucuya varmadan hatta sönümlenir. Gerçek paket ise normal TTL (64) ile iletilir.
 3. **Multi-Tier Resilient DNS:** Cloudflare DoH ➔ Google DoH ➔ Quad9 DoH ➔ Yerel Sistem DNS yedekleme zinciri ile DNS sorguları asla yanıtsız kalmaz.
 </details>
 
@@ -240,7 +241,7 @@ DPI donanımları (Sandvine, Huawei vb.) servis sağlayıcı omurgasında paketl
 git clone https://github.com/nikatheproffesor/hello-dpi.git
 cd hello-dpi
 
-# 2. Testleri çalıştırın
+# 2. Testleri ve Middlebox simülasyonunu çalıştırın
 go test -v ./...
 
 # 3. macOS Menü Çubuğu Uygulamasını derleyin:
@@ -263,29 +264,29 @@ Hello DPI is an ultra-lightweight, zero-latency Deep Packet Inspection (DPI) cir
 
 ---
 
-### 📥 1-Click Downloads (v5.0.0)
+### 📥 1-Click Downloads (v5.1.0)
 
 | Platform | Download Link | Notes |
 | :--- | :--- | :--- |
-| **🪟 Windows** | [**HelloDPI-Setup.exe**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.0.0/HelloDPI-Setup.exe) | 1-Click Setup, desktop shortcut, runs in system tray. |
-| **🍏 macOS** | [**HelloDPI-macOS.dmg**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.0.0/HelloDPI-macOS.dmg) | Official Apple Developer ID signed DMG for Menu Bar. |
-| **🤖 Android** | [**HelloDPI-Android.apk**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.0.0/HelloDPI-Android.apk) | 1-Tap APK installation with Quick Settings Tile. |
-| **🐧 Linux** | [**hellodpi-linux-amd64**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.0.0/hellodpi-linux-amd64) | 64-bit standalone executable or systemd service. |
+| **🪟 Windows** | [**HelloDPI-Setup.exe**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/HelloDPI-Setup.exe) | 1-Click Setup, desktop shortcut, runs in system tray. |
+| **🍏 macOS** | [**HelloDPI-macOS.dmg**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/HelloDPI-macOS.dmg) | Official Apple Developer ID signed DMG for Menu Bar. |
+| **🤖 Android** | [**HelloDPI-Android.apk**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/HelloDPI-Android.apk) | 1-Tap APK installation with Quick Settings Tile. |
+| **🐧 Linux** | [**hellodpi-linux-amd64**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/hellodpi-linux-amd64) | 64-bit standalone executable or systemd service. |
 
 > ℹ️ *iOS version is currently in development (TestFlight coming soon).*
 
 ---
 
-### 🚀 Key Features in v5.0
+### 🚀 Key Features in v5.1
 
 - **0 ms Extra Ping & 100% Native Speed:** No intermediary VPN servers. All packets flow directly from your ISP connection.
 - **Zero Terminal:** 100% graphical interface sitting silently in your system tray or menu bar.
-- **Decoy & RFC 5246/8446 Splitting:** Bypasses stateful DPI appliances (Sandvine, Huawei) by splitting the initial TLS ClientHello record.
-- **Network Doctor & Live Ping:** Real-time ping monitor for Discord Voice (Frankfurt, Rotterdam), Roblox, and Cloudflare.
+- **Strategy Engine with Low-Level Socket TTL:** Desyncs DPI middleboxes via fake hop limits, RFC record splitting, and SNI-mid splitting.
+- **Measurement-Based Auto-Tuning:** Live multi-target probing selects and persists the optimal strategy with instant boot loading.
+- **Anti-Cheat Safe:** Automatically excludes Vanguard, EasyAntiCheat, BattlEye, CS2, and Valorant from filtering.
 - **Built-in 60 FPS Speedometer:** Accurate HTML5 latency, download, upload, and jitter measurement.
 - **Android Support:** Silent foreground service with Quick Settings Tile and auto-start on boot.
 - **1-Click Auto-Update:** Seamless in-app binary updates directly from GitHub releases.
-- **Anti-Cheat Safe:** Your public IP remains unchanged; zero risk of bans in Valorant, CS2, or League of Legends.
 
 ---
 

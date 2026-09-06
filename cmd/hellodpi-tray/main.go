@@ -37,19 +37,31 @@ func main() {
 		_ = sysproxy.ClearSystemProxy()
 	}()
 
+	// Initialize Auto-Tune probe engine and WebRTC voice optimizer
+	probeEngine := probe.NewEngine()
+	voiceOptimizer := voice.NewOptimizer()
+
+	// Load persisted auto-tune profile from disk for instant zero-wait startup
+	splitMode := dpi.SplitAuto
+	delayMs := 5
+	if tuned := probeEngine.GetLastResult(); tuned != nil && tuned.BestStrategy != "" {
+		splitMode = dpi.SplitMode(tuned.BestStrategy)
+		if tuned.BestDelayMs > 0 {
+			delayMs = tuned.BestDelayMs
+		}
+		log.Printf("[Hello DPI Tray] Loaded persisted tuning profile: strategy=%s, delay=%dms (ISP: %s)", tuned.BestStrategy, delayMs, tuned.ISPName)
+	}
+
 	// Initialize core proxy server
 	cfg := proxy.Config{
 		Addr:        proxyAddr,
-		SplitMode:   dpi.SplitAuto,
-		DelayMs:     5,
+		SplitMode:   splitMode,
+		DelayMs:     delayMs,
 		DoHEndpoint: string(doh.Cloudflare),
 		EnableDoH:   true,
 	}
 	server := proxy.NewServer(cfg)
 
-	// Initialize Auto-Tune probe engine and WebRTC voice optimizer
-	probeEngine := probe.NewEngine()
-	voiceOptimizer := voice.NewOptimizer()
 	doctor.SetCoreEngines(server.Rules, probeEngine, voiceOptimizer, func(mode dpi.SplitMode, splitOffset int, delayMs int) {
 		server.UpdateEngineConfig(mode, splitOffset, delayMs)
 	})
@@ -58,6 +70,19 @@ func main() {
 	go func() {
 		if err := server.Start(); err != nil {
 			log.Printf("[Hello DPI Tray] Proxy server error: %v", err)
+		}
+	}()
+
+	// Periodic background auto-tune re-verification (every 6 hours)
+	go func() {
+		ticker := time.NewTicker(6 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			res := probeEngine.RunProbe()
+			if res.BypassVerified {
+				server.UpdateEngineConfig(dpi.SplitMode(res.BestStrategy), res.BestSplitPos, res.BestDelayMs)
+				log.Printf("[Hello DPI Tray] Periodic auto-tune verified: strategy=%s, rtt=%dms", res.BestStrategy, res.BestLatencyMs)
+			}
 		}
 	}()
 

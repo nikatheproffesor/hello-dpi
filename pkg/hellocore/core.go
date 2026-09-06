@@ -47,17 +47,30 @@ func NewEngine(cfg Config) *Engine {
 		cfg.DoHEndpoint = string(dns.Cloudflare)
 	}
 
+	probeEngine := probe.NewEngine()
+	splitMode := dpi.SplitMode(cfg.SplitMode)
+	delayMs := cfg.DelayMs
+
+	if splitMode == "" || splitMode == dpi.SplitAuto {
+		if tuned := probeEngine.GetLastResult(); tuned != nil && tuned.BestStrategy != "" {
+			splitMode = dpi.SplitMode(tuned.BestStrategy)
+			if tuned.BestDelayMs > 0 {
+				delayMs = tuned.BestDelayMs
+			}
+		}
+	}
+
 	pCfg := proxy.Config{
 		Addr:        cfg.ListenAddr,
-		SplitMode:   dpi.SplitMode(cfg.SplitMode),
-		DelayMs:     cfg.DelayMs,
+		SplitMode:   splitMode,
+		DelayMs:     delayMs,
 		DoHEndpoint: cfg.DoHEndpoint,
 		EnableDoH:   true,
 	}
 
 	return &Engine{
 		server:      proxy.NewServer(pCfg),
-		probeEngine: probe.NewEngine(),
+		probeEngine: probeEngine,
 		voiceOpt:    voice.NewOptimizer(),
 		adapter:     cfg.PlatformAdapter,
 		listenAddr:  cfg.ListenAddr,

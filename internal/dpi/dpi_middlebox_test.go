@@ -1,6 +1,7 @@
 package dpi
 
 import (
+	"encoding/binary"
 	"io"
 	"net"
 	"strings"
@@ -173,11 +174,6 @@ func TestMockDPIMiddlebox_EvasionSuccess(t *testing.T) {
 }
 
 func TestRegression_KnownISPProfiles(t *testing.T) {
-	// Tests known ISP DPI profiles:
-	// Profile 1: Superonline / Turkcell (Strict SNI string filter on first packet)
-	// Profile 2: TTNET / Türk Telekom (Stateful reassembly buffer check)
-	// Profile 3: Vodafone / Mobile (Aggressive keyword matching)
-
 	profiles := []struct {
 		name        string
 		blockedHost string
@@ -218,5 +214,79 @@ func TestRegression_KnownISPProfiles(t *testing.T) {
 				t.Errorf("ISP Profile %s failed to bypass DPI middlebox", p.name)
 			}
 		})
+	}
+}
+
+// Deep Stateful Middlebox: Simulates inspection on TLS Record parsing layer
+func TestStatefulDPIMiddlebox_RecordLayerInspection(t *testing.T) {
+	// A stateful DPI engine that parses the TLS record layer:
+	// If a single TLS record contains the full ClientHello with SNI "discord.com", it blocks!
+	// If the ClientHello is divided across multiple records, Record 1 does not contain SNI,
+	// and Record 2 does not have a Handshake header, causing the record-layer parser to bypass!
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("Listen failed: %v", err)
+	}
+	defer l.Close()
+
+	go func() {
+		conn, err := l.Accept()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+
+		// Read first TLS record header
+		hdr := make([]byte, 5)
+		if _, err := io.ReadFull(conn, hdr); err != nil {
+			return
+		}
+		recLen := binary.BigEndian.Uint16(hdr[3:5])
+		payload := make([]byte, recLen)
+		if _, err := io.ReadFull(conn, payload); err != nil {
+			return
+		}
+
+		// Check if record 1 is a complete ClientHello containing the SNI
+		fullRecord := append(hdr, payload...)
+		if strings.Contains(string(fullRecord), "discord.com") {
+			// Middlebox caught single-record ClientHello -> DROP
+			return
+		}
+
+		// Allowed! Send ServerHello
+		_, _ = conn.Write([]byte{0x16, 0x03, 0x03, 0x00, 0x04, 0x02, 0x00, 0x00, 0x00})
+		// Drain
+		buf := make([]byte, 2048)
+		for {
+			_ = conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+			if _, err := conn.Read(buf); err != nil {
+				break
+			}
+		}
+	}()
+
+	// 1. Send with TLSRecordSplitStrategy
+	raw := makeMockClientHello("discord.com")
+	info := ParsePacket(raw)
+	strat := NewTLSRecordSplitStrategy(5, 2)
+
+	client, err := net.Dial("tcp", l.Addr().String())
+	if err != nil {
+		t.Fatalf("Dial failed: %v", err)
+	}
+	defer client.Close()
+
+	if err := strat.Apply(client, raw, info); err != nil {
+		t.Fatalf("Apply failed: %v", err)
+	}
+
+	reply := make([]byte, 5)
+	_ = client.SetDeadline(time.Now().Add(2 * time.Second))
+	if _, err := io.ReadFull(client, reply); err != nil {
+		t.Fatalf("Expected ServerHello through record-layer DPI, got: %v", err)
+	}
+	if reply[0] != 0x16 {
+		t.Errorf("Expected 0x16, got %x", reply[0])
 	}
 }
