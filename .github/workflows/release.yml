@@ -52,10 +52,17 @@ jobs:
           echo "Building Linux x86_64 Executable..."
           GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/hellodpi-linux-amd64 ./cmd/hellodpi
 
-      - name: Build Android ARM64 Core
+      - name: Build Android APK
         run: |
-          echo "Building Android ARM64 Core Binary..."
-          GOOS=android GOARCH=arm64 go build -ldflags="-s -w" -o bin/hellodpi-android-arm64 ./cmd/hellodpi
+          echo "Building Android ARM64 Core Binary & APK..."
+          mkdir -p mobile/android/app/src/main/jniLibs/arm64-v8a
+          GOOS=android GOARCH=arm64 go build -ldflags="-s -w" -o mobile/android/app/src/main/jniLibs/arm64-v8a/libhellodpi.so ./cmd/hellodpi
+          cp mobile/android/app/src/main/jniLibs/arm64-v8a/libhellodpi.so bin/hellodpi-android-arm64
+          cd mobile/android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+          cd ../..
+          cp mobile/android/app/build/outputs/apk/release/app-release.apk bin/HelloDPI-Android.apk
 
       - name: Verify Release Artifacts
         run: |
@@ -69,6 +76,7 @@ jobs:
             bin/HelloDPI-Setup.exe
             bin/HelloDPI-macOS.dmg
             bin/HelloDPI-macOS.zip
+            bin/HelloDPI-Android.apk
             bin/hellodpi-android-arm64
             bin/hellodpi-linux-amd64
           generate_release_notes: true

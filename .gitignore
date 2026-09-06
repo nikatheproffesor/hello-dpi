@@ -31,3 +31,10 @@ Thumbs.db
 signing.env
 credentials.json
 dmg_tmp/
+
+# Android build outputs
+.gradle/
+**/build/
+local.properties
+*.apk
+

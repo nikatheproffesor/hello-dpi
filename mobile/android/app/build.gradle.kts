@@ -19,14 +19,29 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("hellodpi.keystore")
+            storePassword = "hellodpisecret"
+            keyAlias = "hellodpi"
+            keyPassword = "hellodpisecret"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
+    }
+
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

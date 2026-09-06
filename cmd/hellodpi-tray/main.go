@@ -64,7 +64,7 @@ func main() {
 	// Activate system proxy
 	_ = sysproxy.SetSystemProxy("127.0.0.1", 8080)
 
-	// On Windows, auto-start WinDivert kernel engine in background for games (Roblox)
+	// Auto-start core divert engine in background
 	go func() {
 		_ = divert.Start()
 	}()
@@ -86,6 +86,7 @@ func main() {
 	isActive := true
 	var toggleMu sync.Mutex
 	var toggleItem *systray.MenuItem
+	var kernelItem *systray.MenuItem
 
 	toggleItem = menu.Add("Korumayı Duraklat", func() {
 		toggleMu.Lock()
@@ -99,6 +100,9 @@ func main() {
 			tray.SetTooltip("Hello DPI: Duraklatıldı")
 			statusItem.SetLabel("Hello DPI: Duraklatıldı")
 			toggleItem.SetLabel("Korumayı Başlat")
+			if kernelItem != nil {
+				kernelItem.SetLabel("Çekirdek Motoru: Devre Dışı")
+			}
 			tray.ShowNotification(appTitle, "Koruma geçici olarak duraklatıldı.")
 
 			go func() {
@@ -113,6 +117,9 @@ func main() {
 			tray.SetTooltip("Hello DPI: Aktif (v" + version.Version + ")")
 			statusItem.SetLabel(fmt.Sprintf("Hello DPI: Aktif (v%s)", version.Version))
 			toggleItem.SetLabel("Korumayı Duraklat")
+			if kernelItem != nil {
+				kernelItem.SetLabel("Çekirdek Motoru: Aktif")
+			}
 			tray.ShowNotification(appTitle, "Hello DPI devrede. Discord ve tüm siteler açık.")
 
 			go func() {
@@ -124,23 +131,33 @@ func main() {
 
 	menu.AddSeparator()
 
-	// 3. Kernel Divert Engine (Roblox & Direct Socket Games)
-	var kernelItem *systray.MenuItem
-	kernelItem = menu.Add("Çekirdek Modu (Roblox)", func() {
+	// 3. Kernel Divert Engine
+	kernelItem = menu.Add("Çekirdek Motoru: Aktif", func() {
 		if divert.IsRunning() {
 			_ = divert.Stop()
-			kernelItem.SetLabel("Çekirdek Modu (Roblox)")
-			tray.ShowNotification(appTitle, "Çekirdek Modu durduruldu.")
+			kernelItem.SetLabel("Çekirdek Motoru: Devre Dışı")
+			tray.ShowNotification(appTitle, "Çekirdek Motoru durduruldu.")
 		} else {
 			err := divert.Start()
 			if err != nil {
-				tray.ShowNotification(appTitle, "Çekirdek Modu başlatılamadı: "+err.Error())
+				tray.ShowNotification(appTitle, "Çekirdek Motoru başlatılamadı: "+err.Error())
 			} else {
-				kernelItem.SetLabel("Çekirdek Modu: Aktif (Roblox)")
-				tray.ShowNotification(appTitle, "Çekirdek Modu (WinDivert) devrede. Roblox engelsiz açılacaktır.")
+				kernelItem.SetLabel("Çekirdek Motoru: Aktif")
+				tray.ShowNotification(appTitle, "Çekirdek Motoru devrede.")
 			}
 		}
 	})
+
+	// Ensure kernel item label matches actual running state on startup
+	go func() {
+		_ = divert.Start()
+		time.Sleep(500 * time.Millisecond)
+		if divert.IsRunning() {
+			kernelItem.SetLabel("Çekirdek Motoru: Aktif")
+		} else {
+			kernelItem.SetLabel("Çekirdek Motoru")
+		}
+	}()
 
 	menu.AddSeparator()
 

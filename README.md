@@ -42,7 +42,7 @@ Hiçbir komut satırı, kod veya terminal bilgisine ihtiyacınız yoktur. İşle
 | **🪟 Windows (Taşınabilir Sürüm)** | [**HelloDPI-Windows.exe**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | Kurulum gerektirmez, doğrudan çift tıklayarak çalıştırın (Saatin yanındaki sistem tepsisine yerleşir). |
 | **🍏 macOS (Resmi İmzalı DMG)** | [**HelloDPI-macOS.dmg**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | Apple Developer ID imzalıdır. DMG dosyasını açın, `Hello DPI.app` simgesini Applications klasörüne sürükleyin. |
 | **🍏 macOS (ZIP Arşivi)** | [**HelloDPI-macOS.zip**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | ZIP arşivini açın ve içindeki `Hello DPI.app` uygulamasını çift tıklayarak çalıştırın. |
-| **🤖 Android (ARM64 Motoru)** | [**hellodpi-android-arm64**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | Root istemeyen yerel 64-bit ARM motoru. Android Studio projesi için `mobile/android/` dizinini inceleyin. |
+| **🤖 Android (1-Dokunuş Kurulum APK)** | [**HelloDPI-Android.apk**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | Telefonunuza indirin ve dokunarak kurun. Hızlı Ayarlar (Tile), bildirim çubuğu ve açılışta otomatik başlatma desteklidir. |
 | **🍏 iOS & iPadOS (Network Extension)** | [**mobile/ios/**](mobile/ios) | Apple `NEPacketTunnelProvider` altyapısı ile iPhone ve iPad için tünel projesi. |
 | **🐧 Linux (x86_64)** | [**hellodpi-linux-amd64**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | Bağımsız ikili dosya veya GNOME / KDE Plasma masaüstü tepsisi ile çalışır. |
 
@@ -131,9 +131,11 @@ Hello DPI, **bilgisayarla arası sadece günlük kullanımla sınırlı olan, te
 
 Hello DPI v5.0 ile birlikte sansür atlatma deneyimi akıllı telefonlarınıza ve tabletlerinize taşındı:
 
-- **🤖 Android Kullanıcıları:**
-  - `mobile/android/` dizinindeki açık kaynaklı projeyi Android Studio ile açabilir veya bağımsız `hellodpi-android-arm64` yerel motorunu kullanabilirsiniz.
-  - Root izni gerektirmez; Android'in yerel `VpnService` API'si üzerinden telefonunuzun DNS'ini 1.1.1.1 DoH ile şifreleyerek tüm uygulamalarda Discord sesini ve sansürlü siteleri sıfır ek gecikmeyle açar.
+- **🤖 Android Kullanıcıları (1-Dokunuş Kurulum):**
+  - [**HelloDPI-Android.apk**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) dosyasını telefonunuza indirin ve dokunarak kurun.
+  - **Sessiz Arka Plan & Sıfır Pil Tüketimi:** Geleneksel VPN'ler gibi uzak sunucuya sürekli şifreli veri pompalamaz; cihaz içinde sadece paket başlıklarını parçalayarak şebeke hızınızı (%100 hat hızı) ve pilinizi korur.
+  - **Hızlı Ayarlar (Tile) Desteği:** Telefonunuzun üst bildirim panelini aşağı kaydırıp **Hello DPI** butonunu ekleyebilir; bilgisayarınızdaki sistem tepsisi gibi uygulamayı dahi açmadan tek dokunuşla anında açıp kapatabilirsiniz.
+  - **Açılışta Otomatik Başlatma:** "Cihaz Açıldığında Otomatik Başlat" seçeneğiyle telefonunuz yeniden başladığında kesintisiz ve sessizce korumaya devam eder.
 - **🍏 iOS & iPadOS Kullanıcıları:**
   - `mobile/ios/` dizinindeki SwiftUI projesini Xcode ile açıp iPhone'unuza yükleyebilirsiniz.
   - Apple `NEPacketTunnelProvider` çerçevesi sayesinde arka planda pil tüketmeden doğrudan yerel şeffaf tünel sağlar.
