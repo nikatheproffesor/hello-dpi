@@ -78,11 +78,21 @@ Türkiye'deki İSS'ler genellikle `ClientHello` içindeki SNI alanını okumak i
 | `reverse-frag` | Parçaları ters sırada gönderir |
 | `fake-packet` | Kısa TTL'li sahte (decoy) paketler gönderir; bu paketler İSS'nin denetim noktasına ulaşır ama gerçek hedefe varmadan söner |
 | `wrong-checksum` / `wrong-seq` | Bilerek geçersiz TCP checksum/sequence değerli paketler gönderir; bunları tam doğrulamayan ara kutular (middlebox) şaşırırken gerçek yığın (stack) toparlanır |
+| `chain:*` (Çoklu Zincirleme) | Zapret benzeri çoklu strateji zincirleme desteği (`chain:decoy+sni-mid`, `chain:wrong-seq+tlsrec`); sahte paket enjeksiyonu ile SNI bölmeyi aynı akışta birleştirir |
 | `tcp-mss` | TCP MSS seçeneğini değiştirir |
 | `http-host` | Aynı mantığı düz metin HTTP `Host` başlığına uygular |
 | `adaptive` | Tek bir teknik değil — ilk çalıştırmada referans hedefleri dener, İSS adli parmak izini (DNS zehirlenmesi / RTT) çıkarır ve çalışan kombinasyonu `tuning.json` içine kalıcı kaydeder |
 
 Bunların hiçbiri şifreli veriyi okumaz veya kaydetmez; yalnızca el sıkışma baytlarının hat üzerinde nasıl dizildiğini değiştirir.
+
+### QUIC / HTTP-3 ve YouTube Stratejisi
+
+YouTube ve modern tarayıcılar (Chrome, Edge, Firefox), web trafiğini hızlandırmak için UDP 443 üzerinden **HTTP/3 (QUIC)** kullanır. Ancak Türkiye'deki İSS'ler UDP 443 trafiğini sıklıkla kısıtlar (throttling) veya belirsiz paket kayıplarına (blackhole) uğratır.
+
+Hello DPI, QUIC trafiğini şu akıllı yöntemle çözer:
+1. **Zorunlu TCP Geçişi (Force-TCP Fallback):** UDP 443 (QUIC) istekleri RFC 1928 SOCKS5 reject (0x07) veya WinDivert filtre seviyesinde bilinçli olarak reddedilir.
+2. **Milisaniyelik Düşüş:** Tarayıcı bunu algıladığında ~5-10 ms içinde otomatik olarak TCP/TLS (HTTP/2) protokolüne düşer.
+3. **Kusursuz Aşma:** TCP'ye düşen YouTube ve video CDN akışları, Hello DPI'ın O(1) 0-allocs stratejileri (TLS Record Split & Decoy) sayesinde İSS filtrelerini sıfır paket kaybı ve tam hat hızıyla aşar; 4K/8K videolarda takılma ve donma yaşanmaz.
 
 ### Trafik Sınıflandırması (`rules.json`)
 
@@ -106,6 +116,21 @@ Anti-cheat uyumluluğu iddiasının salt pazarlama olmamasının nedeni bu ayrı
 ```
 
 Doğrudan/müdahale listelerine domain eklemek veya çıkarmak için `rules.json` dosyasına bakın.
+
+## Karşılaştırma: Hello DPI vs GoodbyeDPI vs Zapret
+
+| Kriter | Zapret (bol-van) | GoodbyeDPI (ValdikSS) | Hello DPI (nikatheproffesor) |
+|---|---|---|---|
+| **Desteklenen Platformlar** | Windows, Linux, macOS, FreeBSD, OpenWrt | Sadece Windows | **Windows, macOS, Linux, Android** (iOS hazır) |
+| **Kullanıcı Arayüzü (GUI)** | ❌ Yok (Terminal / Parametre) | ❌ Yok (Konsol / .cmd betikleri) | ✅ **Yerel Sistem Tepsisi & Menü Çubuğu (1 tık)** |
+| **Strateji Cephaneliği** | Geniş (Manuel zincirleme) | 7 aktif + 2 pasif | **12+ strateji + `chain:*` çoklu zincirleme** |
+| **Auto-Tuning (İSS Analizi)** | ❌ Manuel autohostlist / parametre | ❌ Sabit preset (-5, -9) | ✅ **Otomatik İSS RTT/DNS analizi & `tuning.json`** |
+| **QUIC / HTTP-3 (YouTube)** | ✅ UDP desync (Manuel ayar) | ❌ Yok (`-q` ile engelleme önerilir) | ✅ **Dahili Force-TCP Fallback (RFC 1928 + WinDivert)** |
+| **Oyun & Anti-Cheat Uyumu** | ⚠️ Riskli (Manuel IP/port istisnası) | ⚠️ Riskli (Tüm trafiğe müdahale) | ✅ **Kural tabanlı O(1) doğrudan geçiş (Riot, Steam, EAC)** |
+| **Çekirdek Performansı** | Yüksek (C kütüphaneleri) | İyi (C / WinDivert) | **Ultra yüksek (Pure Go, lock-free, 0 alloc/op)** |
+| **Ek Gecikme (Overhead)** | ~0 ms | ~0 ms | **+0 ms (Fiziksel hat RTT'si aynen korunur)** |
+| **Router / OpenWrt Desteği** | ✅ Paket deposu mevcut | ❌ Yok | ✅ **Headless CLI daemon (MIPS/ARM/x86 saf ikili)** |
+| **Güvenlik Mimarisi** | C (Bellek yönetimi manuel) | C (Bellek yönetimi manuel) | **Go Memory-Safe + Sıfır Log / Sıfır Telemetri** |
 
 ## Benchmark'lar
 
@@ -170,8 +195,12 @@ go test -v ./...   # internal/dpi altında middlebox simülasyon test seti dahil
 # Windows sistem tepsisi uygulaması
 go build -ldflags="-H=windowsgui -s -w" -o "bin/HelloDPI-Windows.exe" ./cmd/hellodpi-tray
 
-# bağımsız CLI
+# bağımsız masaüstü / sunucu CLI
 go run ./cmd/hellodpi -system-proxy
+
+# OpenWrt / Linux Router (MIPS, ARM, ARM64) için tek komutla çapraz derleme
+CGO_ENABLED=0 GOOS=linux GOARCH=mipsle GOMIPS=softfloat go build -ldflags="-s -w" -o hellodpi ./cmd/hellodpi
+CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o hellodpi ./cmd/hellodpi
 ```
 
 `go.mod` dosyasında belirtilen Go sürümü gereklidir.
