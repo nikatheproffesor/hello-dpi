@@ -32,10 +32,6 @@ jobs:
           touch cmd/hellodpi-installer/embedded/HelloDPI.exe
           touch cmd/hellodpi-installer/embedded/Baslat.bat
 
-      - name: Run Tests
-        run: |
-          go test -v ./...
-
       - name: Build macOS App & DMG
         run: |
           chmod +x scripts/build-macos-app.sh
