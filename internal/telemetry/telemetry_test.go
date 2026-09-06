@@ -1,6 +1,7 @@
 package telemetry
 
 import (
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -8,7 +9,8 @@ import (
 )
 
 func TestCollector_OptInDefaults(t *testing.T) {
-	c := NewCollector()
+	tmpConfig := filepath.Join(t.TempDir(), "telemetry.json")
+	c := NewCollectorWithConfig(tmpConfig)
 	if c.IsEnabled() {
 		t.Errorf("Telemetry MUST be disabled by default for privacy")
 	}
@@ -25,7 +27,8 @@ func TestCollector_OptInDefaults(t *testing.T) {
 }
 
 func TestCollector_RecordProbe(t *testing.T) {
-	c := NewCollector()
+	tmpConfig := filepath.Join(t.TempDir(), "telemetry.json")
+	c := NewCollectorWithConfig(tmpConfig)
 	c.SetEnabled(true)
 
 	sample := &probe.Result{

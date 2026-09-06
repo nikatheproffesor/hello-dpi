@@ -1,304 +1,178 @@
-<div align="center">
+# Hello DPI
 
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/logo_white.png">
-    <img src="assets/logo.png" width="120" alt="Hello DPI Logo" />
-  </picture>
+Cross-platform DPI circumvention tool with a native GUI (system tray / menu bar / Android Quick Settings tile).
 
-  # Hello DPI
+[![Release](https://img.shields.io/github/v/release/nikatheproffesor/hello-dpi?label=version)](releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20Android-informational)](#downloads)
 
-  **Terminal gerektirmeyen, internet hızınızı ve oyun pinginizi düşürmeyen, tek tıkla çalışan yeni nesil sansür aşma aracı.**
+🇹🇷 [Bu dosyanın Türkçe sürümü](README.tr.md)
 
-  *Next-generation, zero-latency, cross-platform DPI evasion tool with native system tray, mobile Quick Settings & auto-updater.*
-
-  <br />
-
-  [![Release](https://img.shields.io/github/v/release/nikatheproffesor/hello-dpi?color=black&logo=github&label=S%C3%BCr%C3%BCm%20v5.1.0)](https://github.com/nikatheproffesor/hello-dpi/releases/latest)
-  [![VirusTotal](https://img.shields.io/badge/VirusTotal-0%2F72%20Temiz-brightgreen?logo=virustotal)](https://www.virustotal.com/gui/file/30037fd5b5d1a32bf15c5bf4c861422b2f0e07e661a9858de39e104e276ad732)
-  [![Apple Signed](https://img.shields.io/badge/Apple%20Signed-Developer%20ID-black?logo=apple)](https://github.com/nikatheproffesor/hello-dpi/releases/latest)
-  [![Ping](https://img.shields.io/badge/Ping-0%20ms%20Ek%20Gecikme-black.svg)](#-neden-vpn-değil)
-  [![Hız](https://img.shields.io/badge/H%C4%B1z-%25100%20Hat%20H%C4%B1z%C4%B1-black.svg)](#-neden-vpn-değil)
-  [![Lisans](https://img.shields.io/badge/Lisans-MIT-black.svg)](LICENSE)
-
-  <br />
-
-  [📥 Hemen İndir](#-hemen-indir-v510) • [⚡ Neden VPN Değil?](#-neden-vpn-değil) • [✨ Özellikler](#-öne-çıkan-özellikler-v51) • [🩺 Ağ Doktoru](#-ağ-doktoru-ve-canlı-ping-monitörü) • [📊 Karşılaştırma](#-karşılaştırma-tablosu) • [❓ SSS](#-sıkça-sorulan-sorular) • [🇬🇧 English Guide](#-english-guide)
-
-</div>
+[Downloads](#downloads) • [How it works](#how-it-works) • [Configuration](#configuration) • [Benchmarks](#benchmarks) • [Building from source](#building-from-source) • [FAQ](#faq) • [Security](#security)
 
 ---
 
-## 📥 Hemen İndir (v5.1.0)
+## Overview
 
-Hiçbir terminal, kod veya karmaşık ayar gerektirmez. İşletim sisteminize uygun dosyayı indirip doğrudan çalıştırabilirsiniz:
+Hello DPI bypasses ISP-level DPI (Deep Packet Inspection) censorship by manipulating the outgoing TLS handshake at the socket level, instead of tunneling traffic through a remote VPN server. Your connection still goes directly to its destination — Hello DPI only changes *how* the initial handshake is transmitted so that DPI middleboxes fail to classify it as the blocked service.
 
-| Platform | İndirme Bağlantısı | Açıklama |
-| :--- | :--- | :--- |
-| **🪟 Windows** | [**HelloDPI-Setup.exe**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/HelloDPI-Setup.exe) | **1-Tık Kurucu (Önerilen).** Masaüstü kısayolu oluşturur, sistem tepsisine yerleşir ve arka planda sessizce çalışır. |
-| **🍏 macOS** | [**HelloDPI-macOS.dmg**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/HelloDPI-macOS.dmg) | **Resmi Apple İmzalı DMG.** Applications klasörüne sürükleyin, menü çubuğundan tek tıkla kontrol edin. |
-| **🤖 Android** | [**HelloDPI-Android.apk**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/HelloDPI-Android.apk) | **1-Dokunuş Kurulum.** Bildirim paneli Hızlı Ayarlar kutucuğu (Quick Settings Tile), sessiz arka plan servisi. |
-| **🐧 Linux** | [**hellodpi-linux-amd64**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/hellodpi-linux-amd64) | **64-bit Bağımsız İkili.** GNOME / KDE masaüstü tepsisi veya bağımsız komut satırı servisi. |
+Practical implications of that design:
+- No third-party server sits between you and the destination, so your public IP doesn't change.
+- Overhead is limited to the handshake stage — bulk data transfer afterward is unmodified.
+- It does not decrypt or inspect your traffic, and installs no root/CA certificate.
 
-> ℹ️ *iOS sürümü şu anda geliştirme aşamasındadır (TestFlight sürümü yakında duyurulacaktır).*
+This is a young, single-maintainer project (not independently audited). The claims in this README are grounded in the current source code and real measurements — see [Benchmarks](#benchmarks) for verified metrics and how to generate numbers on your own connection.
 
-<details>
-<summary><b>📦 Gelişmiş & Alternatif Paketler</b></summary>
+## Downloads
 
-- **macOS ZIP Paketi:** [HelloDPI-macOS.zip](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/HelloDPI-macOS.zip) (DMG açmak istemeyenler için doğrudan uygulama arşivi)
-- **Windows Bağımsız İkili:** [HelloDPI-Windows.exe](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/HelloDPI-Windows.exe) (Kurulumsuz doğrudan taşınabilir sürüm)
-- **Android ARM64 CLI:** [hellodpi-android-arm64](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/hellodpi-android-arm64) (Termux / kök kullanıcıları için bağımsız çekirdek)
-- **Tüm Dosyalar ve Değişiklik Günlüğü:** [GitHub Releases](https://github.com/nikatheproffesor/hello-dpi/releases)
+| Platform | File | Notes |
+|---|---|---|
+| Windows | [HelloDPI-Setup.exe](releases/latest) | Installer, runs from system tray |
+| Windows (portable) | [HelloDPI-Windows.exe](releases/latest) | No installation required |
+| macOS | [HelloDPI-macOS.dmg](releases/latest) | Signed with a Developer ID; `.zip` also available |
+| Linux | [hellodpi-linux-amd64](releases/latest) | Standalone binary, usable as a systemd service |
+| Android | [HelloDPI-Android.apk](releases/latest) | Includes a Quick Settings tile |
 
-</details>
+iOS support is in development.
 
----
+### SmartScreen / Gatekeeper warnings
 
-## ⚡ Neden VPN Değil?
+As a small independent project, Hello DPI isn't yet recognized by Windows SmartScreen's reputation system, and macOS Gatekeeper may warn on first launch. This is normal for new open-source binaries. Verify the release checksum first if you want to be careful (see [Security](#security)).
 
-Geleneksel VPN'ler tüm internet trafiğinizi yurt dışındaki (Almanya, Hollanda vb.) uzak sunuculara yönlendirir. Bu durum pinginizi 100-200 ms artırır, hat hızınızı yarı yarıya düşürür ve anti-cheat sistemlerinde (Riot Vanguard, BattlEye) hesap banlanma riski oluşturur.
+- **Windows:** "More info" → "Run anyway".
+- **macOS:** System Settings → Privacy & Security → "Open Anyway".
 
-**Hello DPI bir VPN sunucusu değildir.** Trafiğinizi doğrudan kendi ev internetinizden hedefe iletir; yalnızca bağlantı kurulurken hedefe giden ilk paketi (TLS ClientHello) akıllıca parçalayarak servis sağlayıcınızın sansür filtrelerini (DPI) etkisiz hale getirir.
+## How it works
 
-```
-[ GELENEKSEL VPN (Yavaş, Gecikmeli ve Güvensiz) ]
-Siz ───> [ Hollanda / Almanya VPN Sunucusu ] ───> Discord / Roblox / Web
-         🔻 %50 - %70 Hız Kaybı
-         🔻 +80ms - +200ms Ek Ping Gecikmesi
-         🔻 Tüm trafiğiniz ve şifreleriniz yabancı sunucudan geçer
-         🔻 Riot Vanguard / Anti-Cheat şüpheli yabancı IP nedeniyle banlayabilir
+ISPs typically perform stateful TCP/TLS reassembly to read the SNI field in a `ClientHello` and block on it. Hello DPI's `internal/dpi` package implements a pluggable strategy engine (`BypassStrategy` interface) around that assumption, currently shipping these techniques:
 
-[ HELLO DPI v5.1 (Doğrudan, Şeffaf ve Işık Hızında) ]
-Siz ═════════════════════════════════════════════> Discord / Roblox / Web
-     ⚡ 0 ms Ek Ping (Doğal hat gecikmeniz neyse odur)
-     ⚡ %100 Tam Fiber Hat Hızı (1000 Mbps ise 1000 Mbps)
-     ⚡ Kendi Yerel IP Adresiniz (Anti-cheat dostu, sıfır ban riski)
-     ⚡ Sıfır Terminal (Tek tıkla arka planda sessizce çalışır)
-```
+| Strategy | Idea |
+|---|---|
+| `tlsrec` (TLS record split) | Splits the `ClientHello` into two valid TLS records per RFC 5246/8446 — the first carries no SNI, so naive DPI passes it, and the destination reassembles both per spec |
+| `sni-mid` | Splits specifically inside the SNI field |
+| `first-byte` | Sends the handshake's first byte separately from the rest |
+| `chunked` | Breaks the payload into small (~20–50 byte) TCP segments |
+| `out-of-order` | Sends segments in a different order than the destination expects, relying on TCP reassembly |
+| `reverse-frag` | Sends fragments in reverse |
+| `fake-packet` | Sends decoy packets with a short TTL so they reach the ISP's inspection point but expire before the real destination |
+| `wrong-checksum` / `wrong-seq` | Sends packets with deliberately invalid TCP checksum/sequence so middleboxes that don't fully validate them get confused while the real stack recovers |
+| `tcp-mss` | Manipulates the TCP MSS option via socket options |
+| `http-host` | Applies equivalent tricks to the plaintext HTTP `Host` header |
+| `adaptive` | Not a single technique — probes reference targets on startup, detects ISP forensic indicators (DNS poisoning / RTT), and persists the optimal group configuration in `tuning.json` |
 
----
+None of this reads or logs the encrypted payload; it only changes how the handshake bytes are laid out on the wire.
 
-## ✨ Öne Çıkan Özellikler (v5.1)
+### Traffic classification (`rules.json`)
 
-- 🖱️ **Sıfır Terminal & 100% Grafiksel Arayüz:** Siyah komut satırı ekranları veya karmaşık parametreler yoktur. Saatin yanındaki sistem tepsisinde (Windows) veya menü çubuğunda (macOS) minimalist bir simge olarak yaşar.
-- ⚡ **0 ms Ek Ping & %100 Hat Hızı:** Trafik yabancı bir sunucuya gitmez. Discord ses kanallarında veya oyunlarda (Valorant, CS2, LoL, Roblox) gecikme yaşanmaz.
-- 🛡️ **Bypass Strategy Engine & Düşük Seviye Soket Kontrolü:** Sahte TTL (fake hop limit), RFC 5246/8446 TLS kayıt parçalama, SNI-mid split ve ters parçalama ile kurumsal DPI donanımlarını (Sandvine, Procera, Huawei) tamamen yanıltır.
-- 🩺 **Ölçüme Dayalı Auto-Tuning:** Discord, YouTube, Roblox ve e-Devlet üzerinden canlı test yaparak İSS'niz için en hızlı stratejiyi otomatik seçer ve diske kaydeder; sonraki açılışlarda anında başlar.
-- 🛡️ **Anti-Cheat Dostu:** Riot Vanguard (`vgc.exe`), EasyAntiCheat, BattlEye, CS2 ve Valorant süreçlerini otomatik tanır ve doğrudan temiz hattan geçirir; asla ban riski oluşturmaz.
-- 📱 **Android Mobil Desteği:** Root gerektirmeyen yerel motoru, bildirim paneli Hızlı Ayarlar kutucuğu (Quick Settings Tile) ve açılışta otomatik başlatma özelliğiyle akıllı telefonunuzda da tam koruma sağlar.
-- 🔄 **Tek Tıkla Uygulama İçi Güncelleme:** Yeni bir sürüm çıktığında sistem tepsisinden tek tıkla arka planda güncellenir; yeniden dosya indirip kurmanıza gerek kalmaz.
-- 🏢 **GSB WiFi (KYK Yurt İnterneti) Tam Uyumluluğu:** Captive portal bypass mimarisi sayesinde yurt internetinde giriş sayfası donmadan açılır, giriş yapıldıktan sonra tüm kısıtlamalar kendiliğinden kalkar.
-- 🔒 **Sıfır Risk & %100 Güvenli:** Bilgisayarınıza kök sertifika (MITM CA) yüklemez. Şifreli HTTPS trafiğinizi okuyamaz ve kaydedemez. Dünyanın önde gelen 70+ antivirüs motorunda **0/72 Temiz** olarak doğrulanmıştır.
+Hello DPI ships a smart rule engine separating traffic into targeted groups:
+- **Direct (safe)** — banking, government portals (e-Devlet, GİB, MEB, SGK, etc.), local networks (GSB / KYK dorms), and known anti-cheat/launcher domains (Steam, Riot, Epic, EA, Battle.net) are passed through untouched, deliberately excluded from any handshake manipulation.
+- **Intercepted** — domains known to be throttled or blocked (Discord, Roblox, YouTube, etc.) get their domain group's tuned desync strategy applied.
 
----
+This split is why the anti-cheat compatibility claim is more than marketing: Vanguard (`vgc.exe`), EasyAntiCheat, BattlEye, CS2, Valorant, and FACEIT traffic is never touched by the evasion logic in the first place; packets flow natively through the OS networking stack.
 
-## 🩺 Ağ Doktoru ve Canlı Ping Monitörü
+### Live diagnostics
 
-Sistem tepsisinden veya menü çubuğundan **Ağ Doktoru** seçeneğine tıkladığınızda açılan kontrol panelinde:
+`internal/doctor` measures live TCP/TLS handshake RTT to a set of reference targets, and `internal/speedtest` runs a real download/upload test against Cloudflare's edge (with a fallback CDN) rather than a loopback test — so the numbers shown in the app's "Network Doctor" panel reflect your actual connection, not a canned figure.
 
-- **Canlı Gecikme Ölçümü:** Discord Voice Avrupa sunucuları (Frankfurt, Rotterdam), Roblox ve Cloudflare üzerindeki ping değerlerinizi milisaniye cinsinden canlı izleyin.
-- **Tek Tıkla Ağ Onarımı:** Zehirlenmiş DNS önbelleğini temizler, proxy yönlendirmelerini doğrular ve olası bağlantı takılmalarını otomatik çözer.
-- **0 ms VPN Avantajı:** VPN servislerinin aksine doğal internet hızınızın ve pinginizin korunduğunu canlı grafiklerle doğrulayın.
+## Configuration
 
----
-
-## 🚀 Hızlı Başlangıç
-
-### 🪟 Windows
-1. [**HelloDPI-Setup.exe**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/HelloDPI-Setup.exe) dosyasını indirin ve çift tıklayın.
-2. Kurulum tamamlandığında uygulama arka planda sessizce başlar ve saatin yanındaki sistem tepsisine yerleşir.
-3. Discord, Roblox ve sansürlü web sitelerine doğrudan erişebilirsiniz.
-
-<details>
-<summary><b>Windows SmartScreen ("Windows kişisel bilgisayarınızı korudu") uyarısı çıkarsa:</b></summary>
-
-Açık kaynaklı yeni bağımsız yazılımlarda Windows standart bir güvenlik uyarısı gösterebilir:
-1. Mavi uyarı kutusundaki **"Ek Bilgi" (More info)** bağlantısına tıklayın.
-2. Beliren **"Yine de Çalıştır" (Run anyway)** butonuna tıklayın.
-Windows bu tercihi hafızaya alır ve sonraki açılışlarda bir daha sormaz.
-</details>
-
----
-
-### 🍏 macOS
-1. [**HelloDPI-macOS.dmg**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/HelloDPI-macOS.dmg) dosyasını açın.
-2. `Hello DPI` simgesini yanındaki `Applications` klasörüne sürükleyin.
-3. Uygulamayı çalıştırın; sağ üst menü çubuğunda simgemiz belirecektir.
-
-<details>
-<summary><b>Mac'te "Uygulama Hasar Görmüş" veya "Doğrulanamadı" uyarısı çıkarsa:</b></summary>
-
-Apple Gatekeeper'ın açık kaynaklı bağımsız uygulamalara koyduğu standart denetimdir:
-1. Ekrana gelen uyarıda **"Vazgeç"** deyin.
-2. **Sistem Ayarları (System Settings) > Gizlilik ve Güvenlik (Privacy & Security)** sekmesini açın.
-3. Sayfanın en altındaki *"Hello DPI engellendi"* uyarısının yanındaki **"Yine de Aç" (Open Anyway)** butonuna tıklayın.
-</details>
-
----
-
-### 🤖 Android
-1. [**HelloDPI-Android.apk**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/HelloDPI-Android.apk) dosyasını telefonunuza indirin ve kurun.
-2. Uygulamayı açıp **"Başlat"** butonuna dokunun.
-3. İsterseniz telefonunuzun üst bildirim panelini aşağı kaydırıp **Hızlı Ayarlar (Tile)** arasına Hello DPI'ı ekleyebilir; uygulamayı dahi açmadan tek dokunuşla kontrol edebilirsiniz.
-
----
-
-## 📊 Karşılaştırma Tablosu
-
-| Özellik | Geleneksel VPN | GoodbyeDPI | Zapret | ⚡ **Hello DPI v5.1** |
-| :--- | :--- | :--- | :--- | :--- |
-| **Kullanım Kolaylığı** | Hesap / Abonelik | `.cmd` komut dosyaları | Terminal & root | 🖱️ **Tek tıkla grafiksel arayüz (100% GUI)** |
-| **Terminal / Kod Gereksinimi** | Yok | Var | Var | 🟢 **SIFIR TERMİNAL** |
-| **Otomatik Güncelleme** | Var | ❌ Manuel | ❌ Manuel | ⚡ **Tek tıkla uygulama içinden** |
-| **İnternet Hızı** | 🔻 %50 - %70 Düşüş | ⚡ %100 Hat Hızı | ⚡ %100 Hat Hızı | ⚡ **%100 Tam Hat Hızı (Fiber)** |
-| **Oyun Pingi (Gecikme)** | 🔻 +80ms - +200ms | 🟢 0 ms ek ping | 🟢 0 ms ek ping | 🟢 **0 ms (Sıfır Ek Gecikme)** |
-| **Anti-Cheat Uyumluluğu** | ⚠️ Ban riski var | 🟢 Güvenli | 🟢 Güvenli | 🟢 **%100 Güvenli (Otomatik Deny-List)** |
-| **Platform Desteği** | Çeşitli | Yalnızca Windows | Linux ağırlıklı | 🪟 **Windows**, 🍏 **macOS**, 🤖 **Android**, 🐧 **Linux** |
-| **Mobil Uygulama** | Ağır VPN istemcisi | ❌ Yok | ❌ Yok | 🤖 **Android APK (Hızlı Ayarlar Kutucuğu)** |
-| **Ağ Doktoru & Canlı Ping** | Yok | Yok | Yok | 🩺 **Dahili Canlı Monitör** |
-| **Dahili Hız Testi** | Reklamlı / Harici | Yok | Yok | ⚡ **60 FPS Dahili Hız Testi** |
-| **KYK / GSB WiFi Desteği** | Çoğu bloklu | ❌ DNS kilitlenir | ❌ Manuel ayar | 🛡️ **Otomatik Captive Portal Bypass** |
-| **Sistem Kaynak Tüketimi** | Yüksek CPU & RAM | Düşük | Düşük | 🪶 **< 15 MB RAM, %0 CPU** |
-
----
-
-## 🛡️ Güvenlik ve Doğruluk Güvencesi
-
-Hello DPI, açık kaynaklı ve şeffaf bir projedir:
-- Bilgisayarınıza veya telefonunuza **kök güvenlik sertifikası (MITM CA) yüklemez**.
-- HTTPS trafiğinizin şifresini çözemez, özel mesajlarınızı veya bankacılık verilerinizi göremez.
-- Tüm ikili dosyalar her sürümde VirusTotal üzerinde 70+ antivirüs motoruyla taranır:
-
-| Platform / Dosya | SHA-256 Özeti | VirusTotal Raporu |
-| :--- | :--- | :--- |
-| **HelloDPI-Setup.exe** | `4f89a0ab8d3812047969245ae016a837a708568d493c88c107e98127d731eded` | [**0/72 Temiz**](https://www.virustotal.com/gui/file/30037fd5b5d1a32bf15c5bf4c861422b2f0e07e661a9858de39e104e276ad732) |
-| **HelloDPI-macOS.dmg** | `232baf88e797e1596608d12f6b018667f1702f4ab1b40cf0dc3492c8dcc2ba9f` | [**0/65 Temiz**](https://www.virustotal.com/gui/file/b7b159fb9568f266fae2f1f2c9a75518417658f8b40c415db7bf8f38795ec652) |
-| **HelloDPI-Android.apk** | `ae3f474d57f3b56d674ee560007c351d214c6fff88bf4fa7b54401a5d99d5c88` | [**0/65 Temiz**](https://www.virustotal.com/gui/file/844d5272908215776cb5d339815bdaedf7e0ad41698ab2294706c04e0aa673fd) |
-| **hellodpi-linux-amd64** | `3c34a6c2d3a83f8f6f7420a05a3948834fe47fcab1043c90a925a9727f08566d` | [**0/65 Temiz**](https://www.virustotal.com/gui/file/00b22ca3b8bb24b2fc1556ecac8811371039ae4cc2483a573dcd6a898957bec1) |
-
----
-
-## ❓ Sıkça Sorulan Sorular
-
-<details>
-<summary><b>1. Valorant, CS2 veya LoL oynarken ban yer miyim?</b></summary>
-<br>
-
-**Kesinlikle hayır.** VPN servisleri IP adresinizi yabancı ülkelere taşıdığı için Riot Vanguard veya BattlEye gibi hile koruma sistemleri bunu şüpheli konum olarak algılayıp hesabınızı geçici olarak durdurabilir. Hello DPI ise **IP adresinizi asla değiştirmez.** Siz yine kendi ev internetinizin Türk Telekom, Superonline veya TurkNet IP'si ile doğrudan oyuna bağlanırsınız. Pinginiz milisaniye dahi artmaz.
-</details>
-
-<details>
-<summary><b>2. Watch Together veya video senkronizasyon odaları çalışıyor mu?</b></summary>
-<br>
-
-**Evet.** Hello DPI'ın `bufferedConn` mimarisi sayesinde Watch Together (w2g.tv), Kosmi ve benzeri tüm WebSockets (`wss://`) ve HTTP/2 akışları tek bir baytı kaybolmadan tam hat hızında çalışır.
-</details>
-
-<details>
-<summary><b>3. KYK (GSB WiFi) yurt internetinde çalışır mı?</b></summary>
-<br>
-
-**Evet.** KYK yurtlarında internete çıkabilmek için önce `wifi.gsb.gov.tr` portalından giriş yapılması gerekir. Hello DPI bu adresleri otomatik tanıyarak doğrudan yerel ağa yönlendirir. Giriş sayfanız takılmadan açılır; giriş yapıldıktan sonra ise tüm sansürsüz internet koruması kendiliğinden devreye girer.
-</details>
-
-<details>
-<summary><b>4. Discord masaüstü uygulamasında ses kanalları açılmıyor, ne yapmalıyım?</b></summary>
-<br>
-
-Discord önceden arka planda açıksa eski engelli oturumu önbellekte tutmuş olabilir:
-1. Discord uygulamasını tamamen kapatın (Mac'te `Cmd + Q`, Windows'ta Görev Yöneticisi veya sistem tepsisinden çıkış).
-2. Hello DPI'ın çalıştığından emin olun.
-3. Discord'u tekrar açın; ses kanallarına gecikmesiz bağlandığınızı göreceksiniz.
-</details>
-
-<details>
-<summary><b>5. Türkiye'de bu programı kullanmak yasal mıdır?</b></summary>
-<br>
-
-**Evet, kişisel kullanım tamamen yasaldır.** 5651 Sayılı Kanun kapsamında vatandaşların DNS, VPN veya DPI manipülasyonu araçları kullanarak internete erişmesi suç teşkil etmez. Hukuken suç olan erişim yöntemi değil; internet üzerinde işlenebilecek yasa dışı eylemlerdir. Günlük internet, oyun ve Discord iletişiminizde hiçbir yasal sakınca bulunmamaktadır.
-</details>
-
-<details>
-<summary><b>🛠️ Meraklısına Teknik Mimari (RFC 5246/8446)</b></summary>
-<br>
-
-DPI donanımları (Sandvine, Huawei vb.) servis sağlayıcı omurgasında paketleri inceler. Türkiye'deki İSS'ler çoğunlukla **stateful TCP reassembly** uygular. Hello DPI, **RFC 5246 (TLS 1.2)** ve **RFC 8446 (TLS 1.3)** standartlarının şu açık protokol kuralını uygular:
-> *"Handshake messages MAY be coalesced into a single TLSPlaintext record, or divided among several records."*
-
-1. **TLS Record Layer Splitting:** Gelen `ClientHello` paketi iki geçerli bağımsız TLS kaydına ayrıştırılır:
-   - **1. Kayıt:** Yalnızca el sıkışma başlığını (5 bayt) taşır; içinde alan adı (SNI) yoktur. Sansür donanımı bu paketi zararsız bularak geçirir.
-   - **2. Kayıt:** Kalan el sıkışma verisini taşır. Filtreler yeni bir el sıkışma başlangıcı görmediği için paketi denetlemeden atlar.
-   - Hedef sunucu (Cloudflare, Discord vb.) iki kaydı RFC standardına göre hafızada birleştirerek güvenli şifreli oturumu kurar.
-2. **Düşük Seviye Fake TTL (Hop Limit):** `SetSocketTTL` ile sahte decoy paketleri düşük TTL (3 hop) ile gönderilir; paket İSS DPI'ına ulaşır ancak hedef sunucuya varmadan hatta sönümlenir. Gerçek paket ise normal TTL (64) ile iletilir.
-3. **Multi-Tier Resilient DNS:** Cloudflare DoH ➔ Google DoH ➔ Quad9 DoH ➔ Yerel Sistem DNS yedekleme zinciri ile DNS sorguları asla yanıtsız kalmaz.
-</details>
-
----
-
-## 💻 Geliştiriciler İçin (Kaynak Koddan Derleme)
+Most users won't need to touch anything — the adaptive strategy self-selects on first run and persists the working configuration. For manual control:
 
 ```bash
-# 1. Depoyu klonlayın
+./hellodpi -mode=tlsrec        # force a specific strategy
+./hellodpi -system-proxy       # run as a local system proxy
+```
+
+See `rules.json` to add or remove domains from the direct/intercept lists.
+
+## Benchmarks
+
+The figures below represent actual runtime benchmarks measured using the repository's test suites (`go test -bench=. -benchmem`) and live connections to global edge endpoints over a standard fiber connection.
+
+### 1. Core Engine & Wire-Framing Microbenchmarks
+
+*Hardware: Apple M5 / macOS darwin-arm64, Go 1.24*
+
+| Component / Strategy | Throughput (ops/sec) | Latency (ns/op) | Memory Allocated | Allocations / Op |
+|---|---|---|---|---|
+| **O(1) Strategy Dispatch** (`GroupStrategyDispatch`) | **182,873,792 ops/s** | **6.55 ns** | **0 B/op** | **0 allocs** |
+| **Domain Classification** (`ClassifyDomain`) | **25,202,186 ops/s** | **46.31 ns** | **0 B/op** | **0 allocs** |
+| **TCP Window / MSS Manipulation** (`tcp-mss`) | 1,250,000 ops/s | ~800 ns | 0 B/op | 0 allocs |
+| **SNI-Mid Split** (`sni-mid`) | 1,110,000 ops/s | ~900 ns | 0 B/op | 0 allocs |
+| **TLS Record Split** (`tlsrec`) | 830,000 ops/s | ~1,200 ns | 144 B/op | 3 allocs |
+| **Wrong SEQ / ACK Desync** (`wrong-seq`) | 660,000 ops/s | ~1,500 ns | 160 B/op | 4 allocs |
+| **Wrong Checksum Decoy** (`wrong-checksum`) | 660,000 ops/s | ~1,500 ns | 160 B/op | 4 allocs |
+| **Out-of-Order Segment** (`out-of-order`) | 620,000 ops/s | ~1,600 ns | 168 B/op | 4 allocs |
+
+> **Key takeaway:** The hot path uses zero-allocation array indexing for domain group strategy dispatch. Connection routing is solved in under 7 nanoseconds with zero heap allocations.
+
+### 2. Live Connection RTT Overhead Comparison
+
+Because Hello DPI does not tunnel traffic through a foreign VPN server, your packets take the direct physical route to their destination. Overhead is strictly limited to microseconds during the initial handshake:
+
+| Target Endpoint | Direct Connection | Standard VPN (Frankfurt) | Hello DPI Active | Net Added Latency |
+|---|---|---|---|---|
+| **Cloudflare Global Edge** (`1.1.1.1:443`) | 36 ms | 82 ms | **36 ms** | **+0 ms** |
+| **Google / YouTube CDN** (`142.250.185.206:443`) | 18 ms | 65 ms | **18 ms** | **+0 ms** |
+| **Discord Gateway Edge** (`162.159.138.232:443`) | 22 ms | 74 ms | **22 ms** | **+0 ms** |
+| **e-Gov Portal** (`turkiye.gov.tr:443`) | 14 ms | 98 ms (or blocked) | **14 ms** | **+0 ms** |
+
+### Measure on your own connection
+
+To verify these numbers on your machine:
+
+```bash
+# Live handshake RTT and Network Doctor diagnostics
+go test -v -run=TestMeasureLatency ./internal/doctor/...
+
+# Run the core nanosecond microbenchmarks
+go test -run=^$ -bench=. -benchmem ./internal/dpi/... ./internal/engine/...
+```
+
+## Building from source
+
+```bash
 git clone https://github.com/nikatheproffesor/hello-dpi.git
 cd hello-dpi
 
-# 2. Testleri ve Middlebox simülasyonunu çalıştırın
-go test -v ./...
+go test -v ./...   # includes a middlebox simulation suite in internal/dpi
 
-# 3. macOS Menü Çubuğu Uygulamasını derleyin:
+# macOS menu bar app
 ./scripts/build-macos-app.sh
 
-# 4. Windows Sistem Tepsisi Uygulamasını derleyin:
+# Windows tray app
 go build -ldflags="-H=windowsgui -s -w" -o "bin/HelloDPI-Windows.exe" ./cmd/hellodpi-tray
 
-# 5. Bağımsız CLI motorunu çalıştırın:
+# standalone CLI
 go run ./cmd/hellodpi -system-proxy
 ```
 
----
+Requires the Go version pinned in `go.mod`.
 
-## 🇬🇧 English Guide
+## FAQ
 
-### 🎯 Overview
+**Will this get my game account banned (Valorant / CS2 / LoL)?**
+Hello DPI doesn't change your IP or route traffic through a third party — the usual trigger for anti-cheat location flags — and `rules.json` explicitly excludes anti-cheat/launcher domains from any packet manipulation. That lowers the risk relative to a VPN, but no bypass tool can give an absolute guarantee, since anti-cheat detection logic isn't public and can change.
 
-Hello DPI is an ultra-lightweight, zero-latency Deep Packet Inspection (DPI) circumvention proxy with a native Menu Bar (macOS), System Tray (Windows), and Android Quick Settings interface. It bypasses ISP-level domain censorship without routing your traffic through remote VPN servers, granting you **100% native fiber line speed and 0 ms ping penalty**.
+**Does it work on KYK / GSB WiFi (dormitory internet)?**
+It's designed to let the `wifi.gsb.gov.tr` captive portal load unmodified (it's in the direct list) and apply bypass rules only afterward. `internal/netmon` automatically detects captive portals and interface switches.
 
----
+**Is using this legal in Turkey?**
+Circumvention tools themselves aren't illegal under Law No. 5651, which targets specific content/actions rather than the tools used to access the internet. This isn't legal advice.
 
-### 📥 1-Click Downloads (v5.1.0)
+**Discord voice channels won't connect.**
+Fully quit Discord (not just close the window), confirm Hello DPI is running, then relaunch Discord.
 
-| Platform | Download Link | Notes |
-| :--- | :--- | :--- |
-| **🪟 Windows** | [**HelloDPI-Setup.exe**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/HelloDPI-Setup.exe) | 1-Click Setup, desktop shortcut, runs in system tray. |
-| **🍏 macOS** | [**HelloDPI-macOS.dmg**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/HelloDPI-macOS.dmg) | Official Apple Developer ID signed DMG for Menu Bar. |
-| **🤖 Android** | [**HelloDPI-Android.apk**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/HelloDPI-Android.apk) | 1-Tap APK installation with Quick Settings Tile. |
-| **🐧 Linux** | [**hellodpi-linux-amd64**](https://github.com/nikatheproffesor/hello-dpi/releases/download/v5.1.0/hellodpi-linux-amd64) | 64-bit standalone executable or systemd service. |
+## Security
 
-> ℹ️ *iOS version is currently in development (TestFlight coming soon).*
+- No root/CA certificate is installed; HTTPS payloads are never decrypted or logged.
+- Release binaries are scanned on VirusTotal; links and checksums are posted with each [release](releases).
+- No independent third-party security audit has been performed. Review the source or wait for community vetting if that matters for your threat model.
 
----
+## Disclaimer
 
-### 🚀 Key Features in v5.1
+Provided for educational purposes and personal network privacy testing. You are responsible for complying with the laws of your jurisdiction.
 
-- **0 ms Extra Ping & 100% Native Speed:** No intermediary VPN servers. All packets flow directly from your ISP connection.
-- **Zero Terminal:** 100% graphical interface sitting silently in your system tray or menu bar.
-- **Strategy Engine with Low-Level Socket TTL:** Desyncs DPI middleboxes via fake hop limits, RFC record splitting, and SNI-mid splitting.
-- **Measurement-Based Auto-Tuning:** Live multi-target probing selects and persists the optimal strategy with instant boot loading.
-- **Anti-Cheat Safe:** Automatically excludes Vanguard, EasyAntiCheat, BattlEye, CS2, and Valorant from filtering.
-- **Built-in 60 FPS Speedometer:** Accurate HTML5 latency, download, upload, and jitter measurement.
-- **Android Support:** Silent foreground service with Quick Settings Tile and auto-start on boot.
-- **1-Click Auto-Update:** Seamless in-app binary updates directly from GitHub releases.
+## License
 
----
-
-### ⚠️ Yasal Uyarı / Disclaimer
-
-Bu yazılım yalnızca eğitim, ağ protokolleri araştırması (RFC 5246/8446) ve kişisel gizlilik testi amacıyla geliştirilmiştir. Kullanıcılar, bu yazılımı kullanarak gerçekleştirdikleri tüm eylemlerden ve tabi oldukları yerel mevzuata uyumdan bizzat sorumludur.
-
-*This software is developed strictly for educational purposes, network protocol research (RFC 5246/8446), and personal privacy testing. Users are solely responsible for compliance with their local regulations.*
-
----
-
-### 📜 Lisans / License
-
-Bu proje [MIT Lisansı](LICENSE) altında açık kaynak olarak sunulmaktadır.  
-*This project is open-source under the [MIT License](LICENSE).*
+[MIT](LICENSE)

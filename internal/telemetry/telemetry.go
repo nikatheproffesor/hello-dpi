@@ -56,20 +56,26 @@ func Default() *Collector {
 
 // NewCollector creates a telemetry collector (opt-in, default disabled)
 func NewCollector() *Collector {
-	c := &Collector{
-		enabled:  false, // Strictly disabled by default
-		ispTable: make(map[string]*ISPStats),
-	}
-
+	var cfgPath string
 	if configDir, err := os.UserConfigDir(); err == nil {
 		dir := filepath.Join(configDir, "hellodpi")
 		_ = os.MkdirAll(dir, 0755)
-		c.configPath = filepath.Join(dir, "telemetry.json")
+		cfgPath = filepath.Join(dir, "telemetry.json")
 	}
+	return NewCollectorWithConfig(cfgPath)
+}
 
+// NewCollectorWithConfig creates a telemetry collector with custom config path
+func NewCollectorWithConfig(configPath string) *Collector {
+	c := &Collector{
+		enabled:    false, // Strictly disabled by default
+		configPath: configPath,
+		ispTable:   make(map[string]*ISPStats),
+	}
 	c.loadConfig()
 	return c
 }
+
 
 // SetEnabled toggles opt-in state and persists preference
 func (c *Collector) SetEnabled(enabled bool) {
