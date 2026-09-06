@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -74,6 +75,10 @@ func TestLiveGitHubAPI(t *testing.T) {
 }
 
 func TestApplyMacOSZipUpdate(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("skipping macOS-specific zip update test on non-darwin OS")
+	}
+
 	tempDir := t.TempDir()
 
 	// 1. Create a simulated target bundle (v1)
@@ -120,6 +125,10 @@ func TestApplyMacOSZipUpdate(t *testing.T) {
 }
 
 func TestApplyMacOSDmgUpdate(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("skipping macOS-specific DMG update test on non-darwin OS")
+	}
+
 	dmgPath := "../../bin/HelloDPI-macOS.dmg"
 	if _, err := os.Stat(dmgPath); os.IsNotExist(err) {
 		t.Skip("bin/HelloDPI-macOS.dmg does not exist, skipping DMG test")
