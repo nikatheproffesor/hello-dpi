@@ -11,7 +11,7 @@
 
   <br />
 
-  [![Release](https://img.shields.io/github/v/release/nikatheproffesor/hello-dpi?label=version)](releases/latest)
+  [![Release](https://img.shields.io/github/v/release/nikatheproffesor/hello-dpi?label=version)](https://github.com/nikatheproffesor/hello-dpi/releases/latest)
   [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
   [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20Android-informational)](#downloads)
 
@@ -42,19 +42,20 @@ This is a young, single-maintainer project (not independently audited). The clai
 
 | Platform | File | Notes |
 |---|---|---|
-| Windows | [HelloDPI-Setup.exe](releases/latest) | 1-Click Installer, desktop shortcut, runs from system tray |
-| macOS | [HelloDPI-macOS.dmg](releases/latest) | Official Apple Developer ID signed DMG |
-| Linux | [hellodpi-linux-amd64](releases/latest) | Standalone binary, usable as a systemd service |
-| Android | [HelloDPI-Android.apk](releases/latest) | Includes a Quick Settings tile |
+| Windows | [HelloDPI-Setup.exe](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-Setup.exe) | 1-Click Installer, desktop shortcut, runs from system tray |
+| macOS | [HelloDPI-macOS.dmg](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-macOS.dmg) | Official Apple Developer ID signed DMG |
+| Linux | [hellodpi-linux-amd64](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/hellodpi-linux-amd64) | Standalone binary, usable as a systemd service |
+| Android | [HelloDPI-Android.apk](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-Android.apk) | Includes a Quick Settings tile |
 
 iOS support is in development.
 
 ### More Options
 
 For standalone use without an installer or alternative distributions:
-- **Windows (Portable):** [HelloDPI-Windows.exe](releases/latest) — Standalone tray binary without installation.
-- **macOS (ZIP Archive):** [HelloDPI-macOS.zip](releases/latest) — Extract `.app` directly without mounting DMG.
-- **Android (ARM64 Core):** [hellodpi-android-arm64](releases/latest) — Headless core binary for Termux or embedded Linux environments.
+- **Windows (Portable):** [HelloDPI-Windows.exe](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-Windows.exe) — Standalone tray binary without installation.
+- **macOS (ZIP Archive):** [HelloDPI-macOS.zip](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-macOS.zip) — Extract `.app` directly without mounting DMG.
+- **Android (ARM64 Core):** [hellodpi-android-arm64](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/hellodpi-android-arm64) — Headless core binary for Termux or embedded Linux environments.
+
 
 ### SmartScreen / Gatekeeper warnings
 
@@ -187,7 +188,7 @@ Fully quit Discord (not just close the window), confirm Hello DPI is running, th
 ## Security
 
 - No root/CA certificate is installed; HTTPS payloads are never decrypted or logged.
-- Release binaries are scanned on VirusTotal; links and checksums are posted with each [release](releases).
+- Release binaries are scanned on VirusTotal; links and checksums are posted with each [release](https://github.com/nikatheproffesor/hello-dpi/releases).
 - No independent third-party security audit has been performed. Review the source or wait for community vetting if that matters for your threat model.
 
 ## Disclaimer

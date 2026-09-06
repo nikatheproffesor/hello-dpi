@@ -11,7 +11,7 @@
 
   <br />
 
-  [![Release](https://img.shields.io/github/v/release/nikatheproffesor/hello-dpi?label=version)](releases/latest)
+  [![Release](https://img.shields.io/github/v/release/nikatheproffesor/hello-dpi?label=version)](https://github.com/nikatheproffesor/hello-dpi/releases/latest)
   [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
   [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20Android-informational)](#i̇ndirmeler)
 
@@ -42,19 +42,20 @@ Bu, tek geliştiricili, henüz genç bir proje (bağımsız denetimden geçmedi)
 
 | Platform | Dosya | Not |
 |---|---|---|
-| Windows | [HelloDPI-Setup.exe](releases/latest) | 1-Tık Kurulum, masaüstü kısayolu, sistem tepsisinden çalışır |
-| macOS | [HelloDPI-macOS.dmg](releases/latest) | Developer ID ile imzalı resmi Apple DMG paketi |
-| Linux | [hellodpi-linux-amd64](releases/latest) | Bağımsız ikili dosya, systemd servisi olarak da kullanılabilir |
-| Android | [HelloDPI-Android.apk](releases/latest) | Hızlı Ayarlar kutucuğu (Quick Settings Tile) içerir |
+| Windows | [HelloDPI-Setup.exe](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-Setup.exe) | 1-Tık Kurulum, masaüstü kısayolu, sistem tepsisinden çalışır |
+| macOS | [HelloDPI-macOS.dmg](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-macOS.dmg) | Developer ID ile imzalı resmi Apple DMG paketi |
+| Linux | [hellodpi-linux-amd64](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/hellodpi-linux-amd64) | Bağımsız ikili dosya, systemd servisi olarak da kullanılabilir |
+| Android | [HelloDPI-Android.apk](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-Android.apk) | Hızlı Ayarlar kutucuğu (Quick Settings Tile) içerir |
 
 iOS desteği geliştirme aşamasında.
 
 ### Daha Fazla Seçenek
 
 Kurulum istemeyen veya alternatif ortamlar arayanlar için:
-- **Windows (Taşınabilir / Portable):** [HelloDPI-Windows.exe](releases/latest) — Kurulum gerektirmez, doğrudan tıklayıp sistem tepsisinden çalıştırabilirsiniz.
-- **macOS (ZIP Arşivi):** [HelloDPI-macOS.zip](releases/latest) — DMG bağlamak istemeyenler için doğrudan `.app` içeren sıkıştırılmış arşiv.
-- **Android (ARM64 Çekirdek):** [hellodpi-android-arm64](releases/latest) — Termux veya gömülü Linux sistemleri için bağımsız CLI ikili dosyası.
+- **Windows (Taşınabilir / Portable):** [HelloDPI-Windows.exe](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-Windows.exe) — Kurulum gerektirmez, doğrudan tıklayıp sistem tepsisinden çalıştırabilirsiniz.
+- **macOS (ZIP Arşivi):** [HelloDPI-macOS.zip](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-macOS.zip) — DMG bağlamak istemeyenler için doğrudan `.app` içeren sıkıştırılmış arşiv.
+- **Android (ARM64 Çekirdek):** [hellodpi-android-arm64](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/hellodpi-android-arm64) — Termux veya gömülü Linux sistemleri için bağımsız CLI ikili dosyası.
+
 
 ### SmartScreen / Gatekeeper uyarıları
 
@@ -187,7 +188,7 @@ Discord'u tamamen kapatın (yalnızca pencereyi değil), Hello DPI'nın çalış
 ## Güvenlik
 
 - Kök/CA sertifikası yüklenmez; HTTPS verisi asla şifresi çözülmez veya kaydedilmez.
-- Sürüm ikili dosyaları VirusTotal'da taranır; bağlantılar ve sağlama toplamları her [sürümle](releases) birlikte paylaşılır.
+- Sürüm ikili dosyaları VirusTotal'da taranır; bağlantılar ve sağlama toplamları her [sürümle](https://github.com/nikatheproffesor/hello-dpi/releases) birlikte paylaşılır.
 - Bağımsız bir üçüncü taraf güvenlik denetimi yapılmamıştır. Tehdit modeliniz için bu önemliyse kaynağı inceleyin veya topluluk denetimini bekleyin.
 
 ## Yasal Uyarı
