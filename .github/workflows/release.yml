@@ -68,6 +68,7 @@ jobs:
           files: |
             bin/HelloDPI-Setup.exe
             bin/HelloDPI-macOS.dmg
+            bin/HelloDPI-macOS.zip
             bin/hellodpi-android-arm64
             bin/hellodpi-linux-amd64
           generate_release_notes: true

@@ -1,6 +1,9 @@
 package updater
 
 import (
+	"archive/zip"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -69,3 +72,76 @@ func TestLiveGitHubAPI(t *testing.T) {
 		t.Errorf("expected matched TargetAsset, got nil")
 	}
 }
+
+func TestApplyMacOSZipUpdate(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// 1. Create a simulated target bundle (v1)
+	targetApp := filepath.Join(tempDir, "Hello DPI.app")
+	targetExe := filepath.Join(targetApp, "Contents", "MacOS", "Hello DPI")
+	_ = os.MkdirAll(filepath.Dir(targetExe), 0755)
+	_ = os.WriteFile(targetExe, []byte("v1-binary"), 0755)
+
+	// 2. Create a source bundle (v2) to zip
+	srcDir := filepath.Join(tempDir, "source")
+	srcApp := filepath.Join(srcDir, "Hello DPI.app")
+	srcExe := filepath.Join(srcApp, "Contents", "MacOS", "Hello DPI")
+	_ = os.MkdirAll(filepath.Dir(srcExe), 0755)
+	_ = os.WriteFile(srcExe, []byte("v2-binary"), 0755)
+
+	// 3. Zip source bundle
+	zipPath := filepath.Join(tempDir, "update.zip")
+	zipFile, err := os.Create(zipPath)
+	if err != nil {
+		t.Fatalf("failed creating zip: %v", err)
+	}
+	zw := zip.NewWriter(zipFile)
+	w, err := zw.Create("Hello DPI.app/Contents/MacOS/Hello DPI")
+	if err != nil {
+		t.Fatalf("failed creating zip entry: %v", err)
+	}
+	_, _ = w.Write([]byte("v2-binary"))
+	_ = zw.Close()
+	_ = zipFile.Close()
+
+	// 4. Apply update
+	if err := applyMacOSZipUpdate(zipPath, targetExe); err != nil {
+		t.Fatalf("applyMacOSZipUpdate failed: %v", err)
+	}
+
+	// 5. Verify updated content
+	content, err := os.ReadFile(targetExe)
+	if err != nil {
+		t.Fatalf("failed reading target executable: %v", err)
+	}
+	if string(content) != "v2-binary" {
+		t.Errorf("expected 'v2-binary', got '%s'", string(content))
+	}
+}
+
+func TestApplyMacOSDmgUpdate(t *testing.T) {
+	dmgPath := "../../bin/HelloDPI-macOS.dmg"
+	if _, err := os.Stat(dmgPath); os.IsNotExist(err) {
+		t.Skip("bin/HelloDPI-macOS.dmg does not exist, skipping DMG test")
+	}
+
+	tempDir := t.TempDir()
+	targetApp := filepath.Join(tempDir, "Hello DPI.app")
+	targetExe := filepath.Join(targetApp, "Contents", "MacOS", "Hello DPI")
+	_ = os.MkdirAll(filepath.Dir(targetExe), 0755)
+	_ = os.WriteFile(targetExe, []byte("old-binary"), 0755)
+
+	if err := applyMacOSDmgUpdate(dmgPath, targetExe); err != nil {
+		t.Fatalf("applyMacOSDmgUpdate failed: %v", err)
+	}
+
+	// Verify target executable is now a real Mach-O binary from the DMG
+	stat, err := os.Stat(targetExe)
+	if err != nil {
+		t.Fatalf("failed stating target executable: %v", err)
+	}
+	if stat.Size() < 1000000 {
+		t.Errorf("expected real Mach-O binary (>1MB), got size %d", stat.Size())
+	}
+}
+

@@ -18,8 +18,14 @@ if [ -f "assets/AppIcon.icns" ]; then
     cp "assets/AppIcon.icns" "$RESOURCES_DIR/AppIcon.icns"
 fi
 
+APP_VERSION=$(grep 'Version =' internal/version/version.go 2>/dev/null | awk -F '"' '{print $2}' || echo "5.0.0")
+if [ -z "$APP_VERSION" ]; then
+    APP_VERSION="5.0.0"
+fi
+echo "Target Version: $APP_VERSION"
+
 echo "Compiling binary..."
-go build -ldflags="-s -w" -o "$MACOS_DIR/$APP_NAME" ./cmd/hellodpi-tray
+go build -ldflags="-s -w -X 'github.com/hellodpi/hellodpi/internal/version.Version=$APP_VERSION'" -o "$MACOS_DIR/$APP_NAME" ./cmd/hellodpi-tray
 chmod +x "$MACOS_DIR/$APP_NAME"
 
 echo "Generating Info.plist..."
@@ -39,9 +45,9 @@ cat <<EOF > "$CONTENTS_DIR/Info.plist"
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>4.0.0</string>
+    <string>$APP_VERSION</string>
     <key>CFBundleVersion</key>
-    <string>4.0.0</string>
+    <string>$APP_VERSION</string>
     <key>LSMinimumSystemVersion</key>
     <string>11.0</string>
     <key>LSUIElement</key>

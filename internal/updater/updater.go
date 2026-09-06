@@ -238,15 +238,14 @@ func ApplyUpdate(rel *ReleaseInfo, onProgress func(percent int)) error {
 	}
 	currentExe, _ = filepath.EvalSymlinks(currentExe)
 
-	// Create temp file for download in the same directory to allow atomic renames
-	dir := filepath.Dir(currentExe)
-	tempFile, err := os.CreateTemp(dir, "hellodpi-update-*")
+	// Create temp file for download with appropriate extension in os.TempDir()
+	ext := filepath.Ext(rel.TargetAsset.Name)
+	if ext == "" {
+		ext = ".tmp"
+	}
+	tempFile, err := os.CreateTemp("", "hellodpi-update-*"+ext)
 	if err != nil {
-		// Fallback to system temp directory
-		tempFile, err = os.CreateTemp("", "hellodpi-update-*")
-		if err != nil {
-			return fmt.Errorf("failed to create temporary file: %w", err)
-		}
+		return fmt.Errorf("failed to create temporary file: %w", err)
 	}
 	tempPath := tempFile.Name()
 	defer os.Remove(tempPath) // Clean up temp file on failure
@@ -299,37 +298,96 @@ func ApplyUpdate(rel *ReleaseInfo, onProgress func(percent int)) error {
 	}
 	tempFile.Close()
 
-	// On macOS, if the asset is a zip archive, extract it and update the .app bundle / binary properly
-	if runtime.GOOS == "darwin" && strings.HasSuffix(strings.ToLower(rel.TargetAsset.Name), ".zip") {
-		return applyMacOSZipUpdate(tempPath, currentExe)
+	// macOS update handling:
+	// Handle both DMG and ZIP release assets safely. Never treat an archive or disk image as a Mach-O executable.
+	if runtime.GOOS == "darwin" {
+		lowerName := strings.ToLower(rel.TargetAsset.Name)
+		if strings.HasSuffix(lowerName, ".dmg") {
+			return applyMacOSDmgUpdate(tempPath, currentExe)
+		}
+		if strings.HasSuffix(lowerName, ".zip") {
+			return applyMacOSZipUpdate(tempPath, currentExe)
+		}
+		// If running from inside a .app bundle, disallow raw rename of non-archive files
+		if strings.Contains(currentExe, ".app") {
+			return fmt.Errorf("unsupported update asset format for macOS .app bundle: %s", rel.TargetAsset.Name)
+		}
 	}
 
 	// Ensure downloaded file is executable
 	_ = os.Chmod(tempPath, 0755)
 
-	// Perform atomic in-place replacement
+	// Perform atomic in-place replacement (for standalone Windows/Linux binaries or raw CLI)
 	oldExePath := currentExe + ".old"
 	_ = os.Remove(oldExePath) // remove previous backup if exists
 
 	// Step 1: Rename currently running binary to .old (Windows & Unix allow renaming active binaries!)
 	if err := os.Rename(currentExe, oldExePath); err != nil {
-		return fmt.Errorf("failed renaming current binary to .old: %w", err)
+		if runtime.GOOS == "darwin" {
+			_ = os.Remove(currentExe)
+		} else {
+			return fmt.Errorf("failed renaming current binary to .old: %w", err)
+		}
 	}
 
 	// Step 2: Move new binary into original location
 	if err := os.Rename(tempPath, currentExe); err != nil {
-		// Rollback if failed
-		_ = os.Rename(oldExePath, currentExe)
-		return fmt.Errorf("failed installing new binary: %w", err)
+		if copyErr := copyFile(tempPath, currentExe); copyErr != nil {
+			if _, statErr := os.Stat(oldExePath); statErr == nil {
+				_ = os.Rename(oldExePath, currentExe)
+			}
+			return fmt.Errorf("failed installing new binary: %w", copyErr)
+		}
 	}
 
-	// Step 3: Remove .old binary (Unix removes immediately; Windows removes on next boot or exit)
+	_ = os.Chmod(currentExe, 0755)
+	if runtime.GOOS == "darwin" {
+		_ = exec.Command("xattr", "-cr", currentExe).Run()
+	}
+
+	// Step 3: Remove .old binary
 	_ = os.Remove(oldExePath)
 
 	return nil
 }
 
-// applyMacOSZipUpdate safely extracts the macOS update zip and performs atomic in-place bundle/binary replacement
+// applyMacOSDmgUpdate mounts the downloaded disk image, locates the .app bundle, and replaces the target bundle
+func applyMacOSDmgUpdate(dmgPath, currentExe string) error {
+	mountDir, err := os.MkdirTemp("", "hellodpi-dmg-*")
+	if err != nil {
+		return fmt.Errorf("failed creating temp mount point: %w", err)
+	}
+	defer os.RemoveAll(mountDir)
+
+	// Silently attach DMG in read-only and no-browse mode
+	cmd := exec.Command("hdiutil", "attach", dmgPath, "-nobrowse", "-readonly", "-mountpoint", mountDir)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed attaching update disk image: %w (%s)", err, strings.TrimSpace(string(out)))
+	}
+	defer func() {
+		_ = exec.Command("hdiutil", "detach", mountDir, "-force", "-quiet").Run()
+	}()
+
+	// Locate .app bundle inside the mounted DMG
+	sourceApp := filepath.Join(mountDir, "Hello DPI.app")
+	if _, err := os.Stat(sourceApp); err != nil {
+		entries, _ := os.ReadDir(mountDir)
+		for _, e := range entries {
+			if strings.HasSuffix(e.Name(), ".app") {
+				sourceApp = filepath.Join(mountDir, e.Name())
+				break
+			}
+		}
+	}
+
+	if _, err := os.Stat(sourceApp); err != nil {
+		return fmt.Errorf("could not find .app bundle in update disk image")
+	}
+
+	return replaceMacOSAppBundle(sourceApp, currentExe)
+}
+
+// applyMacOSZipUpdate safely extracts the macOS update zip and replaces the target bundle
 func applyMacOSZipUpdate(zipPath, currentExe string) error {
 	destTempDir, err := os.MkdirTemp("", "hellodpi-unzip-*")
 	if err != nil {
@@ -342,85 +400,92 @@ func applyMacOSZipUpdate(zipPath, currentExe string) error {
 	}
 
 	// Locate extracted Hello DPI.app bundle
-	extractedApp := filepath.Join(destTempDir, "Hello DPI.app")
-	if _, err := os.Stat(extractedApp); err != nil {
+	sourceApp := filepath.Join(destTempDir, "Hello DPI.app")
+	if _, err := os.Stat(sourceApp); err != nil {
 		entries, _ := os.ReadDir(destTempDir)
 		for _, e := range entries {
 			if e.IsDir() && strings.HasSuffix(e.Name(), ".app") {
-				extractedApp = filepath.Join(destTempDir, e.Name())
+				sourceApp = filepath.Join(destTempDir, e.Name())
 				break
 			}
 		}
 	}
 
-	if _, err := os.Stat(extractedApp); err != nil {
+	if _, err := os.Stat(sourceApp); err != nil {
 		return fmt.Errorf("could not find .app bundle in update archive")
 	}
 
-	// Clear quarantine attribute so Gatekeeper allows instant launch
-	_ = exec.Command("xattr", "-cr", extractedApp).Run()
-	_ = exec.Command("codesign", "--force", "--deep", "--sign", "-", extractedApp).Run()
+	return replaceMacOSAppBundle(sourceApp, currentExe)
+}
 
-	// Check if running inside a .app bundle (e.g. /Applications/Hello DPI.app/Contents/MacOS/Hello DPI)
+// replaceMacOSAppBundle atomically replaces the running .app bundle (or CLI binary) with the updated version
+func replaceMacOSAppBundle(sourceApp, currentExe string) error {
+	// Case 1: Running from within a macOS .app bundle (e.g. /Applications/Hello DPI.app/Contents/MacOS/Hello DPI)
 	if appIdx := strings.Index(currentExe, ".app"); appIdx != -1 {
 		targetBundle := currentExe[:appIdx+4]
 
-		// Strategy 1: Try atomic bundle folder rename
-		oldBundle := targetBundle + ".old"
-		_ = os.RemoveAll(oldBundle)
-		if err := os.Rename(targetBundle, oldBundle); err == nil {
-			if err := os.Rename(extractedApp, targetBundle); err == nil {
-				_ = os.RemoveAll(oldBundle)
-				return nil
+		// To replace an actively running application bundle on macOS APFS:
+		// 1. Move the current bundle aside to a temporary backup name.
+		//    macOS APFS allows renaming the parent bundle directory even while its child binary is running!
+		backupBundle := fmt.Sprintf("%s.old.%d", targetBundle, os.Getpid())
+		_ = os.RemoveAll(backupBundle)
+
+		if err := os.Rename(targetBundle, backupBundle); err == nil {
+			// Copy the new bundle into the target path using ditto
+			// ditto preserves Apple Developer ID codesign, notarization, Mach-O architectures, and metadata
+			cmd := exec.Command("ditto", sourceApp, targetBundle)
+			if out, dittoErr := cmd.CombinedOutput(); dittoErr != nil {
+				// Rollback if ditto failed
+				_ = os.RemoveAll(targetBundle)
+				_ = os.Rename(backupBundle, targetBundle)
+				return fmt.Errorf("failed copying new application bundle: %w (%s)", dittoErr, strings.TrimSpace(string(out)))
 			}
-			// Rollback if destination couldn't be written
-			_ = os.Rename(oldBundle, targetBundle)
+
+			// Clear Gatekeeper quarantine attributes from the newly installed bundle
+			_ = exec.Command("xattr", "-cr", targetBundle).Run()
+
+			// Asynchronously remove the backup bundle after this process terminates
+			_ = exec.Command("sh", "-c", "sleep 3 && rm -rf \"$1\"", "--", backupBundle).Start()
+			return nil
 		}
 
-		// Strategy 2: If folder rename failed due to parent directory ACLs (e.g. /Applications),
-		// atomically replace the inner executable binary and Info.plist inside the existing bundle!
-		newInnerExe := filepath.Join(extractedApp, "Contents", "MacOS", filepath.Base(currentExe))
-		if _, err := os.Stat(newInnerExe); err != nil {
-			macosDir := filepath.Join(extractedApp, "Contents", "MacOS")
-			files, _ := os.ReadDir(macosDir)
-			if len(files) > 0 {
-				newInnerExe = filepath.Join(macosDir, files[0].Name())
-			}
+		// Fallback: If bundle directory rename failed, attempt direct ditto overwrite
+		cmd := exec.Command("ditto", sourceApp, targetBundle)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("failed updating application bundle: %w (%s)", err, strings.TrimSpace(string(out)))
 		}
-
-		oldExe := currentExe + ".old"
-		_ = os.Remove(oldExe)
-		if err := os.Rename(currentExe, oldExe); err == nil {
-			if err := copyFile(newInnerExe, currentExe); err == nil {
-				_ = os.Chmod(currentExe, 0755)
-				_ = os.Remove(oldExe)
-
-				// Also sync Info.plist if available
-				newPlist := filepath.Join(extractedApp, "Contents", "Info.plist")
-				curPlist := filepath.Join(targetBundle, "Contents", "Info.plist")
-				_ = copyFile(newPlist, curPlist)
-
-				_ = exec.Command("xattr", "-cr", targetBundle).Run()
-				_ = exec.Command("codesign", "--force", "--deep", "--sign", "-", targetBundle).Run()
-				return nil
-			}
-			_ = os.Rename(oldExe, currentExe)
-		}
-		return fmt.Errorf("failed replacing macOS bundle")
+		_ = exec.Command("xattr", "-cr", targetBundle).Run()
+		return nil
 	}
 
-	// Standalone CLI execution outside .app bundle: replace single binary
-	newInnerExe := filepath.Join(extractedApp, "Contents", "MacOS", "Hello DPI")
+	// Case 2: Standalone CLI binary (e.g. running from /usr/local/bin or ./Hello DPI)
+	newInnerExe := filepath.Join(sourceApp, "Contents", "MacOS", filepath.Base(currentExe))
+	if _, err := os.Stat(newInnerExe); err != nil {
+		macosDir := filepath.Join(sourceApp, "Contents", "MacOS")
+		files, _ := os.ReadDir(macosDir)
+		if len(files) > 0 {
+			newInnerExe = filepath.Join(macosDir, files[0].Name())
+		} else {
+			return fmt.Errorf("could not find executable inside .app bundle")
+		}
+	}
+
 	oldExe := currentExe + ".old"
 	_ = os.Remove(oldExe)
 	if err := os.Rename(currentExe, oldExe); err != nil {
-		return fmt.Errorf("failed renaming current binary: %w", err)
+		// In APFS, running binaries cannot be renamed, but unlinking (rm) works!
+		_ = os.Remove(currentExe)
 	}
+
 	if err := copyFile(newInnerExe, currentExe); err != nil {
-		_ = os.Rename(oldExe, currentExe)
-		return fmt.Errorf("failed copying new executable: %w", err)
+		if _, statErr := os.Stat(oldExe); statErr == nil {
+			_ = os.Rename(oldExe, currentExe)
+		}
+		return fmt.Errorf("failed installing new binary: %w", err)
 	}
+
 	_ = os.Chmod(currentExe, 0755)
+	_ = exec.Command("xattr", "-cr", currentExe).Run()
 	_ = os.Remove(oldExe)
 	return nil
 }

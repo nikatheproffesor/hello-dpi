@@ -55,13 +55,12 @@ if xcrun notarytool history --keychain-profile "hellodpi-profile" &>/dev/null; t
     echo "Stapling notarization ticket to DMG..."
     xcrun stapler staple "$DMG_PATH"
     echo "✓ DMG successfully notarized and stapled by Apple!"
-else
-    echo ""
-    echo "💡 Apple Notarization Kurulumu (İsteğe Bağlı):"
-    echo "   Apple Developer hesabınızla 'Hasar görmüş' uyarısını tamamen bitirmek için"
-    echo "   şifrenizi koda yazmadan macOS Anahtar Zinciri'ne (Keychain) şu tek komutla kaydedebilirsiniz:"
-    echo "   xcrun notarytool store-credentials \"hellodpi-profile\" --apple-id \"EMAIL\" --team-id \"TEAM_ID\""
 fi
+
+echo "Creating signed macOS release ZIP..."
+rm -f "bin/HelloDPI-macOS.zip"
+zip -r -q "bin/HelloDPI-macOS.zip" "$BUNDLE_DIR"
+
 
 echo ""
 echo "✓ Done! Signed artifacts ready in 'bin/'"
