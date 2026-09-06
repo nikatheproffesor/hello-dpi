@@ -33,12 +33,18 @@ func TestFindMatchingAsset(t *testing.T) {
 	assets := []ReleaseAsset{
 		{Name: "HelloDPI-Windows.exe", BrowserDownloadURL: "https://example.com/win.exe", Size: 1000},
 		{Name: "HelloDPI-macOS.dmg", BrowserDownloadURL: "https://example.com/mac.dmg", Size: 2000},
+		{Name: "HelloDPI-macOS.zip", BrowserDownloadURL: "https://example.com/mac.zip", Size: 1500},
 		{Name: "hellodpi-linux-amd64", BrowserDownloadURL: "https://example.com/linux", Size: 3000},
 	}
 
 	matched := findMatchingAsset(assets)
 	if matched == nil {
 		t.Fatalf("expected matched asset, got nil")
+	}
+
+	// On darwin, it must specifically prefer .zip over .dmg for bundle extraction!
+	if strings.Contains(matched.Name, "macOS") && !strings.HasSuffix(matched.Name, ".zip") {
+		t.Errorf("Expected macOS to select .zip asset, got %s", matched.Name)
 	}
 }
 

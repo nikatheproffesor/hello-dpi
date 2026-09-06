@@ -1,6 +1,7 @@
 package updater
 
 import (
+	"archive/zip"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -128,7 +129,7 @@ func checkViaWebRedirect() (*ReleaseInfo, bool, error) {
 	case "windows":
 		assetName = "HelloDPI-Windows.exe"
 	case "darwin":
-		assetName = "HelloDPI-macOS.dmg"
+		assetName = "HelloDPI-macOS.zip" // Must be ZIP on macOS for automated in-place updates!
 	default:
 		assetName = "hellodpi-linux-amd64"
 	}
@@ -184,20 +185,32 @@ func parseVersionParts(v string) []int {
 func findMatchingAsset(assets []ReleaseAsset) *ReleaseAsset {
 	osName := runtime.GOOS
 
-	for _, a := range assets {
-		name := strings.ToLower(a.Name)
-		switch osName {
-		case "windows":
-			if strings.HasSuffix(name, ".exe") {
+	switch osName {
+	case "windows":
+		for _, a := range assets {
+			if strings.HasSuffix(strings.ToLower(a.Name), ".exe") {
 				assetCopy := a
 				return &assetCopy
 			}
-		case "darwin":
-			if strings.HasSuffix(name, ".zip") || strings.HasSuffix(name, ".dmg") || strings.Contains(name, "darwin") || strings.Contains(name, "macos") {
+		}
+	case "darwin":
+		// Strongly prefer .zip on macOS because it contains the unpackable Hello DPI.app bundle
+		for _, a := range assets {
+			if strings.HasSuffix(strings.ToLower(a.Name), ".zip") {
 				assetCopy := a
 				return &assetCopy
 			}
-		case "linux":
+		}
+		for _, a := range assets {
+			name := strings.ToLower(a.Name)
+			if strings.HasSuffix(name, ".dmg") || strings.Contains(name, "darwin") || strings.Contains(name, "macos") {
+				assetCopy := a
+				return &assetCopy
+			}
+		}
+	case "linux":
+		for _, a := range assets {
+			name := strings.ToLower(a.Name)
 			if strings.Contains(name, "linux") && !strings.HasSuffix(name, ".deb") && !strings.HasSuffix(name, ".rpm") {
 				assetCopy := a
 				return &assetCopy
@@ -286,6 +299,11 @@ func ApplyUpdate(rel *ReleaseInfo, onProgress func(percent int)) error {
 	}
 	tempFile.Close()
 
+	// On macOS, if the asset is a zip archive, extract it and update the .app bundle / binary properly
+	if runtime.GOOS == "darwin" && strings.HasSuffix(strings.ToLower(rel.TargetAsset.Name), ".zip") {
+		return applyMacOSZipUpdate(tempPath, currentExe)
+	}
+
 	// Ensure downloaded file is executable
 	_ = os.Chmod(tempPath, 0755)
 
@@ -309,6 +327,166 @@ func ApplyUpdate(rel *ReleaseInfo, onProgress func(percent int)) error {
 	_ = os.Remove(oldExePath)
 
 	return nil
+}
+
+// applyMacOSZipUpdate safely extracts the macOS update zip and performs atomic in-place bundle/binary replacement
+func applyMacOSZipUpdate(zipPath, currentExe string) error {
+	destTempDir, err := os.MkdirTemp("", "hellodpi-unzip-*")
+	if err != nil {
+		return fmt.Errorf("failed creating temp unzip directory: %w", err)
+	}
+	defer os.RemoveAll(destTempDir)
+
+	if err := extractZipArchive(zipPath, destTempDir); err != nil {
+		return fmt.Errorf("failed extracting update zip: %w", err)
+	}
+
+	// Locate extracted Hello DPI.app bundle
+	extractedApp := filepath.Join(destTempDir, "Hello DPI.app")
+	if _, err := os.Stat(extractedApp); err != nil {
+		entries, _ := os.ReadDir(destTempDir)
+		for _, e := range entries {
+			if e.IsDir() && strings.HasSuffix(e.Name(), ".app") {
+				extractedApp = filepath.Join(destTempDir, e.Name())
+				break
+			}
+		}
+	}
+
+	if _, err := os.Stat(extractedApp); err != nil {
+		return fmt.Errorf("could not find .app bundle in update archive")
+	}
+
+	// Clear quarantine attribute so Gatekeeper allows instant launch
+	_ = exec.Command("xattr", "-cr", extractedApp).Run()
+	_ = exec.Command("codesign", "--force", "--deep", "--sign", "-", extractedApp).Run()
+
+	// Check if running inside a .app bundle (e.g. /Applications/Hello DPI.app/Contents/MacOS/Hello DPI)
+	if appIdx := strings.Index(currentExe, ".app"); appIdx != -1 {
+		targetBundle := currentExe[:appIdx+4]
+
+		// Strategy 1: Try atomic bundle folder rename
+		oldBundle := targetBundle + ".old"
+		_ = os.RemoveAll(oldBundle)
+		if err := os.Rename(targetBundle, oldBundle); err == nil {
+			if err := os.Rename(extractedApp, targetBundle); err == nil {
+				_ = os.RemoveAll(oldBundle)
+				return nil
+			}
+			// Rollback if destination couldn't be written
+			_ = os.Rename(oldBundle, targetBundle)
+		}
+
+		// Strategy 2: If folder rename failed due to parent directory ACLs (e.g. /Applications),
+		// atomically replace the inner executable binary and Info.plist inside the existing bundle!
+		newInnerExe := filepath.Join(extractedApp, "Contents", "MacOS", filepath.Base(currentExe))
+		if _, err := os.Stat(newInnerExe); err != nil {
+			macosDir := filepath.Join(extractedApp, "Contents", "MacOS")
+			files, _ := os.ReadDir(macosDir)
+			if len(files) > 0 {
+				newInnerExe = filepath.Join(macosDir, files[0].Name())
+			}
+		}
+
+		oldExe := currentExe + ".old"
+		_ = os.Remove(oldExe)
+		if err := os.Rename(currentExe, oldExe); err == nil {
+			if err := copyFile(newInnerExe, currentExe); err == nil {
+				_ = os.Chmod(currentExe, 0755)
+				_ = os.Remove(oldExe)
+
+				// Also sync Info.plist if available
+				newPlist := filepath.Join(extractedApp, "Contents", "Info.plist")
+				curPlist := filepath.Join(targetBundle, "Contents", "Info.plist")
+				_ = copyFile(newPlist, curPlist)
+
+				_ = exec.Command("xattr", "-cr", targetBundle).Run()
+				_ = exec.Command("codesign", "--force", "--deep", "--sign", "-", targetBundle).Run()
+				return nil
+			}
+			_ = os.Rename(oldExe, currentExe)
+		}
+		return fmt.Errorf("failed replacing macOS bundle")
+	}
+
+	// Standalone CLI execution outside .app bundle: replace single binary
+	newInnerExe := filepath.Join(extractedApp, "Contents", "MacOS", "Hello DPI")
+	oldExe := currentExe + ".old"
+	_ = os.Remove(oldExe)
+	if err := os.Rename(currentExe, oldExe); err != nil {
+		return fmt.Errorf("failed renaming current binary: %w", err)
+	}
+	if err := copyFile(newInnerExe, currentExe); err != nil {
+		_ = os.Rename(oldExe, currentExe)
+		return fmt.Errorf("failed copying new executable: %w", err)
+	}
+	_ = os.Chmod(currentExe, 0755)
+	_ = os.Remove(oldExe)
+	return nil
+}
+
+func extractZipArchive(zipPath, destDir string) error {
+	r, err := zip.OpenReader(zipPath)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	destClean := filepath.Clean(destDir) + string(os.PathSeparator)
+
+	for _, f := range r.File {
+		targetPath := filepath.Join(destDir, f.Name)
+		if !strings.HasPrefix(filepath.Clean(targetPath), destClean) && filepath.Clean(targetPath) != filepath.Clean(destDir) {
+			continue // ZipSlip protection
+		}
+
+		if f.FileInfo().IsDir() {
+			_ = os.MkdirAll(targetPath, f.Mode())
+			continue
+		}
+
+		if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+			return err
+		}
+
+		outFile, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		if err != nil {
+			return err
+		}
+
+		rc, err := f.Open()
+		if err != nil {
+			outFile.Close()
+			return err
+		}
+
+		_, copyErr := io.Copy(outFile, rc)
+		outFile.Close()
+		rc.Close()
+		if copyErr != nil {
+			return copyErr
+		}
+
+		_ = os.Chmod(targetPath, f.Mode())
+	}
+	return nil
+}
+
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0755)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	return err
 }
 
 // RestartApp launches the newly updated executable and terminates the old process
