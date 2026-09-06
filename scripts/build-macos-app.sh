@@ -52,10 +52,14 @@ cat <<EOF > "$CONTENTS_DIR/Info.plist"
 </plist>
 EOF
 
-IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | grep -E "Developer ID Application|Apple Development" | head -n 1 | awk -F '"' '{print $2}' || true)
+IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | grep "Developer ID Application" | head -n 1 | awk '{print $2}' || true)
+if [ -z "$IDENTITY" ]; then
+    IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | grep "Apple Development" | head -n 1 | awk '{print $2}' || true)
+fi
+
 if [ -n "$IDENTITY" ]; then
     echo "Applying signature with Keychain Identity: $IDENTITY..."
-    codesign --force --deep --sign "$IDENTITY" "$BUNDLE_DIR"
+    codesign --force --deep --options runtime --timestamp --sign "$IDENTITY" "$BUNDLE_DIR"
 else
     echo "Applying Ad-Hoc Code Signature..."
     codesign --force --deep --sign - "$BUNDLE_DIR"
