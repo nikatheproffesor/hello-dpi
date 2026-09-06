@@ -151,34 +151,16 @@ func main() {
 		speedtest.OpenSpeedtest(proxyPort)
 	})
 
-	// 6. Adaptive DPI Auto-Tune
-	menu.Add("Otomatik Ayar (Auto-Tune)", func() {
-		tray.ShowNotification(appTitle, "DPI sondaji yapiliyor, ag kalibre ediliyor...")
-		go func() {
-			res := probeEngine.RunProbe()
-			if res.BypassVerified {
-				server.UpdateEngineConfig(dpi.SplitMode(res.BestMode), res.BestSplitPos, res.BestDelayMs)
-				tray.ShowNotification(appTitle, fmt.Sprintf("DPI Ayarlandi: %s (%dms, %s)", res.BestMode, res.BestLatencyMs, res.ISPName))
-			} else {
-				tray.ShowNotification(appTitle, "Standart guvenli DPI modu korundu.")
-			}
-		}()
-	})
-
-	// 7. Dynamic Rules OTA Sync
-	menu.Add("Kuralları Güncelle (OTA)", func() {
-		go func() {
-			err := server.Rules.SyncRemote("")
-			if err != nil {
-				tray.ShowNotification(appTitle, "Kural guncellemesi basarisiz: "+err.Error())
-			} else {
-				ver, direct, intercept, _ := server.Rules.Stats()
-				tray.ShowNotification(appTitle, fmt.Sprintf("Kurallar guncellendi: %s (Direct: %d, DPI: %d)", ver, direct, intercept))
-			}
-		}()
-	})
-
 	menu.AddSeparator()
+
+	// Silent background auto-tuning and dynamic rules sync
+	go func() {
+		_ = server.Rules.SyncRemote("")
+		res := probeEngine.RunProbe()
+		if res.BypassVerified {
+			server.UpdateEngineConfig(dpi.SplitMode(res.BestMode), res.BestSplitPos, res.BestDelayMs)
+		}
+	}()
 
 	// 6. Auto-Updater Action
 	var latestRelease *updater.ReleaseInfo

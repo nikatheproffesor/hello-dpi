@@ -780,7 +780,7 @@ const doctorHTML = `<!DOCTYPE html>
     /* Metrics Grid */
     .metrics-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 12px;
     }
     .metric-card {
@@ -995,30 +995,12 @@ const doctorHTML = `<!DOCTYPE html>
         <div class="metric-value" id="val-roblox">-- ms</div>
         <div class="metric-sub">CDN & Oyun Paketleri</div>
       </div>
-      <div class="metric-card">
-        <div class="metric-label">DPI Oto-Ayar</div>
-        <div class="metric-value" id="val-autotune">TLS-5</div>
-        <div class="metric-sub" id="sub-autotune">Adaptif Mod</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">Secici Tunel</div>
-        <div class="metric-value" id="val-rules">Aktif</div>
-        <div class="metric-sub" id="sub-rules">Banka & e-Devlet 0ms</div>
-      </div>
     </div>
 
     <div>
       <div class="section-header">Hizli Islemler</div>
       <div class="actions-grid">
-        <button class="btn-action highlight" id="btn-autotune" onclick="runAutoTune()">
-          <span>Otomatik DPI Sondajı (Auto-Tune)</span>
-          <span class="action-tag">[SONDAJ]</span>
-        </button>
-        <button class="btn-action" onclick="syncRules()">
-          <span>Dinamik Kuralları Güncelle</span>
-          <span class="action-tag">[OTA]</span>
-        </button>
-        <button class="btn-action" id="btn-kernel-toggle" onclick="toggleKernel()">
+        <button class="btn-action highlight" id="btn-kernel-toggle" onclick="toggleKernel()">
           <span id="btn-kernel-label">Cekirdek Modunu Baslat</span>
           <span class="action-tag">L3/L4 Sockets</span>
         </button>

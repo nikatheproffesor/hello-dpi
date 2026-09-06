@@ -52,8 +52,14 @@ cat <<EOF > "$CONTENTS_DIR/Info.plist"
 </plist>
 EOF
 
-echo "Applying Ad-Hoc Code Signature..."
-codesign --force --deep --sign - "$BUNDLE_DIR"
+IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | grep -E "Developer ID Application|Apple Development" | head -n 1 | awk -F '"' '{print $2}' || true)
+if [ -n "$IDENTITY" ]; then
+    echo "Applying signature with Keychain Identity: $IDENTITY..."
+    codesign --force --deep --sign "$IDENTITY" "$BUNDLE_DIR"
+else
+    echo "Applying Ad-Hoc Code Signature..."
+    codesign --force --deep --sign - "$BUNDLE_DIR"
+fi
 
 # Clear quarantine if any
 xattr -cr "$BUNDLE_DIR" 2>/dev/null || true
