@@ -3,17 +3,16 @@ package com.hellodpi.app
 import android.content.Intent
 import android.net.VpnService
 import android.os.ParcelFileDescriptor
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.nio.ByteBuffer
+import java.io.File
 
 /**
  * HelloDpiVpnService creates a local TUN virtual interface and routes TCP/UDP traffic
- * through the embedded Go hellocore engine without requiring root access.
+ * through the embedded native Hello DPI engine without requiring root access.
  */
 class HelloDpiVpnService : VpnService() {
 
     private var vpnInterface: ParcelFileDescriptor? = null
+    private var engineProcess: Process? = null
     private var isRunning = false
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -31,7 +30,10 @@ class HelloDpiVpnService : VpnService() {
         if (isRunning) return
 
         try {
-            // Configure Android VpnService TUN Builder
+            // 1. Start embedded native Hello DPI core daemon
+            startNativeEngine()
+
+            // 2. Configure Android VpnService TUN Builder
             val builder = Builder()
                 .setSession("Hello DPI")
                 .addAddress("10.0.0.2", 24)
@@ -41,23 +43,45 @@ class HelloDpiVpnService : VpnService() {
                 .setMtu(1500)
                 .setBlocking(false)
 
+            // Avoid routing proxy's own outbound traffic back into VPN
+            try {
+                builder.addDisallowedApplication(packageName)
+            } catch (ignored: Exception) {}
+
             vpnInterface = builder.establish()
             isRunning = true
-
-            // Notify native Go Mobile engine
-            // hellocore.Hellocore.startMobileDefault(8080)
         } catch (e: Exception) {
             e.printStackTrace()
             stopVpn()
         }
     }
 
+    private fun startNativeEngine() {
+        try {
+            val libDir = applicationInfo.nativeLibraryDir
+            val nativeBin = File(libDir, "libhellodpi.so")
+
+            if (nativeBin.exists()) {
+                val pb = ProcessBuilder(
+                    nativeBin.absolutePath,
+                    "-addr", "127.0.0.1:8080"
+                )
+                pb.redirectErrorStream(true)
+                engineProcess = pb.start()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     private fun stopVpn() {
         isRunning = false
         try {
+            engineProcess?.destroy()
+            engineProcess = null
+
             vpnInterface?.close()
             vpnInterface = null
-            // hellocore.Hellocore.stopMobileDefault()
         } catch (e: Exception) {
             e.printStackTrace()
         }

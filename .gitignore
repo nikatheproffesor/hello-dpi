@@ -7,7 +7,10 @@ dist/
 *.dylib
 *.dmg
 *.zip
-hellodpi-*
+/hellodpi-*
+/hellodpi
+cmd/hellodpi-installer/embedded/HelloDPI.exe
+bin/HelloDPI-Setup.exe
 
 # OS generated files
 .DS_Store
