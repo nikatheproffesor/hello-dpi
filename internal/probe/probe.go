@@ -80,12 +80,12 @@ type StrategyResult struct {
 
 // ISPFingerprint holds forensic indicators of the local ISP network environment
 type ISPFingerprint struct {
-	Name         string    `json:"name"`
-	DNSPoisoned  bool      `json:"dns_poisoned"`
-	PoisonIP     string    `json:"poison_ip,omitempty"`
-	RTTBand      string    `json:"rtt_band"`
-	HopEstimate  int       `json:"hop_estimate"`
-	DetectedAt   time.Time `json:"detected_at"`
+	Name        string    `json:"name"`
+	DNSPoisoned bool      `json:"dns_poisoned"`
+	PoisonIP    string    `json:"poison_ip,omitempty"`
+	RTTBand     string    `json:"rtt_band"`
+	HopEstimate int       `json:"hop_estimate"`
+	DetectedAt  time.Time `json:"detected_at"`
 }
 
 // Result holds the comprehensive findings of an auto-tuning probe session

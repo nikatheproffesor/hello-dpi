@@ -82,7 +82,6 @@ func NewEngine(cfg Config) *Engine {
 	}
 }
 
-
 // Start begins serving the proxy in background and activates the platform adapter
 func (e *Engine) Start() error {
 	e.mu.Lock()

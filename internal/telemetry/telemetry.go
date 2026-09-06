@@ -76,7 +76,6 @@ func NewCollectorWithConfig(configPath string) *Collector {
 	return c
 }
 
-
 // SetEnabled toggles opt-in state and persists preference
 func (c *Collector) SetEnabled(enabled bool) {
 	c.mu.Lock()
@@ -194,11 +193,11 @@ func (c *Collector) GetStats() map[string]interface{} {
 	defer c.mu.RUnlock()
 
 	return map[string]interface{}{
-		"opt_in":        c.enabled,
-		"total_events":  len(c.history),
-		"known_isps":    len(c.ispTable),
-		"zero_pii":      true,
-		"privacy_note":  "Sıfır kişisel veri: IP, hesap, URL, domain içeriği kaydedilmez.",
+		"opt_in":       c.enabled,
+		"total_events": len(c.history),
+		"known_isps":   len(c.ispTable),
+		"zero_pii":     true,
+		"privacy_note": "Sıfır kişisel veri: IP, hesap, URL, domain içeriği kaydedilmez.",
 	}
 }
 

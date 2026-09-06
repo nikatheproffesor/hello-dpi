@@ -129,7 +129,6 @@ func (ft *FallbackTracker) SetGroupStrategies(group probe.DomainGroup, strats []
 	ft.rebuildFastActiveLocked()
 }
 
-
 // GetActiveStrategy retrieves the currently active strategy for a given domain group (O(1) fast path)
 func (ft *FallbackTracker) GetActiveStrategy(group probe.DomainGroup) dpi.BypassStrategy {
 	ft.mu.RLock()
@@ -144,6 +143,13 @@ func (ft *FallbackTracker) RecordSuccess(group probe.DomainGroup) {
 	ft.mu.Lock()
 	ft.failureStreaks[group] = 0
 	ft.mu.Unlock()
+}
+
+// GetFailureStreak returns the current consecutive failure streak for a group
+func (ft *FallbackTracker) GetFailureStreak(group probe.DomainGroup) int {
+	ft.mu.RLock()
+	defer ft.mu.RUnlock()
+	return ft.failureStreaks[group]
 }
 
 // RecordFailure increments the failure counter and advances the active strategy if degraded

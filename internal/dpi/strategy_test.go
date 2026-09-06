@@ -362,4 +362,3 @@ func TestOutOfOrderStrategy(t *testing.T) {
 		t.Fatalf("Expected decoy + out-of-order chunks, got %d", len(mc.chunks))
 	}
 }
-

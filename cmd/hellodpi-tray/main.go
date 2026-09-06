@@ -16,8 +16,8 @@ import (
 	"github.com/hellodpi/hellodpi/internal/doh"
 	"github.com/hellodpi/hellodpi/internal/dpi"
 	"github.com/hellodpi/hellodpi/internal/icon"
-	"github.com/hellodpi/hellodpi/internal/probe"
 	"github.com/hellodpi/hellodpi/internal/netmon"
+	"github.com/hellodpi/hellodpi/internal/probe"
 	"github.com/hellodpi/hellodpi/internal/proxy"
 	"github.com/hellodpi/hellodpi/internal/speedtest"
 	"github.com/hellodpi/hellodpi/internal/sysproxy"
@@ -227,7 +227,6 @@ func main() {
 	netMonitor.SetProxyState(true)
 	netMonitor.Start()
 	defer netMonitor.Stop()
-
 
 	// 6. Auto-Updater Action
 	var latestRelease *updater.ReleaseInfo

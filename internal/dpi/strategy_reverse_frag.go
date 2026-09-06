@@ -75,7 +75,6 @@ func init() {
 	RegisterStrategy(NewReverseFragStrategy(3, 4))
 }
 
-
 type aliasStrategy struct {
 	name     string
 	delegate BypassStrategy

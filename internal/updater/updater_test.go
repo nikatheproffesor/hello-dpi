@@ -144,4 +144,3 @@ func TestApplyMacOSDmgUpdate(t *testing.T) {
 		t.Errorf("expected real Mach-O binary (>1MB), got size %d", stat.Size())
 	}
 }
-

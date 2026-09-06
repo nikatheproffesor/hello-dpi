@@ -38,7 +38,7 @@ func printBanner() {
 
 func main() {
 	addr := flag.String("addr", "127.0.0.1:8080", "Listen address for Hello DPI local proxy")
-	mode := flag.String("mode", "sni", "Fragmentation mode: 'sni', 'first-byte', 'chunked'")
+	mode := flag.String("mode", "sni", "Bypass strategy: 'adaptive', 'sni', 'tlsrec', 'decoy', 'chunked', 'first-byte', 'wrong-seq', 'wrong-chk', 'out-of-order', 'chain:<s1>+<s2>'")
 	delay := flag.Int("delay", 2, "Delay between packet fragments in milliseconds")
 	enableDoH := flag.Bool("doh", true, "Enable DNS-over-HTTPS resolution")
 	dohServer := flag.String("doh-server", string(doh.Cloudflare), "DoH resolver URL (e.g. Cloudflare, Google, Quad9)")

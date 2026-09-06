@@ -154,9 +154,12 @@ func (f *failStrategy) Apply(conn net.Conn, data []byte, info dpi.ParsedInfo) er
 }
 
 func TestFallbackTracker(t *testing.T) {
-	var fallbackTriggered bool
+	fallbackCh := make(chan struct{}, 1)
 	ft := NewFallbackTracker(func(group probe.DomainGroup, fromStrat, toStrat string) {
-		fallbackTriggered = true
+		select {
+		case fallbackCh <- struct{}{}:
+		default:
+		}
 	})
 
 	ft.SetGroupStrategies(probe.GroupDiscord, []dpi.BypassStrategy{
@@ -183,14 +186,17 @@ func TestFallbackTracker(t *testing.T) {
 
 	// First failure
 	_ = ft.ApplyWithFallback(probe.GroupDiscord, cB, payload, info)
-	if ft.failureStreaks[probe.GroupDiscord] != 1 {
-		t.Errorf("Expected failure streak 1, got %d", ft.failureStreaks[probe.GroupDiscord])
+	if streak := ft.GetFailureStreak(probe.GroupDiscord); streak != 1 {
+		t.Errorf("Expected failure streak 1, got %d", streak)
 	}
 
 	// Second failure triggers switch
 	_ = ft.ApplyWithFallback(probe.GroupDiscord, cB, payload, info)
-	if !fallbackTriggered {
-		t.Errorf("Expected fallbackTriggered to be true")
+	select {
+	case <-fallbackCh:
+		// Succeeded
+	case <-time.After(1 * time.Second):
+		t.Errorf("Timed out waiting for fallback callback")
 	}
 
 	// Active strategy should now be DefaultStrategy
@@ -199,4 +205,3 @@ func TestFallbackTracker(t *testing.T) {
 		t.Errorf("Expected switched active strategy, got %s", active.Name())
 	}
 }
-

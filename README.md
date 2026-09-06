@@ -203,6 +203,8 @@ CGO_ENABLED=0 GOOS=linux GOARCH=mipsle GOMIPS=softfloat go build -ldflags="-s -w
 CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o hellodpi ./cmd/hellodpi
 ```
 
+> **OpenWrt & Linux Kurulumu:** Router için hazır init scriptleri (`/etc/init.d/hellodpi`), UCI yapılandırması ve systemd servis dosyası için [deploy/README.md](deploy/README.md) rehberine bakın.
+
 `go.mod` dosyasında belirtilen Go sürümü gereklidir.
 
 ## Sıkça Sorulan Sorular

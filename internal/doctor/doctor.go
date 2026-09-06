@@ -360,7 +360,6 @@ func handleTelemetryToggle(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-
 func handleSyncRules(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")

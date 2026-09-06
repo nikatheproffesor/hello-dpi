@@ -14,7 +14,6 @@ func (d *discardConn) Read(b []byte) (int, error)  { return 0, io.EOF }
 func (d *discardConn) Write(b []byte) (int, error) { return len(b), nil }
 func (d *discardConn) Close() error                { return nil }
 
-
 func BenchmarkTLSRecordSplit(b *testing.B) {
 	strat := NewTLSRecordSplitStrategy(5, 0)
 	raw := makeMockClientHello("discord.com")

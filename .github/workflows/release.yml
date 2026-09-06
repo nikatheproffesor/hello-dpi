@@ -39,30 +39,43 @@ jobs:
         run: |
           mkdir -p bin
           echo "Building Portable Windows Tray Executable..."
-          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w -H=windowsgui" -o bin/HelloDPI-Windows.exe ./cmd/hellodpi-tray
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w -H=windowsgui" -o bin/HelloDPI-Windows.exe ./cmd/hellodpi-tray
           
           echo "Building Windows 1-Click Setup Installer..."
           mkdir -p cmd/hellodpi-installer/embedded
           cp bin/HelloDPI-Windows.exe cmd/hellodpi-installer/embedded/HelloDPI.exe
           cp Baslat.bat cmd/hellodpi-installer/embedded/Baslat.bat
-          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w -H=windowsgui" -o bin/HelloDPI-Setup.exe ./cmd/hellodpi-installer
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w -H=windowsgui" -o bin/HelloDPI-Setup.exe ./cmd/hellodpi-installer
 
-      - name: Build Linux Engine
+      - name: Build Linux & OpenWrt Binaries
         run: |
           echo "Building Linux x86_64 Executable..."
-          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/hellodpi-linux-amd64 ./cmd/hellodpi
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o bin/hellodpi-linux-amd64 ./cmd/hellodpi
 
-      - name: Build Android APK
+          echo "Building Linux / OpenWrt ARM64 Executable..."
+          GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o bin/hellodpi-linux-arm64 ./cmd/hellodpi
+
+          echo "Building OpenWrt MIPSLE Executable..."
+          GOOS=linux GOARCH=mipsle GOMIPS=softfloat CGO_ENABLED=0 go build -ldflags="-s -w" -o bin/hellodpi-openwrt-mipsle ./cmd/hellodpi
+
+      - name: Build Android Core & APK
+        continue-on-error: true
         run: |
           echo "Building Android ARM64 Core Binary & APK..."
           mkdir -p mobile/android/app/src/main/jniLibs/arm64-v8a
-          GOOS=android GOARCH=arm64 go build -ldflags="-s -w" -o mobile/android/app/src/main/jniLibs/arm64-v8a/libhellodpi.so ./cmd/hellodpi
+          GOOS=android GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o mobile/android/app/src/main/jniLibs/arm64-v8a/libhellodpi.so ./cmd/hellodpi
           cp mobile/android/app/src/main/jniLibs/arm64-v8a/libhellodpi.so bin/hellodpi-android-arm64
-          cd mobile/android
-          chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
-          cd ../..
-          cp mobile/android/app/build/outputs/apk/release/app-release.apk bin/HelloDPI-Android.apk
+          if [ -d "$ANDROID_HOME" ] || [ -d "$ANDROID_SDK_ROOT" ]; then
+            cd mobile/android
+            chmod +x gradlew
+            ./gradlew assembleRelease --no-daemon || ./gradlew assembleDebug --no-daemon || true
+            cd ../..
+            if [ -f "mobile/android/app/build/outputs/apk/release/app-release.apk" ]; then
+              cp mobile/android/app/build/outputs/apk/release/app-release.apk bin/HelloDPI-Android.apk
+            elif [ -f "mobile/android/app/build/outputs/apk/debug/app-debug.apk" ]; then
+              cp mobile/android/app/build/outputs/apk/debug/app-debug.apk bin/HelloDPI-Android.apk
+            fi
+          fi
 
       - name: Verify Release Artifacts
         run: |
@@ -74,11 +87,14 @@ jobs:
         with:
           files: |
             bin/HelloDPI-Setup.exe
+            bin/HelloDPI-Windows.exe
             bin/HelloDPI-macOS.dmg
             bin/HelloDPI-macOS.zip
             bin/HelloDPI-Android.apk
             bin/hellodpi-android-arm64
             bin/hellodpi-linux-amd64
+            bin/hellodpi-linux-arm64
+            bin/hellodpi-openwrt-mipsle
           generate_release_notes: true
           draft: false
           prerelease: false

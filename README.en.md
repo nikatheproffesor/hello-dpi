@@ -203,6 +203,8 @@ CGO_ENABLED=0 GOOS=linux GOARCH=mipsle GOMIPS=softfloat go build -ldflags="-s -w
 CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o hellodpi ./cmd/hellodpi
 ```
 
+> **OpenWrt & Linux Deployment:** For ready-to-use OpenWrt init scripts (`/etc/init.d/hellodpi`), UCI configuration, and systemd service files, see [deploy/README.md](deploy/README.md).
+
 Requires the Go version pinned in `go.mod`.
 
 ## FAQ
