@@ -27,7 +27,7 @@ func GenerateDecoyTLSRecord(length int) []byte {
 	decoy[1] = 0x03 // TLS 1.2/1.3 standard record layer
 	decoy[2] = 0x03
 	binary.BigEndian.PutUint16(decoy[3:5], uint16(length-5))
-	
+
 	// Fill with pseudo-random noise
 	_, _ = rand.Read(decoy[5:])
 	return decoy

@@ -12,10 +12,10 @@ import (
 
 // ECHInfo stores Encrypted Client Hello configuration details
 type ECHInfo struct {
-	Domain     string
-	Supported  bool
-	Config     string
-	ExpiresAt  time.Time
+	Domain    string
+	Supported bool
+	Config    string
+	ExpiresAt time.Time
 }
 
 // ECHCache manages thread-safe caching of ECH records

@@ -86,7 +86,7 @@ func BuildClientHello(sni string) []byte {
 	handshakeBody[0] = 0x03
 	handshakeBody[1] = 0x03
 	_, _ = rand.Read(handshakeBody[2:34]) // 32-byte random
-	handshakeBody[34] = 0x00             // session ID len
+	handshakeBody[34] = 0x00              // session ID len
 	// Cipher suites length: 2 (1 suite)
 	handshakeBody[35] = 0x00
 	handshakeBody[36] = 0x02

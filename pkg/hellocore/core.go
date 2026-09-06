@@ -24,9 +24,9 @@ type MobileEngine struct {
 
 // Config holds configuration parameters for the mobile engine
 type Config struct {
-	ListenAddr string
-	SplitMode  string // "auto", "tlsrec", "first-byte", "chunked"
-	DelayMs    int
+	ListenAddr  string
+	SplitMode   string // "auto", "tlsrec", "first-byte", "chunked"
+	DelayMs     int
 	DoHEndpoint string
 }
 

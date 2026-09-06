@@ -22,9 +22,9 @@ const (
 
 // RuleSet defines the structured rules loaded dynamically or embedded
 type RuleSet struct {
-	Version      string   `json:"version"`
-	UpdatedAt    string   `json:"updated_at"`
-	DirectList   []string `json:"direct_list"`
+	Version       string   `json:"version"`
+	UpdatedAt     string   `json:"updated_at"`
+	DirectList    []string `json:"direct_list"`
 	InterceptList []string `json:"intercept_list"`
 }
 
@@ -134,10 +134,10 @@ var defaultInterceptList = []string{
 // NewEngine initializes the smart rule engine with embedded defaults and local cache
 func NewEngine() *Engine {
 	eng := &Engine{
-		directSet:    make(map[string]bool),
-		interSet:     make(map[string]bool),
-		version:      "4.0.0-embedded",
-		lastSync:     time.Now(),
+		directSet: make(map[string]bool),
+		interSet:  make(map[string]bool),
+		version:   "4.0.0-embedded",
+		lastSync:  time.Now(),
 	}
 
 	// Setup local cache path in user config dir

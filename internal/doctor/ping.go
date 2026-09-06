@@ -19,10 +19,10 @@ type PingTarget struct {
 
 // LivePingReport summarizes real-time network latency
 type LivePingReport struct {
-	Timestamp   string       `json:"timestamp"`
-	Targets     []PingTarget `json:"targets"`
-	AvgRTTMs    int64        `json:"avg_rtt_ms"`
-	Advantage   string       `json:"advantage"`
+	Timestamp string       `json:"timestamp"`
+	Targets   []PingTarget `json:"targets"`
+	AvgRTTMs  int64        `json:"avg_rtt_ms"`
+	Advantage string       `json:"advantage"`
 }
 
 // MeasureLatency measures TCP + TLS handshake RTT to target host:port

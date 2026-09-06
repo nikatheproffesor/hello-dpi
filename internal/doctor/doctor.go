@@ -56,10 +56,10 @@ var (
 	lastReportMu sync.RWMutex
 	lastReport   *DiagnosticReport
 
-	globalRules  *rules.Engine
-	globalProbe  *probe.Engine
-	globalVoice  *voice.Optimizer
-	onTuneApply  func(mode dpi.SplitMode, splitOffset int, delayMs int)
+	globalRules *rules.Engine
+	globalProbe *probe.Engine
+	globalVoice *voice.Optimizer
+	onTuneApply func(mode dpi.SplitMode, splitOffset int, delayMs int)
 )
 
 // SetCoreEngines connects active proxy subsystems to the doctor dashboard
@@ -1296,4 +1296,3 @@ const doctorHTML = `<!DOCTYPE html>
   </script>
 </body>
 </html>`
-
