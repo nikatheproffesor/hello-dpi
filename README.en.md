@@ -1,14 +1,29 @@
-# Hello DPI
+<div align="center">
 
-Cross-platform DPI circumvention tool with a native GUI (system tray / menu bar / Android Quick Settings tile).
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo_white.png">
+    <img src="assets/logo.png" width="120" alt="Hello DPI Logo" />
+  </picture>
 
-[![Release](https://img.shields.io/github/v/release/nikatheproffesor/hello-dpi?label=version)](releases/latest)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20Android-informational)](#downloads)
+  # Hello DPI
 
-🇹🇷 [Bu dosyanın Türkçe sürümü](README.md)
+  **Cross-platform DPI circumvention tool with a native GUI (system tray / menu bar / Android Quick Settings tile).**
 
-[Downloads](#downloads) • [How it works](#how-it-works) • [Configuration](#configuration) • [Benchmarks](#benchmarks) • [Building from source](#building-from-source) • [FAQ](#faq) • [Security](#security)
+  <br />
+
+  [![Release](https://img.shields.io/github/v/release/nikatheproffesor/hello-dpi?label=version)](releases/latest)
+  [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+  [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20Android-informational)](#downloads)
+
+  <br />
+
+  🇹🇷 [Bu dosyanın Türkçe sürümü](README.md)
+
+  <br />
+
+  [Downloads](#downloads) • [More Options](#more-options) • [How it works](#how-it-works) • [Configuration](#configuration) • [Benchmarks](#benchmarks) • [Building from source](#building-from-source) • [FAQ](#faq) • [Security](#security)
+
+</div>
 
 ---
 
@@ -27,13 +42,19 @@ This is a young, single-maintainer project (not independently audited). The clai
 
 | Platform | File | Notes |
 |---|---|---|
-| Windows | [HelloDPI-Setup.exe](releases/latest) | Installer, runs from system tray |
-| Windows (portable) | [HelloDPI-Windows.exe](releases/latest) | No installation required |
-| macOS | [HelloDPI-macOS.dmg](releases/latest) | Signed with a Developer ID; `.zip` also available |
+| Windows | [HelloDPI-Setup.exe](releases/latest) | 1-Click Installer, desktop shortcut, runs from system tray |
+| macOS | [HelloDPI-macOS.dmg](releases/latest) | Official Apple Developer ID signed DMG |
 | Linux | [hellodpi-linux-amd64](releases/latest) | Standalone binary, usable as a systemd service |
 | Android | [HelloDPI-Android.apk](releases/latest) | Includes a Quick Settings tile |
 
 iOS support is in development.
+
+### More Options
+
+For standalone use without an installer or alternative distributions:
+- **Windows (Portable):** [HelloDPI-Windows.exe](releases/latest) — Standalone tray binary without installation.
+- **macOS (ZIP Archive):** [HelloDPI-macOS.zip](releases/latest) — Extract `.app` directly without mounting DMG.
+- **Android (ARM64 Core):** [hellodpi-android-arm64](releases/latest) — Headless core binary for Termux or embedded Linux environments.
 
 ### SmartScreen / Gatekeeper warnings
 

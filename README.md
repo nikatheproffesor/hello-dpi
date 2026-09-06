@@ -1,14 +1,29 @@
-# Hello DPI
+<div align="center">
 
-Sistem tepsisi / menü çubuğu / Android Hızlı Ayarlar kutucuğu ile gelen, çapraz platform çalışan DPI (Derin Paket İnceleme) aşma aracı.
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo_white.png">
+    <img src="assets/logo.png" width="120" alt="Hello DPI Logo" />
+  </picture>
 
-[![Release](https://img.shields.io/github/v/release/nikatheproffesor/hello-dpi?label=version)](releases/latest)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20Android-informational)](#i̇ndirmeler)
+  # Hello DPI
 
-🇬🇧 [English version of this file](README.en.md)
+  **Sistem tepsisi / menü çubuğu / Android Hızlı Ayarlar kutucuğu ile gelen, çapraz platform çalışan DPI (Derin Paket İnceleme) aşma aracı.**
 
-[İndirmeler](#i̇ndirmeler) • [Nasıl çalışır](#nasıl-çalışır) • [Yapılandırma](#yapılandırma) • [Benchmark'lar](#benchmarklar) • [Kaynak koddan derleme](#kaynak-koddan-derleme) • [SSS](#sıkça-sorulan-sorular) • [Güvenlik](#güvenlik)
+  <br />
+
+  [![Release](https://img.shields.io/github/v/release/nikatheproffesor/hello-dpi?label=version)](releases/latest)
+  [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+  [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20Android-informational)](#i̇ndirmeler)
+
+  <br />
+
+  🇬🇧 [English version of this file](README.en.md)
+
+  <br />
+
+  [İndirmeler](#i̇ndirmeler) • [Daha Fazla Seçenek](#daha-fazla-seçenek) • [Nasıl çalışır](#nasıl-çalışır) • [Yapılandırma](#yapılandırma) • [Benchmark'lar](#benchmarklar) • [Kaynak koddan derleme](#kaynak-koddan-derleme) • [SSS](#sıkça-sorulan-sorular) • [Güvenlik](#güvenlik)
+
+</div>
 
 ---
 
@@ -27,13 +42,19 @@ Bu, tek geliştiricili, henüz genç bir proje (bağımsız denetimden geçmedi)
 
 | Platform | Dosya | Not |
 |---|---|---|
-| Windows | [HelloDPI-Setup.exe](releases/latest) | Kurulum dosyası, sistem tepsisinden çalışır |
-| Windows (taşınabilir) | [HelloDPI-Windows.exe](releases/latest) | Kurulum gerektirmez |
-| macOS | [HelloDPI-macOS.dmg](releases/latest) | Developer ID ile imzalı; `.zip` seçeneği de mevcut |
+| Windows | [HelloDPI-Setup.exe](releases/latest) | 1-Tık Kurulum, masaüstü kısayolu, sistem tepsisinden çalışır |
+| macOS | [HelloDPI-macOS.dmg](releases/latest) | Developer ID ile imzalı resmi Apple DMG paketi |
 | Linux | [hellodpi-linux-amd64](releases/latest) | Bağımsız ikili dosya, systemd servisi olarak da kullanılabilir |
-| Android | [HelloDPI-Android.apk](releases/latest) | Hızlı Ayarlar kutucuğu içerir |
+| Android | [HelloDPI-Android.apk](releases/latest) | Hızlı Ayarlar kutucuğu (Quick Settings Tile) içerir |
 
 iOS desteği geliştirme aşamasında.
+
+### Daha Fazla Seçenek
+
+Kurulum istemeyen veya alternatif ortamlar arayanlar için:
+- **Windows (Taşınabilir / Portable):** [HelloDPI-Windows.exe](releases/latest) — Kurulum gerektirmez, doğrudan tıklayıp sistem tepsisinden çalıştırabilirsiniz.
+- **macOS (ZIP Arşivi):** [HelloDPI-macOS.zip](releases/latest) — DMG bağlamak istemeyenler için doğrudan `.app` içeren sıkıştırılmış arşiv.
+- **Android (ARM64 Çekirdek):** [hellodpi-android-arm64](releases/latest) — Termux veya gömülü Linux sistemleri için bağımsız CLI ikili dosyası.
 
 ### SmartScreen / Gatekeeper uyarıları
 
