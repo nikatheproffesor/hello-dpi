@@ -135,12 +135,14 @@ The figures below represent actual runtime benchmarks measured using the reposit
 
 Because Hello DPI does not tunnel traffic through a foreign VPN server, your packets take the direct physical route to their destination. Overhead is strictly limited to microseconds during the initial handshake:
 
-| Target Endpoint | Direct Connection | Standard VPN (Frankfurt) | Hello DPI Active | Net Added Latency |
+| Target Endpoint | Direct Connection | Standard VPN (Frankfurt / Typical Reference*) | Hello DPI Active | Net Added Latency |
 |---|---|---|---|---|
-| **Cloudflare Global Edge** (`1.1.1.1:443`) | 36 ms | 82 ms | **36 ms** | **+0 ms** |
-| **Google / YouTube CDN** (`142.250.185.206:443`) | 18 ms | 65 ms | **18 ms** | **+0 ms** |
-| **Discord Gateway Edge** (`162.159.138.232:443`) | 22 ms | 74 ms | **22 ms** | **+0 ms** |
-| **e-Gov Portal** (`turkiye.gov.tr:443`) | 14 ms | 98 ms (or blocked) | **14 ms** | **+0 ms** |
+| **Cloudflare Global Edge** (`1.1.1.1:443`) | 36 ms | ~82 ms | **36 ms** | **+0 ms** |
+| **Google / YouTube CDN** (`142.250.185.206:443`) | 18 ms | ~65 ms | **18 ms** | **+0 ms** |
+| **Discord Gateway Edge** (`162.159.138.232:443`) | 22 ms | ~74 ms | **22 ms** | **+0 ms** |
+| **e-Gov Portal** (`turkiye.gov.tr:443`) | 14 ms | ~98 ms (or blocked) | **14 ms** | **+0 ms** |
+
+> \* **Methodology Note (Standard VPN Column):** The VPN figures represent typical reference round-trip time (RTT) ranges for standard commercial WireGuard/OpenVPN tunnels routing from Turkey to Frankfurt/Amsterdam endpoints. The Direct and Hello DPI figures are live TCP connect RTT measurements on the local interface (verifiable via `go test -v -run=TestMeasureLatency ./internal/doctor/...`); Hello DPI introduces no packet encapsulation or geographic detour, preserving physical line RTT (+0 ms).
 
 ### Measure on your own connection
 

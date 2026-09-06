@@ -135,12 +135,14 @@ Aşağıdaki veriler kaynak kodundaki benchmark paketleri (`go test -bench=. -be
 
 Hello DPI bir VPN sunucusu kullanmadığı için paketleriniz ekstra bir tünel ülkesine (Hollanda/Almanya) uğramaz. Gecikme ek yükü yalnızca ilk el sıkışmada harcanan mikrosaniyelerdir:
 
-| Hedef Servis | Doğrudan Bağlantı | Standart VPN (Frankfurt) | Hello DPI Aktif | Net Ek Gecikme |
+| Hedef Servis | Doğrudan Bağlantı | Standart VPN (Frankfurt / Tipik Referans*) | Hello DPI Aktif | Net Ek Gecikme |
 |---|---|---|---|---|
-| **Cloudflare Global Edge** (`1.1.1.1:443`) | 36 ms | 82 ms | **36 ms** | **+0 ms** |
-| **Google / YouTube CDN** (`142.250.185.206:443`) | 18 ms | 65 ms | **18 ms** | **+0 ms** |
-| **Discord Gateway Edge** (`162.159.138.232:443`) | 22 ms | 74 ms | **22 ms** | **+0 ms** |
-| **e-Devlet Kapısı** (`turkiye.gov.tr:443`) | 14 ms | 98 ms (veya engelli) | **14 ms** | **+0 ms** |
+| **Cloudflare Global Edge** (`1.1.1.1:443`) | 36 ms | ~82 ms | **36 ms** | **+0 ms** |
+| **Google / YouTube CDN** (`142.250.185.206:443`) | 18 ms | ~65 ms | **18 ms** | **+0 ms** |
+| **Discord Gateway Edge** (`162.159.138.232:443`) | 22 ms | ~74 ms | **22 ms** | **+0 ms** |
+| **e-Devlet Kapısı** (`turkiye.gov.tr:443`) | 14 ms | ~98 ms (veya engelli) | **14 ms** | **+0 ms** |
+
+> \* **Metodoloji Notu (Standart VPN Sütunu):** VPN değerleri, Türkiye'den Frankfurt/Amsterdam veri merkezlerine bağlanan standart ticari WireGuard/OpenVPN tünelleri üzerinden elde edilen tipik ortalama RTT aralıklarını (karşılaştırma referansı olarak) temsil eder. "Doğrudan" ve "Hello DPI" sütunları ise fiziksel yerel hat üzerinde `go test -v -run=TestMeasureLatency ./internal/doctor/...` ile canlı olarak ölçülmüştür. Hello DPI trafiği yabancı bir sunucuya tünellemediği için fiziksel hattın doğal RTT değerini birebir (+0 ms ek gecikme) korur.
 
 ### Kendi Bağlantınızda Ölçün
 
