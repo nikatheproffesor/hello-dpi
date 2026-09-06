@@ -32,6 +32,11 @@ const (
 )
 
 func main() {
+	defer func() {
+		_ = divert.Stop()
+		_ = sysproxy.ClearSystemProxy()
+	}()
+
 	// Initialize core proxy server
 	cfg := proxy.Config{
 		Addr:        proxyAddr,
