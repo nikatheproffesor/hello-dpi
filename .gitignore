@@ -1,5 +1,6 @@
 # Binaries and build artifacts
-bin/
+/bin/
+!internal/divert/bin/
 dist/
 *.exe
 *.dll

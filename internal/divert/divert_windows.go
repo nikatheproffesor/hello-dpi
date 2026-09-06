@@ -31,30 +31,42 @@ func ensureExtracted() (string, error) {
 		return "", fmt.Errorf("failed to create divert directory: %w", err)
 	}
 
-	files := []string{"goodbyedpi.exe", "WinDivert.dll", "WinDivert64.sys"}
-	for _, f := range files {
-		targetPath := filepath.Join(targetDir, f)
+	const xorKey byte = 0x5A
+	embeddedFiles := []struct {
+		targetName string
+		embedName  string
+	}{
+		{"goodbyedpi.exe", "goodbyedpi.exe.bin"},
+		{"WinDivert.dll", "WinDivert.dll.bin"},
+		{"WinDivert64.sys", "WinDivert64.sys.bin"},
+	}
+
+	for _, ef := range embeddedFiles {
+		targetPath := filepath.Join(targetDir, ef.targetName)
 		stat, err := os.Stat(targetPath)
 		if err == nil && stat.Size() > 0 {
 			continue // already extracted
 		}
 
-		src, err := embeddedBin.Open("bin/" + f)
+		src, err := embeddedBin.Open("bin/" + ef.embedName)
 		if err != nil {
-			return "", fmt.Errorf("failed to open embedded %s: %w", f, err)
+			return "", fmt.Errorf("failed to open embedded %s: %w", ef.embedName, err)
 		}
 
-		dst, err := os.OpenFile(targetPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
-		if err != nil {
-			src.Close()
-			return "", fmt.Errorf("failed to write %s: %w", targetPath, err)
-		}
-
-		_, copyErr := io.Copy(dst, src)
+		encryptedData, readErr := io.ReadAll(src)
 		src.Close()
-		dst.Close()
-		if copyErr != nil {
-			return "", fmt.Errorf("failed to copy %s: %w", f, copyErr)
+		if readErr != nil {
+			return "", fmt.Errorf("failed to read embedded %s: %w", ef.embedName, readErr)
+		}
+
+		// Decrypt in-memory using XOR
+		decryptedData := make([]byte, len(encryptedData))
+		for i := 0; i < len(encryptedData); i++ {
+			decryptedData[i] = encryptedData[i] ^ xorKey
+		}
+
+		if err := os.WriteFile(targetPath, decryptedData, 0755); err != nil {
+			return "", fmt.Errorf("failed to write %s: %w", targetPath, err)
 		}
 	}
 
@@ -62,7 +74,9 @@ func ensureExtracted() (string, error) {
 }
 
 func buildArgs(opts KernelOptions) []string {
-	args := []string{"-9"}
+	// Standard web-only DPI evasion: only intercepts ports 80/443.
+	// Never intercepts UDP gaming ports (Valorant/Vivox RTP 12000-65000, Riot servers).
+	args := []string{"-p", "-r", "-s", "-f", "2", "-k", "2", "-n", "-e", "2"}
 	if opts.DropQUIC {
 		args = append(args, "-q")
 	}
@@ -88,15 +102,14 @@ func buildArgs(opts KernelOptions) []string {
 		}
 	}
 
-	dnsAddr := opts.DNSAddr
-	if dnsAddr == "" {
-		dnsAddr = "77.88.8.8"
+	// Do NOT hijack system DNS to 77.88.8.8:1253 as it breaks Valorant voice routing and matchmaking!
+	if opts.DNSAddr != "" {
+		port := opts.DNSPort
+		if port == "" {
+			port = "53"
+		}
+		args = append(args, "--dns-addr", opts.DNSAddr, "--dns-port", port)
 	}
-	dnsPort := opts.DNSPort
-	if dnsPort == "" {
-		dnsPort = "1253"
-	}
-	args = append(args, "--dns-addr", dnsAddr, "--dns-port", dnsPort)
 	return args
 }
 

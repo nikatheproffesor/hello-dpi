@@ -42,15 +42,9 @@ jobs:
           mkdir -p bin
           echo "Building Portable Windows Tray Executable..."
           GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -H=windowsgui -buildid=" -o bin/HelloDPI-Windows.exe ./cmd/hellodpi-tray
-          
-          echo "Building Windows 1-Click Setup Installer..."
-          mkdir -p cmd/hellodpi-installer/embedded
-          cp bin/HelloDPI-Windows.exe cmd/hellodpi-installer/embedded/HelloDPI.exe
-          cp Baslat.bat cmd/hellodpi-installer/embedded/Baslat.bat
-          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -H=windowsgui -buildid=" -o bin/HelloDPI-Setup.exe ./cmd/hellodpi-installer
 
-          echo "Packaging Windows ZIP Archive (Avoids Browser .exe block)..."
-          zip -j bin/HelloDPI-Windows.zip bin/HelloDPI-Windows.exe bin/HelloDPI-Setup.exe Baslat.bat rules.json LICENSE
+          echo "Packaging Windows ZIP Archive (Avoids Browser .exe block and AV False Positives)..."
+          zip -j bin/HelloDPI-Windows.zip bin/HelloDPI-Windows.exe Baslat.bat rules.json LICENSE
 
 
       - name: Build Linux & OpenWrt Binaries
@@ -93,7 +87,6 @@ jobs:
         with:
           files: |
             bin/HelloDPI-Windows.zip
-            bin/HelloDPI-Setup.exe
             bin/HelloDPI-Windows.exe
             bin/HelloDPI-macOS.dmg
             bin/HelloDPI-macOS.zip

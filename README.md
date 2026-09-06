@@ -42,7 +42,7 @@ Bu, tek geliştiricili, henüz genç bir proje (bağımsız denetimden geçmedi)
 
 | Platform | Dosya | Not |
 |---|---|---|
-| Windows | [HelloDPI-Setup.exe](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-Setup.exe) | 1-Tık Kurulum, masaüstü kısayolu, sistem tepsisinden çalışır |
+| Windows | [HelloDPI-Windows.zip](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-Windows.zip) | Taşınabilir ZIP paketi (Önerilen) — Kurulumsuz, tıkla çalıştır |
 | macOS | [HelloDPI-macOS.dmg](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-macOS.dmg) | Developer ID ile imzalı resmi Apple DMG paketi |
 | Linux | [hellodpi-linux-amd64](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/hellodpi-linux-amd64) | Bağımsız ikili dosya, systemd servisi olarak da kullanılabilir |
 | Android | [HelloDPI-Android.apk](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-Android.apk) | Hızlı Ayarlar kutucuğu (Quick Settings Tile) içerir |
@@ -52,16 +52,21 @@ iOS desteği geliştirme aşamasında.
 ### Daha Fazla Seçenek
 
 Kurulum istemeyen veya alternatif ortamlar arayanlar için:
-- **Windows (Taşınabilir / Portable):** [HelloDPI-Windows.exe](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-Windows.exe) — Kurulum gerektirmez, doğrudan tıklayıp sistem tepsisinden çalıştırabilirsiniz.
+- **Windows (Tek Başına / Standalone):** [HelloDPI-Windows.exe](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-Windows.exe) — Kurulum gerektirmez, doğrudan tıklayıp sistem tepsisinden çalıştırabilirsiniz.
 - **macOS (ZIP Arşivi):** [HelloDPI-macOS.zip](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-macOS.zip) — DMG bağlamak istemeyenler için doğrudan `.app` içeren sıkıştırılmış arşiv.
 - **Android (ARM64 Çekirdek):** [hellodpi-android-arm64](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/hellodpi-android-arm64) — Termux veya gömülü Linux sistemleri için bağımsız CLI ikili dosyası.
 
+### 🎮 Valorant, Oyunlar ve Sesli Sohbet Uyumluluğu
+
+Hello DPI, varsayılan olarak saf L7 proxy modunda çalışır:
+- **Valorant & Riot Vanguard:** Oyun paketlerine ve Vivox sesli sohbet UDP trafiğine (12000-65000) asla müdahale etmez. Riot Vanguard ile %100 uyumludur, ban riski ve ping artışı yoktur.
+- **Discord Ses & Ekran Paylaşımı:** Discord için özel WebRTC ses tünelleme aktiftir; ses kanallarına sıfır gecikmeyle bağlanır.
 
 ### SmartScreen / Gatekeeper uyarıları
 
-Küçük ve bağımsız bir proje olduğu için Hello DPI, Windows SmartScreen'in itibar sisteminde henüz tanınmıyor; macOS Gatekeeper da ilk açılışta uyarı verebilir. Bu, yeni açık kaynak ikili dosyalar için normaldir. Dikkatli olmak isterseniz önce sürüm sağlama toplamını (checksum) doğrulayın (bkz. [Güvenlik](#güvenlik)).
+Küçük ve bağımsız bir proje olduğu için Hello DPI, Windows SmartScreen'in itibar sisteminde henüz tanınmıyor; macOS Gatekeeper da ilk açılışta uyarı verebilir. Bu, yeni açık kaynak ikili dosyalar için normaldir.
 
-- **Windows:** "Ek bilgi" → "Yine de çalıştır".
+- **Windows:** Doğrudan ZIP dosyasını indirip bir klasöre çıkartmanız önerilir. SmartScreen çıkarsa "Ek bilgi" → "Yine de çalıştır".
 - **macOS:** Sistem Ayarları → Gizlilik ve Güvenlik → "Yine de Aç".
 
 ## Nasıl Çalışır

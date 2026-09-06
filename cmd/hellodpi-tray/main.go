@@ -145,21 +145,24 @@ func main() {
 			statusItem.SetLabel(fmt.Sprintf("Hello DPI: Aktif (v%s)", version.Version))
 			toggleItem.SetLabel("Korumayı Duraklat")
 			if kernelItem != nil {
-				kernelItem.SetLabel("Çekirdek Motoru: Aktif")
+				if divert.IsRunning() {
+					kernelItem.SetLabel("Çekirdek Motoru: Aktif")
+				} else {
+					kernelItem.SetLabel("Çekirdek Motoru: Devre Dışı")
+				}
 			}
 			tray.ShowNotification(appTitle, "Hello DPI devrede. Discord ve tüm siteler açık.")
 
 			go func() {
 				_ = sysproxy.SetSystemProxy("127.0.0.1", 8080)
-				_ = divert.Start()
 			}()
 		}
 	})
 
 	menu.AddSeparator()
 
-	// 3. Kernel Divert Engine
-	kernelItem = menu.Add("Çekirdek Motoru: Aktif", func() {
+	// 3. Kernel Divert Engine (Optional, for direct UDP socket games like Roblox)
+	kernelItem = menu.Add("Çekirdek Motoru: Devre Dışı", func() {
 		if divert.IsRunning() {
 			_ = divert.Stop()
 			kernelItem.SetLabel("Çekirdek Motoru: Devre Dışı")
@@ -175,16 +178,13 @@ func main() {
 		}
 	})
 
-	// Ensure kernel item label matches actual running state on startup
-	go func() {
-		_ = divert.Start()
-		time.Sleep(500 * time.Millisecond)
-		if divert.IsRunning() {
-			kernelItem.SetLabel("Çekirdek Motoru: Aktif")
-		} else {
-			kernelItem.SetLabel("Çekirdek Motoru")
-		}
-	}()
+	// Kernel Divert is strictly OFF by default. L7 Pure Go proxy handles Discord, web and apps.
+	// This ensures Vanguard compatibility, native latency, and 100% working Valorant voice chat.
+	if divert.IsRunning() {
+		kernelItem.SetLabel("Çekirdek Motoru: Aktif")
+	} else {
+		kernelItem.SetLabel("Çekirdek Motoru: Devre Dışı")
+	}
 
 	menu.AddSeparator()
 

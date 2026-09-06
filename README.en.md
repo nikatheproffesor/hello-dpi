@@ -42,7 +42,7 @@ This is a young, single-maintainer project (not independently audited). The clai
 
 | Platform | File | Notes |
 |---|---|---|
-| Windows | [HelloDPI-Setup.exe](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-Setup.exe) | 1-Click Installer, desktop shortcut, runs from system tray |
+| Windows | [HelloDPI-Windows.zip](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-Windows.zip) | Portable ZIP package (Recommended) — No install, extract & run |
 | macOS | [HelloDPI-macOS.dmg](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-macOS.dmg) | Official Apple Developer ID signed DMG |
 | Linux | [hellodpi-linux-amd64](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/hellodpi-linux-amd64) | Standalone binary, usable as a systemd service |
 | Android | [HelloDPI-Android.apk](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-Android.apk) | Includes a Quick Settings tile |
@@ -52,16 +52,21 @@ iOS support is in development.
 ### More Options
 
 For standalone use without an installer or alternative distributions:
-- **Windows (Portable):** [HelloDPI-Windows.exe](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-Windows.exe) — Standalone tray binary without installation.
+- **Windows (Standalone):** [HelloDPI-Windows.exe](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-Windows.exe) — Standalone tray binary without installation.
 - **macOS (ZIP Archive):** [HelloDPI-macOS.zip](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-macOS.zip) — Extract `.app` directly without mounting DMG.
 - **Android (ARM64 Core):** [hellodpi-android-arm64](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/hellodpi-android-arm64) — Headless core binary for Termux or embedded Linux environments.
 
+### 🎮 Valorant, Online Gaming & Voice Chat Compatibility
+
+Hello DPI operates strictly in clean L7 proxy mode by default:
+- **Valorant & Riot Vanguard:** Game packets and in-game Vivox UDP voice chat (ports 12000-65000) are never touched or rerouted. 100% Vanguard compliant with 0ms added ping.
+- **Discord Voice & Screen Share:** Dedicated WebRTC optimizations keep Discord voice channels connected with native low latency.
 
 ### SmartScreen / Gatekeeper warnings
 
-As a small independent project, Hello DPI isn't yet recognized by Windows SmartScreen's reputation system, and macOS Gatekeeper may warn on first launch. This is normal for new open-source binaries. Verify the release checksum first if you want to be careful (see [Security](#security)).
+As a small independent project, Hello DPI isn't yet recognized by Windows SmartScreen's reputation system, and macOS Gatekeeper may warn on first launch. This is normal for new open-source binaries.
 
-- **Windows:** "More info" → "Run anyway".
+- **Windows:** Download the recommended ZIP package. If SmartScreen prompts: "More info" → "Run anyway".
 - **macOS:** System Settings → Privacy & Security → "Open Anyway".
 
 ## How it works

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-echo "=== Building HelloCore.xcframework for iOS ==="
+echo "=== Building Universal HelloCore.xcframework for iOS & Simulators ==="
 
 TARGET_DIR="mobile/ios/Frameworks"
 mkdir -p "$TARGET_DIR"
@@ -23,21 +23,26 @@ CGO_ENABLED=1 GOOS=ios GOARCH=arm64 \
 CC="$CLANG_DEVICE -isysroot $SDK_DEVICE_PATH -arch arm64 -miphoneos-version-min=15.0" \
 go build -buildmode=c-archive -o "$TMP_DIR/device/libHelloCore.a" ./pkg/hellocore/mobile
 
-echo "2. Compiling for iOS Simulator (arm64)..."
+echo "2. Compiling for iOS Simulator (arm64 + x86_64)..."
 CGO_ENABLED=1 GOOS=ios GOARCH=arm64 \
 CC="$CLANG_SIM -isysroot $SDK_SIM_PATH -arch arm64 -mios-simulator-version-min=15.0" \
-go build -buildmode=c-archive -o "$TMP_DIR/sim/libHelloCore.a" ./pkg/hellocore/mobile
+go build -buildmode=c-archive -o "$TMP_DIR/sim/libHelloCore_arm64.a" ./pkg/hellocore/mobile
 
-echo "3. Preparing C Headers..."
+CGO_ENABLED=1 GOOS=ios GOARCH=amd64 \
+CC="$CLANG_SIM -isysroot $SDK_SIM_PATH -arch x86_64 -mios-simulator-version-min=15.0" \
+go build -buildmode=c-archive -o "$TMP_DIR/sim/libHelloCore_x86_64.a" ./pkg/hellocore/mobile
+
+lipo -create "$TMP_DIR/sim/libHelloCore_arm64.a" "$TMP_DIR/sim/libHelloCore_x86_64.a" -output "$TMP_DIR/sim/libHelloCore.a"
+
+echo "3. Preparing C Headers & Module Map..."
 cp "$TMP_DIR/device/libHelloCore.h" "$TMP_DIR/include/HelloCore.h"
 
-# Create module.modulemap so Swift can 'import HelloCore' directly
-cat <<EOF > "$TMP_DIR/include/module.modulemap"
+cat <<MAP > "$TMP_DIR/include/module.modulemap"
 module HelloCore {
     header "HelloCore.h"
     export *
 }
-EOF
+MAP
 
 echo "4. Generating universal XCFramework..."
 rm -rf "$TARGET_DIR/HelloCore.xcframework"

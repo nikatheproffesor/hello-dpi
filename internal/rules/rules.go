@@ -55,24 +55,27 @@ var antiCheatProcesses = map[string]bool{
 	"easyanticheat_eos.exe": true,
 	"beservice.exe":         true, // BattlEye
 	"bedaisy.sys":           true,
-	"cs2.exe":               true, // Counter-Strike 2
-	"valorant.exe":          true, // Valorant
-	"r5apex.exe":            true, // Apex Legends
-	"leagueclient.exe":      true, // League of Legends
-	"faceit.exe":            true, // FACEIT Anti-Cheat
-	"faceitservice.exe":     true,
-	"pubg.exe":              true,
-	"tslgame.exe":           true, // PUBG
-	"genshinimpact.exe":     true,
-	"overwatch.exe":         true,
-	"destiny2.exe":          true,
-	"warzone.exe":           true, // Call of Duty Ricochet
-	"cod.exe":               true,
-	"rainbowsix.exe":        true, // Rainbow Six Siege
-	"rainbowsix_vulkan.exe": true,
-	"deadbydaylight.exe":    true,
-	"epicgameslauncher.exe": true,
-	"steam.exe":             true,
+	"cs2.exe":                     true, // Counter-Strike 2
+	"valorant.exe":                true, // Valorant
+	"valorant-win64-shipping.exe": true, // Valorant main game and voice engine
+	"riotclientux.exe":            true,
+	"riotclientservices.exe":      true,
+	"r5apex.exe":                  true, // Apex Legends
+	"leagueclient.exe":            true, // League of Legends
+	"faceit.exe":                  true, // FACEIT Anti-Cheat
+	"faceitservice.exe":           true,
+	"pubg.exe":                    true,
+	"tslgame.exe":                 true, // PUBG
+	"genshinimpact.exe":           true,
+	"overwatch.exe":               true,
+	"destiny2.exe":                true,
+	"warzone.exe":                 true, // Call of Duty Ricochet
+	"cod.exe":                     true,
+	"rainbowsix.exe":              true, // Rainbow Six Siege
+	"rainbowsix_vulkan.exe":       true,
+	"deadbydaylight.exe":          true,
+	"epicgameslauncher.exe":       true,
+	"steam.exe":                   true,
 }
 
 // Default rules embedded into binary
@@ -120,13 +123,19 @@ var defaultDirectList = []string{
 	"msftconnecttest.com",
 	"ipv6.msftconnecttest.com",
 
-	// High-performance gaming servers & low-latency CDNs
+	// High-performance gaming servers & low-latency CDNs (Valorant & Vivox voice 100% direct)
 	"valve.net",
 	"valvesoftware.com",
 	"steamserver.net",
 	"riotgames.com",
 	"riotcdn.net",
 	"pvp.net",
+	"valorant.com",
+	"leagueoflegends.com",
+	"vivox.com",
+	"vrtx.riotgames.com",
+	"voice.riotgames.com",
+	"rchat.riotgames.com",
 	"epicgames.com",
 	"unrealengine.com",
 	"ea.com",
