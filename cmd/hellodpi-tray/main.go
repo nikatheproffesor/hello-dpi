@@ -16,11 +16,13 @@ import (
 	"github.com/hellodpi/hellodpi/internal/doh"
 	"github.com/hellodpi/hellodpi/internal/dpi"
 	"github.com/hellodpi/hellodpi/internal/icon"
+	"github.com/hellodpi/hellodpi/internal/probe"
 	"github.com/hellodpi/hellodpi/internal/proxy"
 	"github.com/hellodpi/hellodpi/internal/speedtest"
 	"github.com/hellodpi/hellodpi/internal/sysproxy"
 	"github.com/hellodpi/hellodpi/internal/updater"
 	"github.com/hellodpi/hellodpi/internal/version"
+	"github.com/hellodpi/hellodpi/internal/voice"
 )
 
 const (
@@ -39,6 +41,13 @@ func main() {
 		EnableDoH:   true,
 	}
 	server := proxy.NewServer(cfg)
+
+	// Initialize Auto-Tune probe engine and WebRTC voice optimizer
+	probeEngine := probe.NewEngine()
+	voiceOptimizer := voice.NewOptimizer()
+	doctor.SetCoreEngines(server.Rules, probeEngine, voiceOptimizer, func(mode dpi.SplitMode, splitOffset int, delayMs int) {
+		server.UpdateEngineConfig(mode, splitOffset, delayMs)
+	})
 
 	// Start proxy server in background
 	go func() {
@@ -140,6 +149,33 @@ func main() {
 	// 5. Custom Minimalist Speedtest
 	menu.Add("Hız Testi", func() {
 		speedtest.OpenSpeedtest(proxyPort)
+	})
+
+	// 6. Adaptive DPI Auto-Tune
+	menu.Add("Otomatik Ayar (Auto-Tune)", func() {
+		tray.ShowNotification(appTitle, "DPI sondaji yapiliyor, ag kalibre ediliyor...")
+		go func() {
+			res := probeEngine.RunProbe()
+			if res.BypassVerified {
+				server.UpdateEngineConfig(dpi.SplitMode(res.BestMode), res.BestSplitPos, res.BestDelayMs)
+				tray.ShowNotification(appTitle, fmt.Sprintf("DPI Ayarlandi: %s (%dms, %s)", res.BestMode, res.BestLatencyMs, res.ISPName))
+			} else {
+				tray.ShowNotification(appTitle, "Standart guvenli DPI modu korundu.")
+			}
+		}()
+	})
+
+	// 7. Dynamic Rules OTA Sync
+	menu.Add("Kuralları Güncelle (OTA)", func() {
+		go func() {
+			err := server.Rules.SyncRemote("")
+			if err != nil {
+				tray.ShowNotification(appTitle, "Kural guncellemesi basarisiz: "+err.Error())
+			} else {
+				ver, direct, intercept, _ := server.Rules.Stats()
+				tray.ShowNotification(appTitle, fmt.Sprintf("Kurallar guncellendi: %s (Direct: %d, DPI: %d)", ver, direct, intercept))
+			}
+		}()
 	})
 
 	menu.AddSeparator()

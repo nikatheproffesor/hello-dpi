@@ -17,6 +17,7 @@ import (
 	"github.com/hellodpi/hellodpi/internal/doctor"
 	"github.com/hellodpi/hellodpi/internal/doh"
 	"github.com/hellodpi/hellodpi/internal/dpi"
+	"github.com/hellodpi/hellodpi/internal/rules"
 	"github.com/hellodpi/hellodpi/internal/speedtest"
 )
 
@@ -72,6 +73,7 @@ type Server struct {
 	Addr         string
 	Engine       *dpi.FragmentEngine
 	Resolver     *doh.Resolver
+	Rules        *rules.Engine
 	speedtestMux *http.ServeMux
 	listener     net.Listener
 	bufferPool   sync.Pool
@@ -98,6 +100,7 @@ func NewServer(cfg Config) *Server {
 		Addr:         cfg.Addr,
 		Engine:       dpi.NewFragmentEngine(cfg.SplitMode, cfg.DelayMs),
 		Resolver:     doh.NewResolver(cfg.DoHEndpoint, cfg.EnableDoH),
+		Rules:        rules.NewEngine(),
 		speedtestMux: mux,
 		bufferPool: sync.Pool{
 			New: func() interface{} {
@@ -106,6 +109,18 @@ func NewServer(cfg Config) *Server {
 			},
 		},
 	}
+}
+
+// UpdateEngineConfig dynamically reconfigures the fragment engine on the fly
+func (s *Server) UpdateEngineConfig(mode dpi.SplitMode, splitOffset int, delayMs int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.Engine = &dpi.FragmentEngine{
+		Mode:         mode,
+		ChunkDelay:   time.Duration(delayMs) * time.Millisecond,
+		CustomOffset: splitOffset,
+	}
+	log.Printf("[Hello DPI] Fragment engine auto-tuned: mode=%s, splitPos=%d, delay=%dms", mode, splitOffset, delayMs)
 }
 
 // Start listens for incoming connections and serves them
@@ -231,7 +246,7 @@ func (s *Server) handleHTTP(clientConn net.Conn, reader *bufio.Reader) {
 		return
 	}
 
-	directPass := isDirectPassThrough(host)
+	directPass := isDirectPassThrough(host) || (s.Rules != nil && s.Rules.Evaluate(host) == rules.ActionDirect)
 
 	// Resolve target using DoH or system DNS
 	var resolvedIP string
@@ -420,7 +435,7 @@ func (s *Server) handleSOCKS5(clientConn net.Conn, reader *bufio.Reader) {
 	}
 	port := strconv.Itoa(int(portBytes[0])<<8 | int(portBytes[1]))
 
-	directPass := isDirectPassThrough(targetHost)
+	directPass := isDirectPassThrough(targetHost) || (s.Rules != nil && s.Rules.Evaluate(targetHost) == rules.ActionDirect)
 
 	// Resolve target
 	var resolvedIP string

@@ -46,9 +46,12 @@ Hiçbir komut satırı, kod veya terminal bilgisine ihtiyacınız yoktur. İşle
 
 ### 🛡️ VirusTotal Tarama Sonuçları ve Güvenlik
 
-Hello DPI v3.1, çift motorlu (**Dual-Engine**) mimariye sahiptir:
-1. **Standart Proxy Modu (L7):** Günlük web gezintisi ve Discord için sıfır yönetici hakkıyla, root/sürücü yüklemeden şifreli DoH ve 5-baytlık TLS parçalama kullanır.
-2. **Çekirdek Modu (L3/L4 WinDivert):** Roblox (`RobloxPlayerBeta.exe`) ve doğrudan soket açan oyunlar için, resmi imzalı WinDivert motorunu arka planda siyah terminal penceresi açmadan tek tıkla çalıştırır.
+Hello DPI v4.0, GoodbyeDPI'ı geride bırakan **Auto-Tuning**, **Akıllı Bölünmüş Tünelleme (Split-Tunneling)** ve çok katmanlı mimariye sahiptir:
+1. **Otomatik DPI Sondajı (Auto-Tuning Engine):** İSS'nizin (TTNET, Superonline, Vodafone, TurkNet, KYK) sansür filtresini canlı test eder ve en uygun parçalama modunu otomatik seçer.
+2. **Akıllı Bölünmüş Tünelleme (Split-Tunneling):** Bankacılık (Ziraat, Garanti, İş Bankası vb.), e-Devlet ve yerel oyun sunucuları sıfır gecikmeyle doğrudan temiz ağdan akar; yalnızca sansürlü servisler DPI tüneline girer.
+3. **Dinamik Bulut Kuralları (OTA Engine):** Yeni engellemeler için programı yeniden indirmenize gerek kalmaz; kurallar buluttan dinamik güncellenir.
+4. **WebRTC & Discord Ses Optimizasyonu:** Discord ses kanallarında yaşanan RTC Connecting / No Route takılmalarını çözen UDP motoru.
+5. **Standart Proxy Modu (L7) & Çekirdek Modu (L3/L4 WinDivert / Wintun):** Roblox ve doğrudan soket açan oyunlar dahil tüm trafiği koruma altına alır.
 
 Her yayınlanan sürüm dünyanın önde gelen 70+ antivirüs motoru tarafından taranır:
 

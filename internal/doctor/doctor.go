@@ -16,8 +16,12 @@ import (
 	"unicode/utf16"
 
 	"github.com/hellodpi/hellodpi/internal/divert"
+	"github.com/hellodpi/hellodpi/internal/dpi"
+	"github.com/hellodpi/hellodpi/internal/probe"
+	"github.com/hellodpi/hellodpi/internal/rules"
 	"github.com/hellodpi/hellodpi/internal/sysproxy"
 	"github.com/hellodpi/hellodpi/internal/version"
+	"github.com/hellodpi/hellodpi/internal/voice"
 )
 
 // DiagnosticStep represents a single repair action taken
@@ -51,7 +55,20 @@ type ActionResponse struct {
 var (
 	lastReportMu sync.RWMutex
 	lastReport   *DiagnosticReport
+
+	globalRules  *rules.Engine
+	globalProbe  *probe.Engine
+	globalVoice  *voice.Optimizer
+	onTuneApply  func(mode dpi.SplitMode, splitOffset int, delayMs int)
 )
+
+// SetCoreEngines connects active proxy subsystems to the doctor dashboard
+func SetCoreEngines(r *rules.Engine, p *probe.Engine, v *voice.Optimizer, tuneCallback func(mode dpi.SplitMode, splitOffset int, delayMs int)) {
+	globalRules = r
+	globalProbe = p
+	globalVoice = v
+	onTuneApply = tuneCallback
+}
 
 // RegisterHandlers registers the doctor endpoints onto the HTTP mux
 func RegisterHandlers(mux *http.ServeMux) {
@@ -67,6 +84,10 @@ func RegisterHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/api/doctor/kernel-start", handleKernelStart)
 	mux.HandleFunc("/api/doctor/kernel-stop", handleKernelStop)
 	mux.HandleFunc("/api/doctor/kernel-toggle", handleKernelToggle)
+	mux.HandleFunc("/api/doctor/autotune", handleAutoTune)
+	mux.HandleFunc("/api/doctor/sync-rules", handleSyncRules)
+	mux.HandleFunc("/api/doctor/rules-status", handleRulesStatus)
+	mux.HandleFunc("/api/doctor/voice-test", handleVoiceTest)
 }
 
 func handleDashboard(w http.ResponseWriter, r *http.Request) {
@@ -154,6 +175,75 @@ func handleKernelToggle(w http.ResponseWriter, r *http.Request) {
 	} else {
 		handleKernelStart(w, r)
 	}
+}
+
+func handleAutoTune(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	if globalProbe == nil {
+		globalProbe = probe.NewEngine()
+	}
+
+	res := globalProbe.RunProbe()
+	if onTuneApply != nil && res.BypassVerified {
+		onTuneApply(dpi.SplitMode(res.BestMode), res.BestSplitPos, res.BestDelayMs)
+	}
+
+	_ = json.NewEncoder(w).Encode(res)
+}
+
+func handleSyncRules(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	if globalRules == nil {
+		globalRules = rules.NewEngine()
+	}
+
+	err := globalRules.SyncRemote("")
+	if err != nil {
+		_ = json.NewEncoder(w).Encode(ActionResponse{
+			Success: false,
+			Message: "Kurallar guncellenemedi (Offline/Rate limit): " + err.Error(),
+		})
+		return
+	}
+
+	ver, direct, intercept, _ := globalRules.Stats()
+	_ = json.NewEncoder(w).Encode(ActionResponse{
+		Success: true,
+		Message: fmt.Sprintf("Kurallar basariyla senkronize edildi. Versiyon: %s (Direct: %d, Intercept: %d)", ver, direct, intercept),
+	})
+}
+
+func handleRulesStatus(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	if globalRules == nil {
+		globalRules = rules.NewEngine()
+	}
+
+	ver, direct, intercept, lastSync := globalRules.Stats()
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"version":         ver,
+		"direct_count":    direct,
+		"intercept_count": intercept,
+		"last_sync":       lastSync.Format("2006-01-02 15:04:05"),
+	})
+}
+
+func handleVoiceTest(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	if globalVoice == nil {
+		globalVoice = voice.NewOptimizer()
+	}
+
+	st := globalVoice.TestVoiceConnectivity()
+	_ = json.NewEncoder(w).Encode(st)
 }
 
 // OpenDoctor opens the diagnostic dashboard in the default browser
@@ -690,7 +780,7 @@ const doctorHTML = `<!DOCTYPE html>
     /* Metrics Grid */
     .metrics-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: 12px;
     }
     .metric-card {
@@ -871,7 +961,7 @@ const doctorHTML = `<!DOCTYPE html>
     <div class="header">
       <div class="header-left">
         <span class="brand-title">Hello DPI Console</span>
-        <span class="version-tag">v3.1.0</span>
+        <span class="version-tag">v4.0.0</span>
       </div>
       <div class="header-right">
         <div class="status-badge">
@@ -905,12 +995,30 @@ const doctorHTML = `<!DOCTYPE html>
         <div class="metric-value" id="val-roblox">-- ms</div>
         <div class="metric-sub">CDN & Oyun Paketleri</div>
       </div>
+      <div class="metric-card">
+        <div class="metric-label">DPI Oto-Ayar</div>
+        <div class="metric-value" id="val-autotune">TLS-5</div>
+        <div class="metric-sub" id="sub-autotune">Adaptif Mod</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Secici Tunel</div>
+        <div class="metric-value" id="val-rules">Aktif</div>
+        <div class="metric-sub" id="sub-rules">Banka & e-Devlet 0ms</div>
+      </div>
     </div>
 
     <div>
       <div class="section-header">Hizli Islemler</div>
       <div class="actions-grid">
-        <button class="btn-action highlight" id="btn-kernel-toggle" onclick="toggleKernel()">
+        <button class="btn-action highlight" id="btn-autotune" onclick="runAutoTune()">
+          <span>Otomatik DPI Sondajı (Auto-Tune)</span>
+          <span class="action-tag">[SONDAJ]</span>
+        </button>
+        <button class="btn-action" onclick="syncRules()">
+          <span>Dinamik Kuralları Güncelle</span>
+          <span class="action-tag">[OTA]</span>
+        </button>
+        <button class="btn-action" id="btn-kernel-toggle" onclick="toggleKernel()">
           <span id="btn-kernel-label">Cekirdek Modunu Baslat</span>
           <span class="action-tag">L3/L4 Sockets</span>
         </button>
@@ -1058,12 +1166,57 @@ const doctorHTML = `<!DOCTYPE html>
       }
     }
 
+    async function runAutoTune() {
+      appendLog('> [SONDAJ] Canli DPI sondaji ve strateji kalibrasyonu baslatiliyor...');
+      showToast('DPI sondaj testi calisiyor...');
+      try {
+        const res = await fetch('/api/doctor/autotune');
+        const data = await res.json();
+        if (data.bypass_verified) {
+          appendLog('> [OK] Optimal Strateji: ' + data.best_mode + ' (splitPos: ' + data.best_split_pos + ', delay: ' + data.best_delay_ms + 'ms, ping: ' + data.best_latency_ms + 'ms)');
+          appendLog('> [ISS] Algilanan Ag: ' + data.isp_name);
+          document.getElementById('val-autotune').innerText = data.best_mode.toUpperCase() + '-' + data.best_split_pos;
+          document.getElementById('sub-autotune').innerText = data.best_latency_ms + 'ms (' + data.isp_name + ')';
+          showToast('DPI Ayari Yapildi: ' + data.best_mode);
+        } else {
+          appendLog('> [WARN] DPI sondajinda guvenli mod secildi.');
+        }
+      } catch (e) {
+        appendLog('> [HATA] DPI sondaj hatasi: ' + e.message);
+      }
+    }
+
+    async function syncRules() {
+      appendLog('> [KURAL] Dinamik OTA kurallari buluttan senkronize ediliyor...');
+      showToast('Kurallar guncelleniyor...');
+      try {
+        const res = await fetch('/api/doctor/sync-rules');
+        const data = await res.json();
+        appendLog('> [KURAL] ' + data.message);
+        showToast(data.message);
+        await loadRulesStatus();
+      } catch (e) {
+        appendLog('> [HATA] Kural guncelleme hatasi: ' + e.message);
+      }
+    }
+
+    async function loadRulesStatus() {
+      try {
+        const res = await fetch('/api/doctor/rules-status');
+        const data = await res.json();
+        const total = data.direct_count + data.intercept_count;
+        document.getElementById('val-rules').innerText = total + ' Kural';
+        document.getElementById('sub-rules').innerText = 'Direct: ' + data.direct_count + ' | DPI: ' + data.intercept_count;
+      } catch (e) {}
+    }
+
     async function startFullDiagnostics() {
       const consoleBody = document.getElementById('console-body');
       consoleBody.innerHTML = '';
       appendLog("> Canli sistem teshisi baslatildi...");
 
       await checkKernelStatus();
+      await loadRulesStatus();
 
       try {
         const res = await fetch('/api/doctor/repair');

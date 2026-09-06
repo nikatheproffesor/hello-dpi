@@ -29,9 +29,10 @@ func printBanner() {
 `
 	fmt.Printf(banner, version.Version)
 	fmt.Println("---------------------------------------------------------")
-	fmt.Println("  ⚡ Direct Connection (No VPN speed loss or ping penalty)")
-	fmt.Println("  🛡️  TLS SNI & HTTP Fragmentation Evasion")
-	fmt.Println("  🔒 Secure DNS-over-HTTPS (Anti-DNS Poisoning)")
+	fmt.Println("  [DIRECT]   Direct Connection (Zero VPN speed loss or ping penalty)")
+	fmt.Println("  [FRAGMENT] TLS SNI & Record Layer DPI Evasion")
+	fmt.Println("  [DOH]      Hardened DNS-over-HTTPS (Anti-DNS Poisoning)")
+	fmt.Println("  [ROUTING]  Smart Split-Tunneling (Selective Bypass)")
 	fmt.Println("---------------------------------------------------------")
 }
 
@@ -95,7 +96,7 @@ func main() {
 		os.Exit(0)
 	}()
 
-	fmt.Printf("\n[✓] Hello DPI is running!\n")
+	fmt.Printf("\n[OK] Hello DPI is running!\n")
 	fmt.Printf("    • Local Proxy Address : %s\n", *addr)
 	fmt.Printf("    • Fragmentation Mode  : %s\n", *mode)
 	fmt.Printf("    • DNS-over-HTTPS      : %v (%s)\n", *enableDoH, *dohServer)
