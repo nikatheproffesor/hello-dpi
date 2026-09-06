@@ -73,6 +73,9 @@ func main() {
 	}
 	server := proxy.NewServer(cfg)
 
+	sysproxy.RegisterExitCleanup()
+	defer sysproxy.RecoverAndClear()
+
 	// Set system proxy if requested
 	if *autoSysProxy {
 		log.Println("[Hello DPI] Activating system-wide proxy settings...")

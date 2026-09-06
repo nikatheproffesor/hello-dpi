@@ -17,6 +17,7 @@ import (
 	"github.com/hellodpi/hellodpi/internal/dpi"
 	"github.com/hellodpi/hellodpi/internal/icon"
 	"github.com/hellodpi/hellodpi/internal/probe"
+	"github.com/hellodpi/hellodpi/internal/netmon"
 	"github.com/hellodpi/hellodpi/internal/proxy"
 	"github.com/hellodpi/hellodpi/internal/speedtest"
 	"github.com/hellodpi/hellodpi/internal/sysproxy"
@@ -32,6 +33,9 @@ const (
 )
 
 func main() {
+	sysproxy.RegisterExitCleanup()
+	defer sysproxy.RecoverAndClear()
+
 	defer func() {
 		_ = divert.Stop()
 		_ = sysproxy.ClearSystemProxy()
@@ -204,8 +208,26 @@ func main() {
 		res := probeEngine.RunProbe()
 		if res.BypassVerified {
 			server.UpdateEngineConfig(dpi.SplitMode(res.BestMode), res.BestSplitPos, res.BestDelayMs)
+			server.Orchestrator.UpdateGroupStrategies(res.GroupStrategies, res.GroupFallbacks)
 		}
 	}()
+
+	// Periodic silent re-probe every 15 minutes
+	probeEngine.StartPeriodicReProbe(15*time.Minute, func(res *probe.Result) {
+		if res.BypassVerified {
+			server.UpdateEngineConfig(dpi.SplitMode(res.BestMode), res.BestSplitPos, res.BestDelayMs)
+			server.Orchestrator.UpdateGroupStrategies(res.GroupStrategies, res.GroupFallbacks)
+		}
+	})
+
+	// Network interface and sleep/wake monitor
+	netMonitor := netmon.NewMonitor("127.0.0.1", 8080, func(oldState, newState netmon.NetworkState) {
+		probeEngine.TriggerImmediateReProbe()
+	})
+	netMonitor.SetProxyState(true)
+	netMonitor.Start()
+	defer netMonitor.Stop()
+
 
 	// 6. Auto-Updater Action
 	var latestRelease *updater.ReleaseInfo

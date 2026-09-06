@@ -3,6 +3,7 @@ package engine
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/hellodpi/hellodpi/internal/dpi"
+	"github.com/hellodpi/hellodpi/internal/probe"
 	"github.com/hellodpi/hellodpi/internal/rules"
 )
 
@@ -143,3 +145,58 @@ func TestOrchestratorHandleHTTPDirect(t *testing.T) {
 		t.Fatalf("Expected 200 OK, got %d", resp.StatusCode)
 	}
 }
+
+type failStrategy struct{}
+
+func (f *failStrategy) Name() string { return "failing" }
+func (f *failStrategy) Apply(conn net.Conn, data []byte, info dpi.ParsedInfo) error {
+	return fmt.Errorf("simulated network failure")
+}
+
+func TestFallbackTracker(t *testing.T) {
+	var fallbackTriggered bool
+	ft := NewFallbackTracker(func(group probe.DomainGroup, fromStrat, toStrat string) {
+		fallbackTriggered = true
+	})
+
+	ft.SetGroupStrategies(probe.GroupDiscord, []dpi.BypassStrategy{
+		&failStrategy{},
+		dpi.DefaultStrategy(),
+	})
+
+	cA, cB := net.Pipe()
+	defer cA.Close()
+	defer cB.Close()
+
+	go func() {
+		buf := make([]byte, 1024)
+		for {
+			_, err := cA.Read(buf)
+			if err != nil {
+				return
+			}
+		}
+	}()
+
+	payload := []byte("TEST_PAYLOAD")
+	info := dpi.ParsedInfo{}
+
+	// First failure
+	_ = ft.ApplyWithFallback(probe.GroupDiscord, cB, payload, info)
+	if ft.failureStreaks[probe.GroupDiscord] != 1 {
+		t.Errorf("Expected failure streak 1, got %d", ft.failureStreaks[probe.GroupDiscord])
+	}
+
+	// Second failure triggers switch
+	_ = ft.ApplyWithFallback(probe.GroupDiscord, cB, payload, info)
+	if !fallbackTriggered {
+		t.Errorf("Expected fallbackTriggered to be true")
+	}
+
+	// Active strategy should now be DefaultStrategy
+	active := ft.GetActiveStrategy(probe.GroupDiscord)
+	if active.Name() != dpi.DefaultStrategy().Name() {
+		t.Errorf("Expected switched active strategy, got %s", active.Name())
+	}
+}
+

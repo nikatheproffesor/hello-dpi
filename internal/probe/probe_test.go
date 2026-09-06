@@ -84,3 +84,42 @@ func TestProbeEngine_Persistence(t *testing.T) {
 		t.Errorf("Expected latency 15ms, got %d", loaded.BestLatencyMs)
 	}
 }
+
+func TestClassifyDomain(t *testing.T) {
+	tests := []struct {
+		host  string
+		group DomainGroup
+	}{
+		{"discord.com", GroupDiscord},
+		{"gateway.discord.gg", GroupDiscord},
+		{"roblox.com", GroupRoblox},
+		{"setup.rbxcdn.com", GroupRoblox},
+		{"turkiye.gov.tr", GroupSafe},
+		{"ziraatbank.com.tr", GroupSafe},
+		{"captive.apple.com", GroupSafe},
+		{"youtube.com", GroupWeb},
+		{"instagram.com", GroupWeb},
+	}
+
+	for _, tc := range tests {
+		got := ClassifyDomain(tc.host)
+		if got != tc.group {
+			t.Errorf("ClassifyDomain(%q) = %q, want %q", tc.host, got, tc.group)
+		}
+	}
+}
+
+func TestISPFingerprint(t *testing.T) {
+	fpFast := detectISPFingerprint(12)
+	if fpFast.RTTBand != "0-20ms (Ultra Düşük Gecikme / Fiber)" {
+		t.Errorf("Unexpected RTTBand: %s", fpFast.RTTBand)
+	}
+	if fpFast.HopEstimate <= 0 {
+		t.Errorf("Expected positive hop estimate")
+	}
+
+	fpMed := detectISPFingerprint(35)
+	if fpMed.RTTBand != "20-40ms (Fiber / Hızlı VDSL)" {
+		t.Errorf("Unexpected RTTBand: %s", fpMed.RTTBand)
+	}
+}

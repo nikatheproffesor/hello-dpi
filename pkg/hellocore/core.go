@@ -68,14 +68,20 @@ func NewEngine(cfg Config) *Engine {
 		EnableDoH:   true,
 	}
 
+	srv := proxy.NewServer(pCfg)
+	if tuned := probeEngine.GetLastResult(); tuned != nil && len(tuned.GroupStrategies) > 0 {
+		srv.Orchestrator.UpdateGroupStrategies(tuned.GroupStrategies, tuned.GroupFallbacks)
+	}
+
 	return &Engine{
-		server:      proxy.NewServer(pCfg),
+		server:      srv,
 		probeEngine: probeEngine,
 		voiceOpt:    voice.NewOptimizer(),
 		adapter:     cfg.PlatformAdapter,
 		listenAddr:  cfg.ListenAddr,
 	}
 }
+
 
 // Start begins serving the proxy in background and activates the platform adapter
 func (e *Engine) Start() error {

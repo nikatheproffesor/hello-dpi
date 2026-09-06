@@ -14,6 +14,7 @@ import (
 	"github.com/hellodpi/hellodpi/internal/divert"
 	"github.com/hellodpi/hellodpi/internal/dns"
 	"github.com/hellodpi/hellodpi/internal/dpi"
+	"github.com/hellodpi/hellodpi/internal/probe"
 	"github.com/hellodpi/hellodpi/internal/rules"
 	"github.com/hellodpi/hellodpi/internal/tunnel"
 )
@@ -28,13 +29,14 @@ type Config struct {
 	DialTimeout  time.Duration
 }
 
-// Orchestrator coordinates L7 proxy routing, DNS resolution, DPI evasion strategies,
-// and selective L3/L4 kernel divert integration.
+// Orchestrator coordinates L7 proxy routing, DNS resolution, domain-group DPI evasion,
+// runtime fallback circuit breaking, and selective L3/L4 kernel divert integration.
 type Orchestrator struct {
 	mu           sync.RWMutex
 	Rules        *rules.Engine
 	Resolver     *dns.Resolver
 	Strategy     dpi.BypassStrategy
+	Fallback     *FallbackTracker
 	SplitOffset  int
 	DelayMs      int
 	DialTimeout  time.Duration
@@ -59,6 +61,7 @@ func NewOrchestrator(cfg Config) *Orchestrator {
 		Rules:       rules.NewEngine(),
 		Resolver:    dns.NewResolver(cfg.DoHEndpoint, cfg.EnableDoH),
 		Strategy:    strat,
+		Fallback:    NewFallbackTracker(nil),
 		SplitOffset: cfg.SplitOffset,
 		DelayMs:     cfg.DelayMs,
 		DialTimeout: cfg.DialTimeout,
@@ -77,7 +80,25 @@ func (o *Orchestrator) UpdateStrategy(name string, splitOffset int, delayMs int)
 	if delayMs > 0 {
 		o.DelayMs = delayMs
 	}
+	o.Fallback.SetGroupChains(map[probe.DomainGroup]string{
+		probe.GroupWeb:     name,
+		probe.GroupDiscord: name,
+	}, nil)
+
 	log.Printf("[Hello DPI Engine] Active strategy updated: %s (offset=%d, delay=%dms)", name, o.SplitOffset, o.DelayMs)
+}
+
+// UpdateGroupStrategies updates the domain-group specific strategies and fallback chains from Auto-Tuning
+func (o *Orchestrator) UpdateGroupStrategies(primary map[probe.DomainGroup]string, fallbacks map[probe.DomainGroup][]string) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+
+	o.Fallback.SetGroupChains(primary, fallbacks)
+	if webStrat, ok := primary[probe.GroupWeb]; ok {
+		o.Strategy = dpi.ResolveStrategy(webStrat)
+	}
+	log.Printf("[Hello DPI Engine] Group strategies updated: discord=%s, roblox=%s, web=%s",
+		primary[probe.GroupDiscord], primary[probe.GroupRoblox], primary[probe.GroupWeb])
 }
 
 // HandleTunnel processes an established tunnel (from HTTP CONNECT or SOCKS5)
@@ -86,6 +107,8 @@ func (o *Orchestrator) HandleTunnel(clientConn net.Conn, reader *bufio.Reader, t
 	if err != nil {
 		return fmt.Errorf("failed to resolve target %s: %w", targetHost, err)
 	}
+
+	group := probe.ClassifyDomain(targetHost)
 
 	// If rule requires kernel divert (e.g. Roblox direct socket), activate silently in background
 	if action == rules.ActionKernel {
@@ -102,7 +125,7 @@ func (o *Orchestrator) HandleTunnel(clientConn net.Conn, reader *bufio.Reader, t
 	clientBuffered := tunnel.NewBufferedConn(reader, clientConn)
 
 	// Direct pass-through for banking, government, or captive portals
-	if action == rules.ActionDirect {
+	if action == rules.ActionDirect || group == probe.GroupSafe {
 		tunnel.Pipe(clientBuffered, targetConn)
 		return nil
 	}
@@ -111,19 +134,7 @@ func (o *Orchestrator) HandleTunnel(clientConn net.Conn, reader *bufio.Reader, t
 	initialPayload, err := tunnel.ReadInitialPayload(reader)
 	if err == nil && len(initialPayload) > 0 {
 		info := dpi.ParsePacket(initialPayload)
-
-		o.mu.RLock()
-		strat := o.Strategy
-		o.mu.RUnlock()
-
-		if strat != nil {
-			if applyErr := strat.Apply(targetConn, initialPayload, info); applyErr != nil {
-				// Fail-open: if strategy fails to write, attempt direct raw write
-				_, _ = targetConn.Write(initialPayload)
-			}
-		} else {
-			_, _ = targetConn.Write(initialPayload)
-		}
+		_ = o.Fallback.ApplyWithFallback(group, targetConn, initialPayload, info)
 	}
 
 	// Stream bidirectional traffic
@@ -138,6 +149,8 @@ func (o *Orchestrator) HandleHTTP(clientConn net.Conn, reader *bufio.Reader, req
 		return fmt.Errorf("failed to resolve %s: %w", targetHost, err)
 	}
 
+	group := probe.ClassifyDomain(targetHost)
+
 	targetConn, err := net.DialTimeout("tcp", destAddr, o.DialTimeout)
 	if err != nil {
 		return fmt.Errorf("dial failed to %s: %w", destAddr, err)
@@ -147,7 +160,7 @@ func (o *Orchestrator) HandleHTTP(clientConn net.Conn, reader *bufio.Reader, req
 	clientBuffered := tunnel.NewBufferedConn(reader, clientConn)
 
 	isWS := strings.EqualFold(req.Header.Get("Upgrade"), "websocket")
-	if isWS || action == rules.ActionDirect {
+	if isWS || action == rules.ActionDirect || group == probe.GroupSafe {
 		_ = req.Write(targetConn)
 		tunnel.Pipe(clientBuffered, targetConn)
 		return nil
@@ -159,18 +172,7 @@ func (o *Orchestrator) HandleHTTP(clientConn net.Conn, reader *bufio.Reader, req
 	reqBuf := []byte(b.String())
 
 	info := dpi.ParsePacket(reqBuf)
-
-	o.mu.RLock()
-	strat := o.Strategy
-	o.mu.RUnlock()
-
-	if strat != nil {
-		if applyErr := strat.Apply(targetConn, reqBuf, info); applyErr != nil {
-			_, _ = targetConn.Write(reqBuf)
-		}
-	} else {
-		_, _ = targetConn.Write(reqBuf)
-	}
+	_ = o.Fallback.ApplyWithFallback(group, targetConn, reqBuf, info)
 
 	tunnel.Pipe(clientBuffered, targetConn)
 	return nil

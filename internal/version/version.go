@@ -1,4 +1,4 @@
 package version
 
 // Current version of Hello DPI
-var Version = "5.1.0"
+var Version = "5.2.0"

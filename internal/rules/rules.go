@@ -49,16 +49,30 @@ type Engine struct {
 
 // Anti-cheat process deny-list: NEVER intercept or divert these processes to prevent bans
 var antiCheatProcesses = map[string]bool{
-	"vgc.exe":               true, // Riot Vanguard
-	"vgtray.exe":            true,
-	"easyanticheat.exe":     true, // EasyAntiCheat
-	"easyanticheat_eos.exe": true,
-	"beservice.exe":         true, // BattlEye
-	"bedaisy.sys":           true,
-	"cs2.exe":               true, // Counter-Strike 2
-	"valorant.exe":          true, // Valorant
-	"r5apex.exe":            true, // Apex Legends
-	"leagueclient.exe":      true, // League of Legends
+	"vgc.exe":                    true, // Riot Vanguard
+	"vgtray.exe":                 true,
+	"easyanticheat.exe":          true, // EasyAntiCheat
+	"easyanticheat_eos.exe":      true,
+	"beservice.exe":              true, // BattlEye
+	"bedaisy.sys":                true,
+	"cs2.exe":                    true, // Counter-Strike 2
+	"valorant.exe":               true, // Valorant
+	"r5apex.exe":                 true, // Apex Legends
+	"leagueclient.exe":           true, // League of Legends
+	"faceit.exe":                 true, // FACEIT Anti-Cheat
+	"faceitservice.exe":          true,
+	"pubg.exe":                   true,
+	"tslgame.exe":                true, // PUBG
+	"genshinimpact.exe":          true,
+	"overwatch.exe":              true,
+	"destiny2.exe":               true,
+	"warzone.exe":                true, // Call of Duty Ricochet
+	"cod.exe":                    true,
+	"rainbowsix.exe":             true, // Rainbow Six Siege
+	"rainbowsix_vulkan.exe":      true,
+	"deadbydaylight.exe":         true,
+	"epicgameslauncher.exe":      true,
+	"steam.exe":                  true,
 }
 
 // Default rules embedded into binary

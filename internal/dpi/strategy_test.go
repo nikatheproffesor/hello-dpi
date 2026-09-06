@@ -281,3 +281,85 @@ func TestAdaptiveStrategy(t *testing.T) {
 		t.Fatalf("Expected 2 chunks for unknown first-byte split, got %d", len(mcUnknown.chunks))
 	}
 }
+
+func TestWrongSeqAckStrategy(t *testing.T) {
+	strat := NewWrongSeqAckStrategy(3, 1)
+	raw := makeMockClientHello("discord.com")
+	info := ParsePacket(raw)
+
+	mc := &mockConn{}
+	err := strat.Apply(mc, raw, info)
+	if err != nil {
+		t.Fatalf("Apply failed: %v", err)
+	}
+	if len(mc.chunks) < 3 {
+		t.Fatalf("Expected decoy + record chunks, got %d", len(mc.chunks))
+	}
+	// First chunk should be TLS alert decoy (0x15)
+	if mc.chunks[0][0] != 0x15 {
+		t.Errorf("Expected 0x15 TLS alert decoy, got %x", mc.chunks[0][0])
+	}
+}
+
+func TestWrongChecksumStrategy(t *testing.T) {
+	strat := NewWrongChecksumStrategy(3, 1)
+	raw := makeMockClientHello("discord.com")
+	info := ParsePacket(raw)
+
+	mc := &mockConn{}
+	err := strat.Apply(mc, raw, info)
+	if err != nil {
+		t.Fatalf("Apply failed: %v", err)
+	}
+	if len(mc.chunks) < 3 {
+		t.Fatalf("Expected wrong checksum decoy + chunks, got %d", len(mc.chunks))
+	}
+}
+
+func TestTCPWindowMSSStrategy(t *testing.T) {
+	strat := NewTCPWindowMSSStrategy(32, 1)
+	raw := makeMockClientHello("discord.com")
+	info := ParsePacket(raw)
+
+	mc := &mockConn{}
+	err := strat.Apply(mc, raw, info)
+	if err != nil {
+		t.Fatalf("Apply failed: %v", err)
+	}
+	if len(mc.chunks) < 2 {
+		t.Fatalf("Expected multiple MSS chunks, got %d", len(mc.chunks))
+	}
+}
+
+func TestQUICBlock(t *testing.T) {
+	if !ShouldBlockQUIC("udp", "1.1.1.1:443") {
+		t.Errorf("Expected UDP:443 to be blocked for QUIC")
+	}
+	if ShouldBlockQUIC("tcp", "1.1.1.1:443") {
+		t.Errorf("TCP:443 should NOT be blocked for QUIC")
+	}
+	if ShouldBlockQUIC("udp", "1.1.1.1:80") {
+		t.Errorf("UDP:80 should NOT be blocked for QUIC")
+	}
+
+	reply := SOCKS5QUICRejectReply()
+	if reply[1] != 0x07 {
+		t.Errorf("Expected command not supported 0x07, got %x", reply[1])
+	}
+}
+
+func TestOutOfOrderStrategy(t *testing.T) {
+	strat := NewOutOfOrderStrategy(5, 1)
+	raw := makeMockClientHello("discord.com")
+	info := ParsePacket(raw)
+
+	mc := &mockConn{}
+	err := strat.Apply(mc, raw, info)
+	if err != nil {
+		t.Fatalf("Apply failed: %v", err)
+	}
+	if len(mc.chunks) < 3 {
+		t.Fatalf("Expected decoy + out-of-order chunks, got %d", len(mc.chunks))
+	}
+}
+

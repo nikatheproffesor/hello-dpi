@@ -7,6 +7,16 @@ func Start() error {
 	return nil
 }
 
+// StartWithOptions is a no-op on non-Windows platforms
+func StartWithOptions(opts KernelOptions) error {
+	return nil
+}
+
+// StartStrategy is a no-op on non-Windows platforms
+func StartStrategy(stratName string) error {
+	return nil
+}
+
 // Stop is a no-op on non-Windows platforms
 func Stop() error {
 	return nil

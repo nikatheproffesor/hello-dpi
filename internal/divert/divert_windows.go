@@ -61,8 +61,63 @@ func ensureExtracted() (string, error) {
 	return targetDir, nil
 }
 
-// Start launches the WinDivert kernel engine with turkey_dnsredir parameters
+func buildArgs(opts KernelOptions) []string {
+	args := []string{"-9"}
+	if opts.DropQUIC {
+		args = append(args, "-q")
+	}
+
+	switch opts.StrategyName {
+	case "wrong-seq":
+		args = append(args, "--wrong-seq", "--fake-ttl", "3")
+	case "wrong-checksum":
+		args = append(args, "--wrong-chksum", "--fake-ttl", "3")
+	case "out-of-order":
+		args = append(args, "--reverse-frag", "--wrong-seq")
+	case "reverse-frag":
+		args = append(args, "--reverse-frag")
+	case "sni":
+		args = append(args, "--fragment-sni")
+	case "decoy":
+		args = append(args, "--fake-with-sni", "--fake-ttl", "3")
+	default:
+		if opts.WrongSeq {
+			args = append(args, "--wrong-seq", "--fake-ttl", "3")
+		} else if opts.WrongChecksum {
+			args = append(args, "--wrong-chksum", "--fake-ttl", "3")
+		}
+	}
+
+	dnsAddr := opts.DNSAddr
+	if dnsAddr == "" {
+		dnsAddr = "77.88.8.8"
+	}
+	dnsPort := opts.DNSPort
+	if dnsPort == "" {
+		dnsPort = "1253"
+	}
+	args = append(args, "--dns-addr", dnsAddr, "--dns-port", dnsPort)
+	return args
+}
+
+// Start launches the WinDivert kernel engine with default turkey_dnsredir parameters
 func Start() error {
+	return StartWithOptions(KernelOptions{
+		StrategyName: "tlsrec",
+		DropQUIC:     true,
+	})
+}
+
+// StartStrategy launches the WinDivert engine aligned with a specific bypass strategy
+func StartStrategy(stratName string) error {
+	return StartWithOptions(KernelOptions{
+		StrategyName: stratName,
+		DropQUIC:     true,
+	})
+}
+
+// StartWithOptions launches the WinDivert kernel engine with specified evasion flags
+func StartWithOptions(opts KernelOptions) error {
 	stateMu.Lock()
 	defer stateMu.Unlock()
 
@@ -76,9 +131,9 @@ func Start() error {
 	}
 
 	exePath := filepath.Join(dir, "goodbyedpi.exe")
+	args := buildArgs(opts)
 
-	// Standard command: -9 --dns-addr 77.88.8.8 --dns-port 1253
-	cmd := exec.Command(exePath, "-9", "--dns-addr", "77.88.8.8", "--dns-port", "1253")
+	cmd := exec.Command(exePath, args...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		HideWindow:    true,
 		CreationFlags: 0x08000000, // CREATE_NO_WINDOW
@@ -98,7 +153,8 @@ func Start() error {
 	}
 
 	// If direct non-admin start fails to load driver, invoke elevated via UAC
-	psArgs := fmt.Sprintf(`Start-Process -FilePath "%s" -ArgumentList "-9 --dns-addr 77.88.8.8 --dns-port 1253" -Verb RunAs -WindowStyle Hidden`, exePath)
+	psArgs := fmt.Sprintf(`Start-Process -FilePath "%s" -ArgumentList "%s" -Verb RunAs -WindowStyle Hidden`,
+		exePath, strings.Join(args, " "))
 	cmdElevated := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", psArgs)
 	cmdElevated.SysProcAttr = &syscall.SysProcAttr{
 		HideWindow:    true,

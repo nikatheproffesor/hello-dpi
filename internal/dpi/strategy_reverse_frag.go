@@ -73,12 +73,8 @@ func (s *ReverseFragStrategy) Apply(conn net.Conn, data []byte, info ParsedInfo)
 
 func init() {
 	RegisterStrategy(NewReverseFragStrategy(3, 4))
-	// Also register alias SplitOutOfOrder
-	RegisterStrategy(&aliasStrategy{
-		name:     string(SplitOutOfOrder),
-		delegate: NewReverseFragStrategy(3, 4),
-	})
 }
+
 
 type aliasStrategy struct {
 	name     string

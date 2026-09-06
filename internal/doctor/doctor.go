@@ -20,6 +20,7 @@ import (
 	"github.com/hellodpi/hellodpi/internal/probe"
 	"github.com/hellodpi/hellodpi/internal/rules"
 	"github.com/hellodpi/hellodpi/internal/sysproxy"
+	"github.com/hellodpi/hellodpi/internal/telemetry"
 	"github.com/hellodpi/hellodpi/internal/version"
 	"github.com/hellodpi/hellodpi/internal/voice"
 )
@@ -85,6 +86,9 @@ func RegisterHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/api/doctor/kernel-stop", handleKernelStop)
 	mux.HandleFunc("/api/doctor/kernel-toggle", handleKernelToggle)
 	mux.HandleFunc("/api/doctor/autotune", handleAutoTune)
+	mux.HandleFunc("/api/doctor/selftest", handleSelfTest)
+	mux.HandleFunc("/api/doctor/telemetry", handleTelemetry)
+	mux.HandleFunc("/api/doctor/telemetry-toggle", handleTelemetryToggle)
 	mux.HandleFunc("/api/doctor/sync-rules", handleSyncRules)
 	mux.HandleFunc("/api/doctor/rules-status", handleRulesStatus)
 	mux.HandleFunc("/api/doctor/voice-test", handleVoiceTest)
@@ -191,8 +195,171 @@ func handleAutoTune(w http.ResponseWriter, r *http.Request) {
 		onTuneApply(dpi.SplitMode(res.BestMode), res.BestSplitPos, res.BestDelayMs)
 	}
 
+	// Feed anonymous telemetry collector
+	telemetry.Default().RecordProbe(res)
+
 	_ = json.NewEncoder(w).Encode(res)
 }
+
+type SelfTestTargetResult struct {
+	Target    string `json:"target"`
+	Domain    string `json:"domain"`
+	Status    string `json:"status"` // "pass", "warn", "fail"
+	LatencyMs int64  `json:"latency_ms"`
+	Strategy  string `json:"strategy"`
+	Detail    string `json:"detail"`
+}
+
+type SelfTestReport struct {
+	Timestamp      string                 `json:"timestamp"`
+	AllPass        bool                   `json:"all_pass"`
+	ISPFingerprint probe.ISPFingerprint   `json:"isp_fingerprint"`
+	Tests          []SelfTestTargetResult `json:"tests"`
+}
+
+func handleSelfTest(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	if globalProbe == nil {
+		globalProbe = probe.NewEngine()
+	}
+
+	targets := []struct {
+		target string
+		domain string
+		addr   string
+		group  probe.DomainGroup
+	}{
+		{"Discord", "discord.com", "162.159.138.232:443", probe.GroupDiscord},
+		{"Roblox", "roblox.com", "128.116.119.3:443", probe.GroupRoblox},
+		{"YouTube", "youtube.com", "142.250.185.206:443", probe.GroupWeb},
+		{"e-Devlet", "turkiye.gov.tr", "212.156.4.42:443", probe.GroupSafe},
+	}
+
+	lastRes := globalProbe.GetLastResult()
+	allPass := true
+	var testResults []SelfTestTargetResult
+
+	for _, t := range targets {
+		stratName := "direct"
+		if t.group != probe.GroupSafe && lastRes != nil {
+			if s, ok := lastRes.GroupStrategies[t.group]; ok {
+				stratName = s
+			} else {
+				stratName = lastRes.BestStrategy
+			}
+		}
+
+		strat := dpi.ResolveStrategy(stratName)
+		hello := probe.BuildClientHello(t.domain)
+		info := dpi.ParsePacket(hello)
+
+		start := time.Now()
+		conn, err := net.DialTimeout("tcp", t.addr, 1200*time.Millisecond)
+		lat := time.Since(start).Milliseconds()
+
+		if err != nil {
+			allPass = false
+			testResults = append(testResults, SelfTestTargetResult{
+				Target:    t.target,
+				Domain:    t.domain,
+				Status:    "fail",
+				LatencyMs: 0,
+				Strategy:  stratName,
+				Detail:    "Bağlantı kurulamadı: " + err.Error(),
+			})
+			continue
+		}
+
+		_ = conn.SetDeadline(time.Now().Add(1200 * time.Millisecond))
+		if t.group == probe.GroupSafe {
+			_, err = conn.Write(hello)
+		} else {
+			err = strat.Apply(conn, hello, info)
+		}
+
+		if err != nil {
+			_ = conn.Close()
+			allPass = false
+			testResults = append(testResults, SelfTestTargetResult{
+				Target:    t.target,
+				Domain:    t.domain,
+				Status:    "fail",
+				LatencyMs: lat,
+				Strategy:  stratName,
+				Detail:    "Bypass uygulanamadı: " + err.Error(),
+			})
+			continue
+		}
+
+		resp := make([]byte, 5)
+		n, rErr := conn.Read(resp)
+		_ = conn.Close()
+
+		if rErr == nil && n >= 1 && resp[0] == 0x16 {
+			testResults = append(testResults, SelfTestTargetResult{
+				Target:    t.target,
+				Domain:    t.domain,
+				Status:    "pass",
+				LatencyMs: lat,
+				Strategy:  stratName,
+				Detail:    fmt.Sprintf("Erişim başarılı (%dms RTT)", lat),
+			})
+		} else {
+			allPass = false
+			testResults = append(testResults, SelfTestTargetResult{
+				Target:    t.target,
+				Domain:    t.domain,
+				Status:    "warn",
+				LatencyMs: lat,
+				Strategy:  stratName,
+				Detail:    "Yanıt alınamadı veya engellendi",
+			})
+		}
+	}
+
+	var fp probe.ISPFingerprint
+	if lastRes != nil {
+		fp = lastRes.ISPFingerprint
+	}
+
+	report := SelfTestReport{
+		Timestamp:      time.Now().Format("2006-01-02 15:04:05"),
+		AllPass:        allPass,
+		ISPFingerprint: fp,
+		Tests:          testResults,
+	}
+
+	_ = json.NewEncoder(w).Encode(report)
+}
+
+func handleTelemetry(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	col := telemetry.Default()
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"stats":     col.GetStats(),
+		"isp_table": col.GetISPSuccessTable(),
+	})
+}
+
+func handleTelemetryToggle(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	col := telemetry.Default()
+	newVal := !col.IsEnabled()
+	col.SetEnabled(newVal)
+
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"opt_in":  newVal,
+		"message": fmt.Sprintf("Anonim telemetri: %t", newVal),
+	})
+}
+
 
 func handleSyncRules(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
