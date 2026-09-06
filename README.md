@@ -15,15 +15,16 @@
 
   [![Release](https://img.shields.io/github/v/release/nikatheproffesor/hello-dpi?color=black&logo=github)](https://github.com/nikatheproffesor/hello-dpi/releases/latest)
   [![VirusTotal](https://img.shields.io/badge/VirusTotal-0%2F72%20Temiz-brightgreen?logo=virustotal)](https://www.virustotal.com/gui/file/844d5272908215776cb5d339815bdaedf7e0ad41698ab2294706c04e0aa673fd)
+  [![Apple Signed](https://img.shields.io/badge/Apple%20Signed-Developer%20ID-black?logo=apple)](https://github.com/nikatheproffesor/hello-dpi/releases/latest)
   [![License: MIT](https://img.shields.io/badge/Lisans-MIT-black.svg)](LICENSE)
-  [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-black.svg)](#-kolay-kurulum-sıfır-terminal)
+  [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20Android%20%7C%20iOS-black.svg)](#-hemen-indir)
   [![Hız](https://img.shields.io/badge/H%C4%B1z-%25100%20Hat%20H%C4%B1z%C4%B1-black.svg)](#-neden-vpn-değil)
   [![Ping](https://img.shields.io/badge/Ping-0ms%20Ek%20Gecikme-black.svg)](#-neden-vpn-değil)
-  [![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go)](https://go.dev/)
+  [![Go Version](https://img.shields.io/badge/Go-1.23+-00ADD8?logo=go)](https://go.dev/)
 
   <br />
 
-  [🇹🇷 Türkçe Kılavuz](#-türkçe-rehber) • [🍏 macOS Kurulumu](#-macos-kullanıcıları-için-sıfır-terminal) • [🪟 Windows Kurulumu](#-windows-kullanıcıları-için-sıfır-terminal) • [🛡️ VirusTotal](#-virustotal-tarama-sonuçları-ve-güvenlik) • [⚡ Hız Testi](#-hello-dpi-v21-ile-gelen-yeni-özellikler) • [❓ SSS](#-sıkça-sorulan-sorular-sss) • [🇬🇧 English Guide](#-english-guide)
+  [🇹🇷 Türkçe Kılavuz](#-türkçe-rehber) • [🪟 Windows Kurulumu](#-windows-kullanıcıları-için) • [🍏 macOS Kurulumu](#-macos-kullanıcıları-için) • [📱 Mobil (Android & iOS)](#-mobil-destegi-android--ios) • [🛡️ Neden VPN Değil?](#-neden-vpn-değil) • [⚡ Ağ Doktoru & Ping](#-ag-doktoru-ve-canli-ping-monitöru) • [🇬🇧 English Guide](#-english-guide)
 
 </div>
 
@@ -37,21 +38,28 @@ Hiçbir komut satırı, kod veya terminal bilgisine ihtiyacınız yoktur. İşle
 
 | İşletim Sistemi | İndirme Dosyası | Kurulum ve Çalıştırma |
 | :--- | :--- | :--- |
-| **🍏 macOS (Önerilen)** | [**HelloDPI-macOS.dmg**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | DMG dosyasını açın, `Hello DPI.app` simgesini Applications (Uygulamalar) klasörüne sürükleyin ve çift tıklayın. |
+| **🪟 Windows (1-Tık Kurucu - Önerilen)** | [**HelloDPI-Setup.exe**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | İndirin ve çift tıklayın. Masaüstüne ve Başlat Menüsüne kısayol oluşturup arka planda sessizce başlatır. |
+| **🪟 Windows (Taşınabilir Sürüm)** | [**HelloDPI-Windows.exe**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | Kurulum gerektirmez, doğrudan çift tıklayarak çalıştırın (Saatin yanındaki sistem tepsisine yerleşir). |
+| **🍏 macOS (Resmi İmzalı DMG)** | [**HelloDPI-macOS.dmg**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | Apple Developer ID imzalıdır. DMG dosyasını açın, `Hello DPI.app` simgesini Applications klasörüne sürükleyin. |
 | **🍏 macOS (ZIP Arşivi)** | [**HelloDPI-macOS.zip**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | ZIP arşivini açın ve içindeki `Hello DPI.app` uygulamasını çift tıklayarak çalıştırın. |
-| **🪟 Windows (64-bit)** | [**HelloDPI-Windows.exe**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | İndirin ve çift tıklayın (Siyah terminal ekranı açılmaz, sağ altta saatin yanına yerleşir). |
+| **🤖 Android (ARM64 Motoru)** | [**hellodpi-android-arm64**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | Root istemeyen yerel 64-bit ARM motoru. Android Studio projesi için `mobile/android/` dizinini inceleyin. |
+| **🍏 iOS & iPadOS (Network Extension)** | [**mobile/ios/**](mobile/ios) | Apple `NEPacketTunnelProvider` altyapısı ile iPhone ve iPad için tünel projesi. |
 | **🐧 Linux (x86_64)** | [**hellodpi-linux-amd64**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | Bağımsız ikili dosya veya GNOME / KDE Plasma masaüstü tepsisi ile çalışır. |
 
 ---
 
 ### 🛡️ VirusTotal Tarama Sonuçları ve Güvenlik
 
-Hello DPI v4.0, GoodbyeDPI'ı geride bırakan **Auto-Tuning**, **Akıllı Bölünmüş Tünelleme (Split-Tunneling)** ve çok katmanlı mimariye sahiptir:
-1. **Otomatik DPI Sondajı (Auto-Tuning Engine):** İSS'nizin (TTNET, Superonline, Vodafone, TurkNet, KYK) sansür filtresini canlı test eder ve en uygun parçalama modunu otomatik seçer.
-2. **Akıllı Bölünmüş Tünelleme (Split-Tunneling):** Bankacılık (Ziraat, Garanti, İş Bankası vb.), e-Devlet ve yerel oyun sunucuları sıfır gecikmeyle doğrudan temiz ağdan akar; yalnızca sansürlü servisler DPI tüneline girer.
-3. **Dinamik Bulut Kuralları (OTA Engine):** Yeni engellemeler için programı yeniden indirmenize gerek kalmaz; kurallar buluttan dinamik güncellenir.
-4. **WebRTC & Discord Ses Optimizasyonu:** Discord ses kanallarında yaşanan RTC Connecting / No Route takılmalarını çözen UDP motoru.
-5. **Standart Proxy Modu (L7) & Çekirdek Modu (L3/L4 WinDivert / Wintun):** Roblox ve doğrudan soket açan oyunlar dahil tüm trafiği koruma altına alır.
+Hello DPI v5.0, GoodbyeDPI'ı ve geleneksel araçları geride bırakan **tam teşekküllü çok platformlu sansür atlatma mimarisine** sahiptir:
+1. **🪟 Windows 1-Tık Kurucu (`HelloDPI-Setup.exe`):** Hiçbir teknik bilgi gerektirmeden tek tıkla kurulur, masaüstüne kısayol oluşturur ve arka planda sessizce devreye girer.
+2. **🛡️ İleri Seviye DPI Atlama (Decoy & Out-of-Order):** Sandvine, Procera ve Huawei kurumsal DPI donanımlarını sahte paket (decoy TLS) enjeksiyonu ve sıra dışı TCP akışıyla şaşırtarak sansürü tamamen etkisiz kılar.
+3. **🔒 Encrypted Client Hello (ECH) & Güçlendirilmiş DoH:** DNS Type 65 üzerinden ECH anahtarlarını çekerek alan adını (SNI) tamamen şifreler; böylece sansür cihazları hedefi hiç göremez.
+4. **📱 Çok Platformlu Mobil Ekosistem:** Android'de root gerektirmeyen `VpnService` + yerel ARM64 motoru; iOS'ta Apple'ın resmi `NEPacketTunnelProvider` Network Extension mimarisi.
+5. **⚡ Ağ Doktoru Canlı Ping Monitörü:** Discord Voice (Frankfurt, Rotterdam), Roblox ve Cloudflare sunucularına canlı gecikmeyi ölçer; VPN'lere kıyasla **0 ms ek ping** avantajını doğrudan kanıtlar.
+6. **🎯 Otomatik DPI Sondajı (Auto-Tuning Engine):** İSS'nizin (TTNET, Superonline, Vodafone, TurkNet, KYK) sansür filtrelerini canlı test edip en uygun parçalama modunu otomatik seçer.
+7. **🛤️ Akıllı Bölünmüş Tünelleme (Split-Tunneling):** Bankacılık (Ziraat, Garanti, İş Bankası vb.), e-Devlet ve yerel oyun sunucuları doğrudan temiz ağdan akar; yalnızca sansürlü servisler DPI tüneline girer.
+8. **🎙️ WebRTC & Discord Ses Optimizasyonu:** Discord ses kanallarında yaşanan RTC Connecting / No Route takılmalarını çözen özel UDP katmanı.
+9. **⚙️ Çift Modlu Motor:** Standart Proxy Modu (L7) + Çekirdek Modu (L3/L4 WinDivert / Wintun).
 
 Her yayınlanan sürüm dünyanın önde gelen 70+ antivirüs motoru tarafından taranır:
 
@@ -116,6 +124,27 @@ Hello DPI, **bilgisayarla arası sadece günlük kullanımla sınırlı olan, te
 >    - Finder > Uygulamalar klasöründe `Hello DPI` simgesine **Control (ctrl)** tuşuna basarak tıklayın (sağ tık) ve **"Aç"** seçeneğini seçin. Açılan kutuda tekrar **"Aç"** butonuna basın.
 > 3. **Tek Satır Terminal Çözümü (Karantinayı Kalıcı Siler):**
 >    - Terminal'e şunu yapıştırın: `xattr -cr "/Applications/Hello DPI.app"` (uyarı kalıcı olarak yok olur).
+
+---
+
+#### 📱 Mobil Desteği (Android & iOS)
+
+Hello DPI v5.0 ile birlikte sansür atlatma deneyimi akıllı telefonlarınıza ve tabletlerinize taşındı:
+
+- **🤖 Android Kullanıcıları:**
+  - `mobile/android/` dizinindeki açık kaynaklı projeyi Android Studio ile açabilir veya bağımsız `hellodpi-android-arm64` yerel motorunu kullanabilirsiniz.
+  - Root izni gerektirmez; Android'in yerel `VpnService` API'si üzerinden telefonunuzun DNS'ini 1.1.1.1 DoH ile şifreleyerek tüm uygulamalarda Discord sesini ve sansürlü siteleri sıfır ek gecikmeyle açar.
+- **🍏 iOS & iPadOS Kullanıcıları:**
+  - `mobile/ios/` dizinindeki SwiftUI projesini Xcode ile açıp iPhone'unuza yükleyebilirsiniz.
+  - Apple `NEPacketTunnelProvider` çerçevesi sayesinde arka planda pil tüketmeden doğrudan yerel şeffaf tünel sağlar.
+
+---
+
+#### 🩺 Ağ Doktoru ve Canlı Ping Monitörü
+
+Menüden veya tepsi simgesinden **Ağ Doktoru** panelini açtığınızda:
+- **0 ms Ek VPN Gecikmesi:** Discord Voice (Frankfurt, Rotterdam), Roblox ve Cloudflare sunucularına doğal hat pinginizi canlı olarak görüntülersiniz.
+- **Sıfır Ayar:** Arka plandaki akıllı sondaj (Auto-Tune) motoru ve OTA kural senkronizasyonu internetinizi otomatik optimize eder.
 
 Türkiye'deki İnternet Servis Sağlayıcıları (Türk Telekom, Superonline, TurkNet, Vodafone, Kablonet vb.), Discord ve erişimi kısıtlanan platformları engellemek için **DPI (Derin Paket İncelemesi)** teknolojisini kullanır. 
 
@@ -327,9 +356,12 @@ Hello DPI is an ultra-lightweight, zero-latency Deep Packet Inspection (DPI) cir
 
 | Operating System | Download File | Installation |
 | :--- | :--- | :--- |
-| **🍏 macOS (Recommended)** | [**HelloDPI-macOS.dmg**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | Open the DMG, drag `Hello DPI.app` into Applications, and double-click. |
+| **🪟 Windows (1-Click Installer)** | [**HelloDPI-Setup.exe**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | 1-click setup; creates desktop and start menu shortcuts, runs quietly in background. |
+| **🪟 Windows (Portable)** | [**HelloDPI-Windows.exe**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | Standalone tray binary without installation. |
+| **🍏 macOS (Official Apple Signed DMG)** | [**HelloDPI-macOS.dmg**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | Signed with official Apple Developer ID with hardened runtime and Apple timestamp. |
 | **🍏 macOS (ZIP Archive)** | [**HelloDPI-macOS.zip**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | Extract ZIP and run `Hello DPI.app`. |
-| **🪟 Windows (64-bit)** | [**HelloDPI-Windows.exe**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | Download and run (Lives in System Tray near the clock, no black console window). |
+| **🤖 Android (ARM64 Engine)** | [**hellodpi-android-arm64**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | Non-root native 64-bit ARM core. See `mobile/android/` for Android Studio APK project. |
+| **🍏 iOS & iPadOS (Network Extension)** | [**mobile/ios/**](mobile/ios) | Apple `NEPacketTunnelProvider` project for iPhone/iPad. |
 | **🐧 Linux (x86_64)** | [**hellodpi-linux-amd64**](https://github.com/nikatheproffesor/hello-dpi/releases/latest) | Standalone executable or systemd service. |
 
 ---

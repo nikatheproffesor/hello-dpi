@@ -1,4 +1,4 @@
-name: Build & Release Hello DPI
+name: Multi-Platform Release
 
 on:
   push:
@@ -6,92 +6,74 @@ on:
       - 'v*'
   workflow_dispatch:
 
-jobs:
-  build-tray-windows:
-    name: Build Windows Tray App
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.25'
-      - name: Build Windows Tray GUI (.exe)
-        env:
-          GOOS: windows
-          GOARCH: amd64
-          CGO_ENABLED: 0
-        run: |
-          mkdir -p dist
-          go build -ldflags="-s -w -H=windowsgui" -o dist/HelloDPI-Windows.exe ./cmd/hellodpi-tray
-      - uses: actions/upload-artifact@v4
-        with:
-          name: HelloDPI-Windows.exe
-          path: dist/HelloDPI-Windows.exe
+permissions:
+  contents: write
 
-  build-tray-macos:
-    name: Build macOS Menubar App
+jobs:
+  build-and-release:
+    name: Build & Package All Targets
     runs-on: macos-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - name: Checkout Code
+        uses: actions/checkout@v4
         with:
-          go-version: '1.25'
-      - name: Package macOS App Bundle
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+
+      - name: Run Tests
+        run: |
+          go test -v ./...
+
+      - name: Build macOS App & DMG
         run: |
           chmod +x scripts/build-macos-app.sh
           ./scripts/build-macos-app.sh
-          mkdir -p dist
-          cp bin/HelloDPI-macOS.zip dist/
-          cp bin/HelloDPI-macOS.dmg dist/
-      - uses: actions/upload-artifact@v4
-        with:
-          name: HelloDPI-macOS.zip
-          path: dist/HelloDPI-macOS.zip
 
-  build-cli:
-    name: Build CLI Binaries
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - goos: linux
-            goarch: amd64
-            output_name: hellodpi-linux-amd64
-          - goos: linux
-            goarch: arm64
-            output_name: hellodpi-linux-arm64
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.25'
-      - name: Compile CLI Binary
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: 0
+      - name: Build Windows Binaries
         run: |
-          mkdir -p dist
-          go build -ldflags="-s -w" -o dist/${{ matrix.output_name }} ./cmd/hellodpi
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.output_name }}
-          path: dist/${{ matrix.output_name }}
+          mkdir -p bin
+          echo "Building Portable Windows Tray Executable..."
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w -H=windowsgui" -o bin/HelloDPI-Windows.exe ./cmd/hellodpi-tray
+          
+          echo "Building Windows 1-Click Setup Installer..."
+          mkdir -p cmd/hellodpi-installer/embedded
+          cp bin/HelloDPI-Windows.exe cmd/hellodpi-installer/embedded/HelloDPI.exe
+          cp Baslat.bat cmd/hellodpi-installer/embedded/Baslat.bat
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w -H=windowsgui" -o bin/HelloDPI-Setup.exe ./cmd/hellodpi-installer
 
-  release:
-    name: Create GitHub Release
-    needs: [build-tray-windows, build-tray-macos, build-cli]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: release-artifacts
-      - name: Create Release
+      - name: Build Linux Engine
+        run: |
+          echo "Building Linux x86_64 Executable..."
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/hellodpi-linux-amd64 ./cmd/hellodpi
+
+      - name: Build Android ARM64 Core
+        run: |
+          echo "Building Android ARM64 Core Binary..."
+          GOOS=android GOARCH=arm64 go build -ldflags="-s -w" -o bin/hellodpi-android-arm64 ./cmd/hellodpi
+
+      - name: Verify Release Artifacts
+        run: |
+          ls -lh bin/
+
+      - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: release-artifacts/**/*
+          files: |
+            bin/HelloDPI-Setup.exe
+            bin/HelloDPI-Windows.exe
+            bin/HelloDPI-macOS.dmg
+            bin/HelloDPI-macOS.zip
+            bin/hellodpi-android-arm64
+            bin/hellodpi-linux-amd64
+            Baslat.bat
+            rules.json
+          generate_release_notes: true
           draft: false
           prerelease: false
-          generate_release_notes: true
