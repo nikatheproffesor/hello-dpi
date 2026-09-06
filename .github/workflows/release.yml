@@ -67,13 +67,9 @@ jobs:
         with:
           files: |
             bin/HelloDPI-Setup.exe
-            bin/HelloDPI-Windows.exe
             bin/HelloDPI-macOS.dmg
-            bin/HelloDPI-macOS.zip
             bin/hellodpi-android-arm64
             bin/hellodpi-linux-amd64
-            Baslat.bat
-            rules.json
           generate_release_notes: true
           draft: false
           prerelease: false
