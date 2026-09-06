@@ -7,6 +7,9 @@ dist/
 *.dylib
 *.dmg
 *.zip
+*.a
+*.xcframework
+tmp_ios_build/
 /hellodpi-*
 /hellodpi
 cmd/hellodpi-installer/embedded/HelloDPI.exe
