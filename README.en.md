@@ -109,7 +109,10 @@ See `rules.json` to add or remove domains from the direct/intercept lists.
 
 ## Benchmarks
 
+> Measured: 2026-09-06 · commit `0b65ea5` · These numbers can drift over time (ISP/DPI rules, hardware differences) — reproduce on your own connection with the commands below.
+
 The figures below represent actual runtime benchmarks measured using the repository's test suites (`go test -bench=. -benchmem`) and live connections to global edge endpoints over a standard fiber connection.
+
 
 ### 1. Core Engine & Wire-Framing Microbenchmarks
 

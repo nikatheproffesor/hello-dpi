@@ -109,7 +109,10 @@ Doğrudan/müdahale listelerine domain eklemek veya çıkarmak için `rules.json
 
 ## Benchmark'lar
 
+> Ölçüm tarihi: 2026-09-06 · commit `0b65ea5` · Bu sayılar zamanla değişebilir (İSS/DPI kuralları, donanım farkı vb.); kendi hattınızda doğrulamak için aşağıdaki komutları çalıştırın.
+
 Aşağıdaki veriler kaynak kodundaki benchmark paketleri (`go test -bench=. -benchmem`) ve doğrudan fiber internet hattı üzerinden referans hedeflere karşı ölçülen gerçek çalışma zamanı sonuçlarıdır.
+
 
 ### 1. Çekirdek Motor ve Strateji İletim Hızı (Go Benchmark)
 
