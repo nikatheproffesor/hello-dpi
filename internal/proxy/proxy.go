@@ -214,8 +214,12 @@ func (s *Server) handleSOCKS5(clientConn net.Conn, reader *bufio.Reader) {
 	}
 
 	cmd := header[1]
-	// If client requests UDP ASSOCIATE (0x03) for QUIC: reject with 0x07 (Command not supported)
-	// forcing client to fallback cleanly to TCP + TLS!
+	if cmd == 0x03 { // 0x03 = UDP ASSOCIATE (QUIC / Discord Voice)
+		if err := HandleSOCKS5UDPAssociate(clientConn, reader); err != nil {
+			log.Printf("[Hello DPI] SOCKS5 UDP Associate error: %v", err)
+		}
+		return
+	}
 	if cmd != 0x01 { // 0x01 = CONNECT
 		_, _ = clientConn.Write([]byte{0x05, 0x07, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
 		return

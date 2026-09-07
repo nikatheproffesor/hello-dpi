@@ -14,8 +14,11 @@ import (
 	"github.com/hellodpi/hellodpi/internal/divert"
 	"github.com/hellodpi/hellodpi/internal/dns"
 	"github.com/hellodpi/hellodpi/internal/dpi"
+	"github.com/hellodpi/hellodpi/internal/ech"
+	"github.com/hellodpi/hellodpi/internal/heuristic"
 	"github.com/hellodpi/hellodpi/internal/probe"
 	"github.com/hellodpi/hellodpi/internal/rules"
+	"github.com/hellodpi/hellodpi/internal/tlsfingerprint"
 	"github.com/hellodpi/hellodpi/internal/tunnel"
 )
 
@@ -37,6 +40,9 @@ type Orchestrator struct {
 	Resolver     *dns.Resolver
 	Strategy     dpi.BypassStrategy
 	Fallback     *FallbackTracker
+	Heuristic    *heuristic.Engine
+	ECH          *ech.Manager
+	Fingerprint  *tlsfingerprint.Impersonator
 	SplitOffset  int
 	DelayMs      int
 	DialTimeout  time.Duration
@@ -62,6 +68,9 @@ func NewOrchestrator(cfg Config) *Orchestrator {
 		Resolver:    dns.NewResolver(cfg.DoHEndpoint, cfg.EnableDoH),
 		Strategy:    strat,
 		Fallback:    NewFallbackTracker(nil),
+		Heuristic:   heuristic.NewEngine(),
+		ECH:         ech.NewManager(),
+		Fingerprint: tlsfingerprint.NewImpersonator(tlsfingerprint.ProfileChrome130),
 		SplitOffset: cfg.SplitOffset,
 		DelayMs:     cfg.DelayMs,
 		DialTimeout: cfg.DialTimeout,
@@ -133,8 +142,27 @@ func (o *Orchestrator) HandleTunnel(clientConn net.Conn, reader *bufio.Reader, t
 	// Read initial payload (e.g. TLS ClientHello) with safety bounds
 	initialPayload, err := tunnel.ReadInitialPayload(reader)
 	if err == nil && len(initialPayload) > 0 {
+		start := time.Now()
 		info := dpi.ParsePacket(initialPayload)
-		_ = o.Fallback.ApplyWithFallback(group, targetConn, initialPayload, info)
+
+		// Check if domain requires ECH encapsulation
+		_, _, useECH := o.Heuristic.GetOptimalParameters(targetHost)
+		if useECH {
+			if echCfg, ok := o.ECH.GetECHConfig(targetHost); ok {
+				if outerHello, err := ech.EncapsulateOuterClientHello(initialPayload, echCfg, ""); err == nil {
+					initialPayload = outerHello
+					info = dpi.ParsePacket(initialPayload)
+				}
+			}
+		}
+
+		applyErr := o.Fallback.ApplyWithFallback(group, targetConn, initialPayload, info)
+		rtt := time.Since(start).Milliseconds()
+		if applyErr != nil {
+			o.Heuristic.RecordHandshakeFailure(targetHost, false)
+		} else {
+			o.Heuristic.RecordHandshakeSuccess(targetHost, rtt)
+		}
 	}
 
 	// Stream bidirectional traffic

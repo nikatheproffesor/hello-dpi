@@ -12,8 +12,10 @@ import (
 
 	"github.com/hellodpi/hellodpi/internal/doh"
 	"github.com/hellodpi/hellodpi/internal/dpi"
+	"github.com/hellodpi/hellodpi/internal/mesh"
 	"github.com/hellodpi/hellodpi/internal/proxy"
 	"github.com/hellodpi/hellodpi/internal/sysproxy"
+	"github.com/hellodpi/hellodpi/internal/tun"
 	"github.com/hellodpi/hellodpi/internal/version"
 )
 
@@ -31,8 +33,11 @@ func printBanner() {
 	fmt.Println("---------------------------------------------------------")
 	fmt.Println("  [DIRECT]   Direct Connection (Zero VPN speed loss or ping penalty)")
 	fmt.Println("  [FRAGMENT] TLS SNI & Record Layer DPI Evasion")
-	fmt.Println("  [DOH]      Hardened DNS-over-HTTPS (Anti-DNS Poisoning)")
-	fmt.Println("  [ROUTING]  Smart Split-Tunneling (Selective Bypass)")
+	fmt.Println("  [QUIC/UDP] RFC 9000 Initial Mangling & Discord Voice Shield")
+	fmt.Println("  [ECH/JA4]  Encrypted Client Hello & Chrome/Safari JA4 Masquerade")
+	fmt.Println("  [TUN/ZERO] Transparent Driver Mode (Zero System Proxy Needed)")
+	fmt.Println("  [AI/MUT]   Self-Healing Dynamic Mutation Heuristics Engine")
+	fmt.Println("  [MESH]     HelloMesh Serverless Decentralized P2P Fallback")
 	fmt.Println("---------------------------------------------------------")
 }
 
@@ -43,6 +48,8 @@ func main() {
 	enableDoH := flag.Bool("doh", true, "Enable DNS-over-HTTPS resolution")
 	dohServer := flag.String("doh-server", string(doh.Cloudflare), "DoH resolver URL (e.g. Cloudflare, Google, Quad9)")
 	autoSysProxy := flag.Bool("system-proxy", false, "Automatically configure and toggle OS system proxy")
+	enableTUN := flag.Bool("tun", false, "Enable transparent TUN driver mode (Zero system proxy needed)")
+	enableMesh := flag.Bool("mesh", false, "Enable HelloMesh decentralized serverless P2P emergency fallback")
 	resetNetwork := flag.Bool("reset-network", false, "Emergency reset of all system proxy and network configurations")
 	showVersion := flag.Bool("version", false, "Print version and exit")
 	flag.Parse()
@@ -92,6 +99,28 @@ func main() {
 		}
 	}
 
+	// Transparent TUN Mode
+	var tunEng *tun.Engine
+	if *enableTUN {
+		tunDev, err := tun.OpenDevice("hellotun0")
+		if err == nil {
+			tunEng = tun.NewEngine(tunDev, server.Orchestrator.Strategy)
+			_ = tunEng.Start()
+		} else {
+			log.Printf("[Hello DPI TUN] Warning: could not initialize TUN: %v", err)
+		}
+	}
+
+	// HelloMesh Decentralized Fallback
+	var meshNode *mesh.Node
+	if *enableMesh {
+		mNode, err := mesh.NewNode(0)
+		if err == nil {
+			meshNode = mNode
+			log.Printf("[HelloMesh] P2P Node active (ID: %s)", meshNode.NodeID())
+		}
+	}
+
 	// Setup graceful shutdown listener
 	stopChan := make(chan os.Signal, 1)
 	signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM)
@@ -99,6 +128,9 @@ func main() {
 	go func() {
 		<-stopChan
 		fmt.Println("\n[Hello DPI] Shutting down...")
+		if tunEng != nil {
+			_ = tunEng.Stop()
+		}
 		if *autoSysProxy {
 			log.Println("[Hello DPI] Restoring system proxy settings...")
 			_ = sysproxy.ClearSystemProxy()
@@ -111,10 +143,15 @@ func main() {
 	fmt.Printf("    • Local Proxy Address : %s\n", *addr)
 	fmt.Printf("    • Fragmentation Mode  : %s\n", *mode)
 	fmt.Printf("    • DNS-over-HTTPS      : %v (%s)\n", *enableDoH, *dohServer)
-	if *autoSysProxy {
+	if *enableTUN {
+		fmt.Printf("    • Transparent Driver  : Active (Zero-Proxy Mode / L3 Packet Routing)\n")
+	} else if *autoSysProxy {
 		fmt.Printf("    • System Proxy Mode   : Active (All browsers automatically routed)\n")
 	} else {
 		fmt.Printf("    • System Proxy Mode   : Manual (Point browser HTTP/SOCKS5 proxy to %s)\n", *addr)
+	}
+	if meshNode != nil {
+		fmt.Printf("    • HelloMesh P2P       : Active (Node ID: %s)\n", meshNode.NodeID())
 	}
 	fmt.Printf("\nPress Ctrl+C to stop.\n\n")
 
