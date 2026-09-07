@@ -43,8 +43,16 @@ func main() {
 	enableDoH := flag.Bool("doh", true, "Enable DNS-over-HTTPS resolution")
 	dohServer := flag.String("doh-server", string(doh.Cloudflare), "DoH resolver URL (e.g. Cloudflare, Google, Quad9)")
 	autoSysProxy := flag.Bool("system-proxy", false, "Automatically configure and toggle OS system proxy")
+	resetNetwork := flag.Bool("reset-network", false, "Emergency reset of all system proxy and network configurations")
 	showVersion := flag.Bool("version", false, "Print version and exit")
 	flag.Parse()
+
+	if *resetNetwork {
+		fmt.Println("[Hello DPI] Performing emergency network reset...")
+		_ = sysproxy.ClearSystemProxy()
+		fmt.Println("✓ System proxy and network settings have been cleanly restored to factory direct defaults.")
+		return
+	}
 
 	if *showVersion {
 		fmt.Printf("Hello DPI v%s\n", version.Version)

@@ -30,8 +30,10 @@ type windowsManager struct {
 	prevOverride string
 }
 
+var winMgr = &windowsManager{}
+
 func GetManager() Manager {
-	return &windowsManager{}
+	return winMgr
 }
 
 func notifyWinINet() {
@@ -49,15 +51,17 @@ func (m *windowsManager) Enable(host string, port int) error {
 	}
 	defer key.Close()
 
-	// Backup existing proxy settings
-	if val, _, err := key.GetIntegerValue("ProxyEnable"); err == nil {
-		m.hadProxy = (val == 1)
-	}
-	if val, _, err := key.GetStringValue("ProxyServer"); err == nil {
-		m.prevServer = val
-	}
-	if val, _, err := key.GetStringValue("ProxyOverride"); err == nil {
-		m.prevOverride = val
+	// Backup existing proxy settings if not already backed up
+	if !m.hadProxy && m.prevServer == "" {
+		if val, _, err := key.GetIntegerValue("ProxyEnable"); err == nil {
+			m.hadProxy = (val == 1)
+		}
+		if val, _, err := key.GetStringValue("ProxyServer"); err == nil {
+			m.prevServer = val
+		}
+		if val, _, err := key.GetStringValue("ProxyOverride"); err == nil {
+			m.prevOverride = val
+		}
 	}
 
 	proxyAddr := fmt.Sprintf("%s:%d", host, port)
@@ -89,7 +93,7 @@ func (m *windowsManager) Disable() error {
 	}
 	defer key.Close()
 
-	if m.hadProxy && m.prevServer != "" {
+	if m.hadProxy && m.prevServer != "" && m.prevServer != "127.0.0.1:8080" {
 		_ = key.SetDWordValue("ProxyEnable", 1)
 		_ = key.SetStringValue("ProxyServer", m.prevServer)
 		if m.prevOverride != "" {
@@ -97,12 +101,26 @@ func (m *windowsManager) Disable() error {
 		}
 	} else {
 		_ = key.SetDWordValue("ProxyEnable", 0)
+		_ = key.DeleteValue("ProxyServer")
 	}
+
+	m.hadProxy = false
+	m.prevServer = ""
+	m.prevOverride = ""
 
 	notifyWinINet()
 
+	// Clean up user environment variables if they were set
+	if envKey, err := registry.OpenKey(registry.CURRENT_USER, `Environment`, registry.SET_VALUE); err == nil {
+		_ = envKey.DeleteValue("HTTP_PROXY")
+		_ = envKey.DeleteValue("HTTPS_PROXY")
+		_ = envKey.DeleteValue("ALL_PROXY")
+		envKey.Close()
+	}
+
 	go func() {
 		_ = exec.Command("netsh", "winhttp", "reset", "proxy").Run()
+		_ = exec.Command("ipconfig", "/flushdns").Run()
 	}()
 
 	return nil

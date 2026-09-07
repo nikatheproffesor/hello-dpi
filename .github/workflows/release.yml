@@ -44,7 +44,7 @@ jobs:
           GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -H=windowsgui -buildid=" -o bin/HelloDPI-Windows.exe ./cmd/hellodpi-tray
 
           echo "Packaging Windows ZIP Archive (Avoids Browser .exe block and AV False Positives)..."
-          zip -j bin/HelloDPI-Windows.zip bin/HelloDPI-Windows.exe Baslat.bat rules.json LICENSE
+          zip -j bin/HelloDPI-Windows.zip bin/HelloDPI-Windows.exe Baslat.bat Reset-Network.bat rules.json LICENSE
 
 
       - name: Build Linux & OpenWrt Binaries

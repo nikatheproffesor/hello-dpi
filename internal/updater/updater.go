@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hellodpi/hellodpi/internal/sysproxy"
 	"github.com/hellodpi/hellodpi/internal/version"
 )
 
@@ -561,6 +562,9 @@ func RestartApp() error {
 		return err
 	}
 	currentExe, _ = filepath.EvalSymlinks(currentExe)
+
+	// Guarantee proxy cleanup before restarting process
+	sysproxy.ExecuteGuaranteedCleanup()
 
 	// Check if running inside macOS .app bundle
 	if runtime.GOOS == "darwin" && strings.Contains(currentExe, ".app/Contents/MacOS/") {

@@ -33,6 +33,16 @@ const (
 )
 
 func main() {
+	for _, arg := range os.Args[1:] {
+		if arg == "-reset-network" || arg == "--reset-network" || arg == "-repair" {
+			log.Println("[Hello DPI] Performing emergency network reset...")
+			_ = divert.Stop()
+			_ = sysproxy.ClearSystemProxy()
+			fmt.Println("✓ Ağ ayarları başarıyla sıfırlandı ve tüm proxy ayarları kaldırıldı.")
+			os.Exit(0)
+		}
+	}
+
 	sysproxy.RegisterExitCleanup()
 	defer sysproxy.RecoverAndClear()
 
@@ -263,6 +273,7 @@ func main() {
 				}
 
 				tray.ShowNotification(appTitle, "Güncelleme tamamlandı. Yeniden başlatılıyor...")
+				_ = sysproxy.ClearSystemProxy()
 				time.Sleep(1 * time.Second)
 				_ = updater.RestartApp()
 			}()

@@ -86,6 +86,8 @@ DMG_TMP="dmg_tmp"
 rm -rf "$DMG_TMP"
 mkdir -p "$DMG_TMP"
 cp -R "$BUNDLE_DIR" "$DMG_TMP/"
+cp "Reset-Network.command" "$DMG_TMP/"
+chmod +x "$DMG_TMP/Reset-Network.command"
 ln -s /Applications "$DMG_TMP/Applications"
 hdiutil create -volname "Hello DPI" -srcfolder "$DMG_TMP" -ov -format UDZO "bin/HelloDPI-macOS.dmg" -quiet
 rm -rf "$DMG_TMP"

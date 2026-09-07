@@ -119,12 +119,6 @@ func (m *darwinManager) Enable(host string, port int) error {
 		_ = exec.Command("networksetup", "-setproxybypassdomains", s, "127.0.0.1", "localhost", "*.local", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "*.gsb.gov.tr", "*.kyk.gov.tr", "captive.apple.com", "connectivitycheck.gstatic.com", "msftconnecttest.com").Run()
 	}
 
-	// Propagate proxy to macOS user session so GUI apps (Roblox, Discord, games) inherit it
-	proxyURL := "http://" + host + ":" + portStr
-	for _, envVar := range []string{"http_proxy", "https_proxy", "all_proxy", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY"} {
-		_ = exec.Command("launchctl", "setenv", envVar, proxyURL).Run()
-	}
-
 	return nil
 }
 
@@ -173,7 +167,7 @@ func (m *darwinManager) Disable() error {
 		}
 	}
 
-	// Clean up environment variables from macOS user session
+	// Always clean up any environment variables from macOS user session to prevent broken IDE/shell connections
 	for _, envVar := range []string{"http_proxy", "https_proxy", "all_proxy", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY"} {
 		_ = exec.Command("launchctl", "unsetenv", envVar).Run()
 	}
