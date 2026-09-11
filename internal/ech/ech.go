@@ -176,20 +176,19 @@ func EncapsulateOuterClientHello(innerHello []byte, cfg *ECHConfig, outerSNI str
 	encapKey := privKey.PublicKey().Bytes()
 
 	// 2. Derive shared key using SHA256 KDF
-	// If peer public key is 32 bytes, compute ECDH shared secret
 	var sharedSecret []byte
-	if len(cfg.PublicKey) == 32 {
-		peerPub, pErr := ecdh.X25519().NewPublicKey(cfg.PublicKey)
-		if pErr == nil {
-			sharedSecret, _ = privKey.ECDH(peerPub)
-		}
+	if len(cfg.PublicKey) != 32 {
+		return nil, fmt.Errorf("invalid ECH public key length: expected 32 bytes, got %d", len(cfg.PublicKey))
 	}
-	if len(sharedSecret) == 0 {
-		// Fallback deterministic entropy
-		h := sha256.New()
-		h.Write(encapKey)
-		h.Write(cfg.PublicKey)
-		sharedSecret = h.Sum(nil)
+	
+	peerPub, err := ecdh.X25519().NewPublicKey(cfg.PublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("invalid ECH peer public key: %w", err)
+	}
+	
+	sharedSecret, err = privKey.ECDH(peerPub)
+	if err != nil {
+		return nil, fmt.Errorf("ECDH key exchange failed: %w", err)
 	}
 
 	// Derive AES-128 key (16 bytes) and IV (12 bytes)

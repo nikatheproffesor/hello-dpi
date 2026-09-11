@@ -18,9 +18,9 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         // 2. Configure local virtual TUN network settings
         let tunnelNetworkSettings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "127.0.0.1")
         
-        // Virtual IPv4 loopback routing
+        // Virtual IPv4 loopback routing for proxy endpoint
         let ipv4Settings = NEIPv4Settings(addresses: ["10.0.0.2"], subnetMasks: ["255.255.255.0"])
-        ipv4Settings.includedRoutes = [NEIPv4Route.default()]
+        // Traffic is steered safely via NEProxySettings without blackholing raw L3 packetFlow
         tunnelNetworkSettings.ipv4Settings = ipv4Settings
         
         // Encrypted DNS fallback (Cloudflare & Google DoH)

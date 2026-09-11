@@ -101,25 +101,39 @@ func handleDashboard(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(doctorHTML))
 }
 
+func requirePost(w http.ResponseWriter, r *http.Request) bool {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed: POST required for state modification", http.StatusMethodNotAllowed)
+		return false
+	}
+	return true
+}
+
 func handleRunRepair(w http.ResponseWriter, r *http.Request) {
+	if !requirePost(w, r) {
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	report := RunRepair()
 	_ = json.NewEncoder(w).Encode(report)
 }
 
 func handleResetNetwork(w http.ResponseWriter, r *http.Request) {
+	if !requirePost(w, r) {
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	success, msg := ResetNetworkToCleanState()
 	_ = json.NewEncoder(w).Encode(ActionResponse{Success: success, Message: msg})
 }
 
 func handleFixRoblox(w http.ResponseWriter, r *http.Request) {
+	if !requirePost(w, r) {
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	success, msg := FixRobloxDNSAndHosts()
 	_ = json.NewEncoder(w).Encode(ActionResponse{Success: success, Message: msg})
@@ -130,16 +144,20 @@ func handleApplyDNS(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleRestartDiscord(w http.ResponseWriter, r *http.Request) {
+	if !requirePost(w, r) {
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	success, msg := RestartDiscord()
 	_ = json.NewEncoder(w).Encode(ActionResponse{Success: success, Message: msg})
 }
 
 func handleLaunchRoblox(w http.ResponseWriter, r *http.Request) {
+	if !requirePost(w, r) {
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	success, msg := LaunchRoblox()
 	_ = json.NewEncoder(w).Encode(ActionResponse{Success: success, Message: msg})
@@ -147,14 +165,15 @@ func handleLaunchRoblox(w http.ResponseWriter, r *http.Request) {
 
 func handleKernelStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	st := divert.GetStatus()
 	_ = json.NewEncoder(w).Encode(st)
 }
 
 func handleKernelStart(w http.ResponseWriter, r *http.Request) {
+	if !requirePost(w, r) {
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	err := divert.Start()
 	if err != nil {
 		_ = json.NewEncoder(w).Encode(ActionResponse{Success: false, Message: "Çekirdek Modu başlatılamadı: " + err.Error()})
@@ -164,8 +183,10 @@ func handleKernelStart(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleKernelStop(w http.ResponseWriter, r *http.Request) {
+	if !requirePost(w, r) {
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	err := divert.Stop()
 	if err != nil {
 		_ = json.NewEncoder(w).Encode(ActionResponse{Success: false, Message: "Çekirdek Modu durdurulamadı: " + err.Error()})
@@ -175,6 +196,9 @@ func handleKernelStop(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleKernelToggle(w http.ResponseWriter, r *http.Request) {
+	if !requirePost(w, r) {
+		return
+	}
 	if divert.IsRunning() {
 		handleKernelStop(w, r)
 	} else {
@@ -183,8 +207,10 @@ func handleKernelToggle(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleAutoTune(w http.ResponseWriter, r *http.Request) {
+	if !requirePost(w, r) {
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	if globalProbe == nil {
 		globalProbe = probe.NewEngine()
@@ -218,8 +244,10 @@ type SelfTestReport struct {
 }
 
 func handleSelfTest(w http.ResponseWriter, r *http.Request) {
+	if !requirePost(w, r) {
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	if globalProbe == nil {
 		globalProbe = probe.NewEngine()
@@ -336,7 +364,6 @@ func handleSelfTest(w http.ResponseWriter, r *http.Request) {
 
 func handleTelemetry(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	col := telemetry.Default()
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
@@ -346,8 +373,10 @@ func handleTelemetry(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleTelemetryToggle(w http.ResponseWriter, r *http.Request) {
+	if !requirePost(w, r) {
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	col := telemetry.Default()
 	newVal := !col.IsEnabled()
@@ -361,8 +390,10 @@ func handleTelemetryToggle(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleSyncRules(w http.ResponseWriter, r *http.Request) {
+	if !requirePost(w, r) {
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	if globalRules == nil {
 		globalRules = rules.NewEngine()
@@ -386,7 +417,6 @@ func handleSyncRules(w http.ResponseWriter, r *http.Request) {
 
 func handleRulesStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	if globalRules == nil {
 		globalRules = rules.NewEngine()
@@ -403,7 +433,6 @@ func handleRulesStatus(w http.ResponseWriter, r *http.Request) {
 
 func handleVoiceTest(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	if globalVoice == nil {
 		globalVoice = voice.NewOptimizer()
@@ -415,7 +444,6 @@ func handleVoiceTest(w http.ResponseWriter, r *http.Request) {
 
 func handleLivePing(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	report := RunLivePingBenchmark()
 	_ = json.NewEncoder(w).Encode(report)
@@ -1306,7 +1334,7 @@ const doctorHTML = `<!DOCTYPE html>
       appendLog("> [KOMUT] Cekirdek Modu " + action + "...");
 
       try {
-        const res = await fetch('/api/doctor/kernel-toggle');
+        const res = await fetch('/api/doctor/kernel-toggle', { method: 'POST' });
         const data = await res.json();
         showToast(data.message);
         appendLog("> [SONUC] " + data.message);
@@ -1320,7 +1348,7 @@ const doctorHTML = `<!DOCTYPE html>
       showToast("Ag ayarlari sifirlaniyor...");
       appendLog("> [KOMUT] Ag ayarlari sifirlaniyor (DHCP + WinHTTP Reset)...");
       try {
-        const res = await fetch('/api/doctor/reset-network');
+        const res = await fetch('/api/doctor/reset-network', { method: 'POST' });
         const data = await res.json();
         showToast(data.message);
         appendLog("> [SONUC] " + data.message);
@@ -1334,7 +1362,7 @@ const doctorHTML = `<!DOCTYPE html>
       showToast("Discord soketleri yenileniyor...");
       appendLog("> [KOMUT] Discord tuneli temizleniyor...");
       try {
-        const res = await fetch('/api/doctor/restart-discord');
+        const res = await fetch('/api/doctor/restart-discord', { method: 'POST' });
         const data = await res.json();
         showToast(data.message);
         appendLog("> [SONUC] " + data.message);
@@ -1347,7 +1375,7 @@ const doctorHTML = `<!DOCTYPE html>
       showToast("Roblox baslatiliyor...");
       appendLog("> [KOMUT] Roblox cagriliyor...");
       try {
-        const res = await fetch('/api/doctor/launch-roblox');
+        const res = await fetch('/api/doctor/launch-roblox', { method: 'POST' });
         const data = await res.json();
         showToast(data.message);
       } catch (err) {
@@ -1359,7 +1387,7 @@ const doctorHTML = `<!DOCTYPE html>
       appendLog('> [SONDAJ] Canli DPI sondaji ve strateji kalibrasyonu baslatiliyor...');
       showToast('DPI sondaj testi calisiyor...');
       try {
-        const res = await fetch('/api/doctor/autotune');
+        const res = await fetch('/api/doctor/autotune', { method: 'POST' });
         const data = await res.json();
         if (data.bypass_verified) {
           appendLog('> [OK] Optimal Strateji: ' + data.best_mode + ' (splitPos: ' + data.best_split_pos + ', delay: ' + data.best_delay_ms + 'ms, ping: ' + data.best_latency_ms + 'ms)');
@@ -1379,7 +1407,7 @@ const doctorHTML = `<!DOCTYPE html>
       appendLog('> [KURAL] Dinamik OTA kurallari buluttan senkronize ediliyor...');
       showToast('Kurallar guncelleniyor...');
       try {
-        const res = await fetch('/api/doctor/sync-rules');
+        const res = await fetch('/api/doctor/sync-rules', { method: 'POST' });
         const data = await res.json();
         appendLog('> [KURAL] ' + data.message);
         showToast(data.message);
@@ -1408,7 +1436,7 @@ const doctorHTML = `<!DOCTYPE html>
       await loadRulesStatus();
 
       try {
-        const res = await fetch('/api/doctor/repair');
+        const res = await fetch('/api/doctor/repair', { method: 'POST' });
         const report = await res.json();
 
         if (report.discord_ping_ms > 0) {

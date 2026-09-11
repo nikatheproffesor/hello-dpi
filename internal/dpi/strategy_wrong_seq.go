@@ -36,7 +36,7 @@ func (s *WrongSeqAckStrategy) Name() string {
 	return string(SplitWrongSeq)
 }
 
-func (s *WrongSeqAckStrategy) Apply(conn net.Conn, data []byte, info ParsedInfo) error {
+func (s *WrongSeqAckStrategy) SendDecoy(conn net.Conn, info ParsedInfo) error {
 	if tcpConn, ok := conn.(*net.TCPConn); ok {
 		_ = tcpConn.SetNoDelay(true)
 	}
@@ -54,19 +54,24 @@ func (s *WrongSeqAckStrategy) Apply(conn net.Conn, data []byte, info ParsedInfo)
 	decoy[5] = 0x01 // Warning
 	decoy[6] = 0x00 // Close notify
 
-	if _, err := conn.Write(decoy); err != nil {
-		_ = SetSocketTTL(conn, 64)
+	_, err := conn.Write(decoy)
+	_ = SetSocketTTL(conn, 64)
+	if err != nil {
 		return fmt.Errorf("wrong-seq decoy write failed: %w", err)
 	}
 
 	if s.delay > 0 {
 		time.Sleep(s.delay)
 	}
+	return nil
+}
 
-	// 3. Restore full TTL for real payload
-	_ = SetSocketTTL(conn, 64)
+func (s *WrongSeqAckStrategy) Apply(conn net.Conn, data []byte, info ParsedInfo) error {
+	if err := s.SendDecoy(conn, info); err != nil {
+		return err
+	}
 
-	// 4. Send real payload with 5-byte RFC record split
+	// Send real payload with 5-byte RFC record split
 	tlsStrat := NewTLSRecordSplitStrategy(5, int(s.delay.Milliseconds()))
 	return tlsStrat.Apply(conn, data, info)
 }

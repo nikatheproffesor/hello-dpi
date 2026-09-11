@@ -45,22 +45,41 @@ hdiutil create -volname "Hello DPI" -srcfolder "$DMG_TMP" -ov -format UDZO "$DMG
 rm -rf "$DMG_TMP"
 
 if [ "$IDENTITY" != "-" ]; then
-    codesign --sign "$IDENTITY" --timestamp "$DMG_PATH" 2>/dev/null || true
+    if ! codesign --force --sign "$IDENTITY" --timestamp "$DMG_PATH"; then
+        echo "⚠️ Warning: Failed to sign DMG package."
+        if [ "${STRICT_SIGN:-0}" = "1" ]; then
+            exit 1
+        fi
+    fi
 fi
 
 # 5. Check if Notarytool Keychain profile exists
 if xcrun notarytool history --keychain-profile "hellodpi-profile" &>/dev/null; then
     echo "Submitting DMG to Apple Notary Service (notarytool)..."
-    xcrun notarytool submit "$DMG_PATH" --keychain-profile "hellodpi-profile" --wait
-    echo "Stapling notarization ticket to DMG..."
-    xcrun stapler staple "$DMG_PATH"
-    echo "✓ DMG successfully notarized and stapled by Apple!"
+    if xcrun notarytool submit "$DMG_PATH" --keychain-profile "hellodpi-profile" --wait; then
+        echo "Stapling notarization ticket to App and DMG..."
+        xcrun stapler staple "$BUNDLE_DIR"
+        xcrun stapler staple "$DMG_PATH"
+        echo "✓ DMG and App successfully notarized and stapled by Apple!"
+    else
+        echo "❌ Notarization submission failed."
+        if [ "${STRICT_SIGN:-0}" = "1" ]; then
+            exit 1
+        fi
+    fi
+else
+    echo "⚠️ Apple Notary Keychain profile ('hellodpi-profile') not found."
+    echo "  To enable official Apple Notarization, run:"
+    echo "  xcrun notarytool store-credentials \"hellodpi-profile\" --apple-id \"<apple-id>\" --team-id \"KBGS669D97\""
+    if [ "${STRICT_SIGN:-0}" = "1" ]; then
+        echo "❌ Failing release due to missing notarization credentials in STRICT mode."
+        exit 1
+    fi
 fi
 
 echo "Creating signed macOS release ZIP..."
 rm -f "bin/HelloDPI-macOS.zip"
 zip -r -q "bin/HelloDPI-macOS.zip" "$BUNDLE_DIR"
-
 
 echo ""
 echo "✓ Done! Signed artifacts ready in 'bin/'"

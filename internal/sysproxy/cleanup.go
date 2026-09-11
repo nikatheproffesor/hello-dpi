@@ -42,9 +42,11 @@ func ExecuteGuaranteedCleanup() {
 	}
 	cleanedUp = true
 
-	_ = ClearSystemProxy()
+	if IsSystemProxyActive() {
+		_ = ClearSystemProxy()
+		log.Printf("[Hello DPI] Exit cleanup completed: system proxy restored.")
+	}
 	_ = divert.Stop()
-	log.Printf("[Hello DPI] Exit cleanup completed: system proxy cleared.")
 }
 
 // RecoverAndClear can be deferred in main() or panicking goroutines to prevent leaving

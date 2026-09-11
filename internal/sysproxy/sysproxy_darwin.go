@@ -19,15 +19,19 @@ type proxySetting struct {
 }
 
 type serviceBackup struct {
-	httpProxy  proxySetting
-	httpsProxy proxySetting
-	socksProxy proxySetting
+	httpProxy     proxySetting
+	httpsProxy    proxySetting
+	socksProxy    proxySetting
+	bypassDomains []string
+	hadBypass     bool
 }
 
 type darwinManager struct {
 	mu             sync.Mutex
 	activeServices []string
 	backups        map[string]serviceBackup
+	configuredHost string
+	configuredPort string
 }
 
 var darwinMgr = &darwinManager{
@@ -73,7 +77,7 @@ func parseProxyOutput(out []byte) proxySetting {
 
 		switch strings.ToLower(key) {
 		case "enabled":
-			s.enabled = strings.EqualFold(val, "yes")
+			s.enabled = (strings.ToLower(val) == "yes")
 		case "server":
 			s.server = val
 		case "port":
@@ -96,6 +100,18 @@ func (m *darwinManager) backupService(service string) serviceBackup {
 		sb.socksProxy = parseProxyOutput(out)
 	}
 
+	// Backup existing proxy bypass domains
+	if out, err := exec.Command("networksetup", "-getproxybypassdomains", service).Output(); err == nil {
+		outStr := strings.TrimSpace(string(out))
+		if outStr != "" && !strings.Contains(outStr, "aren't any") && !strings.Contains(outStr, "No bypass") {
+			lines := strings.Fields(outStr)
+			if len(lines) > 0 {
+				sb.bypassDomains = lines
+				sb.hadBypass = true
+			}
+		}
+	}
+
 	return sb
 }
 
@@ -105,9 +121,11 @@ func (m *darwinManager) Enable(host string, port int) error {
 
 	m.activeServices = m.getServices()
 	portStr := strconv.Itoa(port)
+	m.configuredHost = host
+	m.configuredPort = portStr
 
 	for _, s := range m.activeServices {
-		// Only backup if we haven't already backed up this service
+		// Only backup if we haven't already backed up this service in this session
 		if _, exists := m.backups[s]; !exists {
 			m.backups[s] = m.backupService(s)
 		}
@@ -136,8 +154,12 @@ func (m *darwinManager) Disable() error {
 
 		backup, hasBackup := m.backups[s]
 		if hasBackup {
-			// Restore HTTP
-			if backup.httpProxy.enabled && backup.httpProxy.server != "" && backup.httpProxy.server != "127.0.0.1" {
+			isOurHTTP := backup.httpProxy.server == m.configuredHost && backup.httpProxy.port == m.configuredPort
+			isOurHTTPS := backup.httpsProxy.server == m.configuredHost && backup.httpsProxy.port == m.configuredPort
+			isOurSOCKS := backup.socksProxy.server == m.configuredHost && backup.socksProxy.port == m.configuredPort
+
+			// Restore HTTP (preserve another proxy if it wasn't ours)
+			if backup.httpProxy.enabled && backup.httpProxy.server != "" && !isOurHTTP {
 				_ = exec.Command("networksetup", "-setwebproxy", s, backup.httpProxy.server, backup.httpProxy.port).Run()
 				_ = exec.Command("networksetup", "-setwebproxystate", s, "on").Run()
 			} else {
@@ -145,7 +167,7 @@ func (m *darwinManager) Disable() error {
 			}
 
 			// Restore HTTPS
-			if backup.httpsProxy.enabled && backup.httpsProxy.server != "" && backup.httpsProxy.server != "127.0.0.1" {
+			if backup.httpsProxy.enabled && backup.httpsProxy.server != "" && !isOurHTTPS {
 				_ = exec.Command("networksetup", "-setsecurewebproxy", s, backup.httpsProxy.server, backup.httpsProxy.port).Run()
 				_ = exec.Command("networksetup", "-setsecurewebproxystate", s, "on").Run()
 			} else {
@@ -153,17 +175,26 @@ func (m *darwinManager) Disable() error {
 			}
 
 			// Restore SOCKS
-			if backup.socksProxy.enabled && backup.socksProxy.server != "" && backup.socksProxy.server != "127.0.0.1" {
+			if backup.socksProxy.enabled && backup.socksProxy.server != "" && !isOurSOCKS {
 				_ = exec.Command("networksetup", "-setsocksfirewallproxy", s, backup.socksProxy.server, backup.socksProxy.port).Run()
 				_ = exec.Command("networksetup", "-setsocksfirewallproxystate", s, "on").Run()
 			} else {
 				_ = exec.Command("networksetup", "-setsocksfirewallproxystate", s, "off").Run()
+			}
+
+			// Restore proxy bypass domains
+			if backup.hadBypass && len(backup.bypassDomains) > 0 {
+				args := append([]string{"-setproxybypassdomains", s}, backup.bypassDomains...)
+				_ = exec.Command("networksetup", args...).Run()
+			} else {
+				_ = exec.Command("networksetup", "-setproxybypassdomains", s, "empty").Run()
 			}
 		} else {
 			// Blanket off fallback
 			_ = exec.Command("networksetup", "-setwebproxystate", s, "off").Run()
 			_ = exec.Command("networksetup", "-setsecurewebproxystate", s, "off").Run()
 			_ = exec.Command("networksetup", "-setsocksfirewallproxystate", s, "off").Run()
+			_ = exec.Command("networksetup", "-setproxybypassdomains", s, "empty").Run()
 		}
 	}
 
@@ -173,5 +204,7 @@ func (m *darwinManager) Disable() error {
 	}
 
 	m.backups = make(map[string]serviceBackup)
+	m.configuredHost = ""
+	m.configuredPort = ""
 	return nil
 }

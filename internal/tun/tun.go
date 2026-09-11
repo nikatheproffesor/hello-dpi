@@ -46,6 +46,7 @@ type Engine struct {
 	mu         sync.RWMutex
 	running    bool
 	stopChan   chan struct{}
+	stopOnce   sync.Once
 }
 
 // NewEngine creates a new transparent TUN packet engine
@@ -92,7 +93,7 @@ func (e *Engine) Start() error {
 	return nil
 }
 
-// Stop terminates the transparent engine
+// Stop terminates the transparent engine. Safe to call multiple times.
 func (e *Engine) Stop() error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -100,7 +101,7 @@ func (e *Engine) Stop() error {
 		return nil
 	}
 	e.running = false
-	close(e.stopChan)
+	e.stopOnce.Do(func() { close(e.stopChan) })
 	if e.dev != nil {
 		return e.dev.Close()
 	}
@@ -156,24 +157,23 @@ func (e *Engine) handleIPPacket(pkt []byte) {
 	}
 
 	proto := pkt[9]
-	srcIP := net.IP(pkt[12:16])
 	dstIP := net.IP(pkt[16:20])
 
 	switch proto {
 	case 6: // TCP
 		atomic.AddUint64(&e.stats.TCPIntercept, 1)
-		e.handleTCP(srcIP, dstIP, pkt[ihl:])
+		e.handleTCP(dstIP, pkt[ihl:])
 	case 17: // UDP
 		atomic.AddUint64(&e.stats.UDPIntercept, 1)
-		e.handleUDP(srcIP, dstIP, pkt[ihl:])
+		e.handleUDP(dstIP, pkt[ihl:])
 	}
 }
 
-func (e *Engine) handleTCP(srcIP, dstIP net.IP, tcpPkt []byte) {
+func (e *Engine) handleTCP(dstIP net.IP, tcpPkt []byte) {
 	if len(tcpPkt) < 20 {
 		return
 	}
-	srcPort := binary.BigEndian.Uint16(tcpPkt[0:2])
+	// srcPort := binary.BigEndian.Uint16(tcpPkt[0:2]) // Unused
 	dstPort := binary.BigEndian.Uint16(tcpPkt[2:4])
 	dataOffset := int((tcpPkt[12] >> 4) & 0x0F) * 4
 	if len(tcpPkt) <= dataOffset {
@@ -193,10 +193,9 @@ func (e *Engine) handleTCP(srcIP, dstIP net.IP, tcpPkt []byte) {
 				dstIP.String(), dstPort, info.Host, len(payload))
 		}
 	}
-	_ = srcPort
 }
 
-func (e *Engine) handleUDP(srcIP, dstIP net.IP, udpPkt []byte) {
+func (e *Engine) handleUDP(dstIP net.IP, udpPkt []byte) {
 	if len(udpPkt) < 8 {
 		return
 	}

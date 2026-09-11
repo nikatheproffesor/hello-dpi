@@ -34,7 +34,7 @@ func (s *FakePacketStrategy) Name() string {
 	return string(SplitDecoy)
 }
 
-func (s *FakePacketStrategy) Apply(conn net.Conn, data []byte, info ParsedInfo) error {
+func (s *FakePacketStrategy) SendDecoy(conn net.Conn, info ParsedInfo) error {
 	if tcpConn, ok := conn.(*net.TCPConn); ok {
 		_ = tcpConn.SetNoDelay(true)
 	}
@@ -50,20 +50,25 @@ func (s *FakePacketStrategy) Apply(conn net.Conn, data []byte, info ParsedInfo) 
 		decoy = []byte("GET /hello-dpi-probe HTTP/1.1\r\nHost: cdn.dummy.internal\r\n\r\n")
 	}
 
-	if _, err := conn.Write(decoy); err != nil {
-		// If low TTL write fails, restore TTL and fallback
-		_ = SetSocketTTL(conn, 64)
+	_, err := conn.Write(decoy)
+	// Always restore standard TTL immediately
+	_ = SetSocketTTL(conn, 64)
+	if err != nil {
 		return fmt.Errorf("decoy packet write failed: %w", err)
 	}
 
 	if s.delay > 0 {
 		time.Sleep(s.delay)
 	}
+	return nil
+}
 
-	// 3. Restore standard TTL (64) for real payload
-	_ = SetSocketTTL(conn, 64)
+func (s *FakePacketStrategy) Apply(conn net.Conn, data []byte, info ParsedInfo) error {
+	if err := s.SendDecoy(conn, info); err != nil {
+		return err
+	}
 
-	// 4. Transmit real payload with 2-byte TLS record split
+	// Transmit real payload with 2-byte TLS record split
 	tlsStrat := NewTLSRecordSplitStrategy(2, int(s.delay.Milliseconds()))
 	return tlsStrat.Apply(conn, data, info)
 }

@@ -3,6 +3,8 @@
 package divert
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -33,19 +35,22 @@ func ensureExtracted() (string, error) {
 
 	const xorKey byte = 0x5A
 	embeddedFiles := []struct {
-		targetName string
-		embedName  string
+		targetName   string
+		embedName    string
+		expectedHash string
 	}{
-		{"goodbyedpi.exe", "goodbyedpi.exe.bin"},
-		{"WinDivert.dll", "WinDivert.dll.bin"},
-		{"WinDivert64.sys", "WinDivert64.sys.bin"},
+		{"goodbyedpi.exe", "goodbyedpi.exe.bin", "8d412b094bb9c137ff25ba9a794d1122ecc84bb776debff6c249723a13cc31cd"},
+		{"WinDivert.dll", "WinDivert.dll.bin", "6110bfa44667405179c3e15e12af1b62037e447ed59b054b19042032995e6c7e"},
+		{"WinDivert64.sys", "WinDivert64.sys.bin", "e69b5ba3f0cd6cfb2983e442636e7f0b342b61b15264b0328317d4559c82cf50"},
 	}
 
 	for _, ef := range embeddedFiles {
 		targetPath := filepath.Join(targetDir, ef.targetName)
-		stat, err := os.Stat(targetPath)
-		if err == nil && stat.Size() > 0 {
-			continue // already extracted
+		if existing, err := os.ReadFile(targetPath); err == nil {
+			h := sha256.Sum256(existing)
+			if hex.EncodeToString(h[:]) == ef.expectedHash {
+				continue // already extracted and verified intact
+			}
 		}
 
 		src, err := embeddedBin.Open("bin/" + ef.embedName)
@@ -65,7 +70,12 @@ func ensureExtracted() (string, error) {
 			decryptedData[i] = encryptedData[i] ^ xorKey
 		}
 
-		if err := os.WriteFile(targetPath, decryptedData, 0755); err != nil {
+		h := sha256.Sum256(decryptedData)
+		if hex.EncodeToString(h[:]) != ef.expectedHash {
+			return "", fmt.Errorf("embedded asset %s integrity check failed: hash mismatch", ef.targetName)
+		}
+
+		if err := os.WriteFile(targetPath, decryptedData, 0700); err != nil {
 			return "", fmt.Errorf("failed to write %s: %w", targetPath, err)
 		}
 	}
@@ -181,31 +191,16 @@ func StartWithOptions(opts KernelOptions) error {
 	return nil
 }
 
-// Stop terminates the WinDivert engine and cleans up services
+// Stop terminates the WinDivert engine process owned by this application
 func Stop() error {
 	stateMu.Lock()
 	defer stateMu.Unlock()
 
 	if currentCmd != nil && currentCmd.Process != nil {
 		_ = currentCmd.Process.Kill()
+		_ = currentCmd.Wait()
 		currentCmd = nil
 	}
-
-	// Force kill any orphaned goodbyedpi.exe instances
-	killCmd := exec.Command("taskkill", "/F", "/IM", "goodbyedpi.exe")
-	killCmd.SysProcAttr = &syscall.SysProcAttr{
-		HideWindow:    true,
-		CreationFlags: 0x08000000,
-	}
-	_ = killCmd.Run()
-
-	// Stop WinDivert kernel driver service
-	stopSvc := exec.Command("net", "stop", "WinDivert")
-	stopSvc.SysProcAttr = &syscall.SysProcAttr{
-		HideWindow:    true,
-		CreationFlags: 0x08000000,
-	}
-	_ = stopSvc.Run()
 
 	return nil
 }

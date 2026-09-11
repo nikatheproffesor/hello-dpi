@@ -81,19 +81,20 @@ func NewResolver(primaryEndpoint string, enabled bool) *Resolver {
 // isLocalOrCaptiveDomain checks if a domain is an internal, local, or captive portal domain
 func isLocalOrCaptiveDomain(host string) bool {
 	h := strings.ToLower(strings.TrimSuffix(host, "."))
-	if h == "localhost" || strings.HasSuffix(h, ".local") || strings.HasSuffix(h, ".lan") || strings.HasSuffix(h, ".home") {
+	if h == "localhost" || strings.HasSuffix(h, ".local") || strings.HasSuffix(h, ".lan") || strings.HasSuffix(h, ".home") || strings.HasSuffix(h, ".internal") {
 		return true
 	}
-	// GSB WiFi (KYK) & captive portal detection domains
-	if strings.Contains(h, "gsb.gov.tr") ||
-		strings.Contains(h, "kyk.gov.tr") ||
+	// GSB WiFi (KYK) & captive portal detection domains (exact or proper subdomain suffix)
+	if h == "gsb.gov.tr" || strings.HasSuffix(h, ".gsb.gov.tr") ||
+		h == "kyk.gov.tr" || strings.HasSuffix(h, ".kyk.gov.tr") ||
 		h == "captive.apple.com" ||
 		h == "connectivitycheck.gstatic.com" ||
 		h == "connectivitycheck.android.com" ||
 		h == "msftconnecttest.com" ||
 		h == "ipv6.msftconnecttest.com" ||
-		strings.Contains(h, "routerlogin") ||
-		strings.Contains(h, "modem") {
+		h == "routerlogin.net" || strings.HasSuffix(h, ".routerlogin.net") ||
+		h == "routerlogin.com" || strings.HasSuffix(h, ".routerlogin.com") ||
+		h == "modem.local" || h == "modem.lan" {
 		return true
 	}
 	return false
@@ -175,13 +176,24 @@ func (r *Resolver) queryDoHEndpoint(ctx context.Context, endpoint, host string) 
 		return "", 0, fmt.Errorf("no answer returned")
 	}
 
-	// Prefer Type A (IPv4)
+	// Prioritize IPv4 (Type A = 1) then IPv6 (Type AAAA = 28), verifying valid IP format
 	for _, ans := range dohResp.Answer {
 		if ans.Type == 1 {
-			return ans.Data, ans.TTL, nil
+			trimmed := strings.TrimSpace(ans.Data)
+			if ip := net.ParseIP(trimmed); ip != nil {
+				return ip.String(), ans.TTL, nil
+			}
 		}
 	}
 
-	// Fallback to first available answer
-	return dohResp.Answer[0].Data, dohResp.Answer[0].TTL, nil
+	for _, ans := range dohResp.Answer {
+		if ans.Type == 28 {
+			trimmed := strings.TrimSpace(ans.Data)
+			if ip := net.ParseIP(trimmed); ip != nil {
+				return ip.String(), ans.TTL, nil
+			}
+		}
+	}
+
+	return "", 0, fmt.Errorf("no valid IP address found in DoH answer for %s", host)
 }

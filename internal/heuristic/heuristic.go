@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/hellodpi/hellodpi/internal/dpi"
@@ -39,10 +40,11 @@ type DomainState struct {
 
 // Engine implements dynamic AI/heuristics-based evasion mutation
 type Engine struct {
-	mu         sync.RWMutex
-	states     map[string]*DomainState
-	cachePath  string
-	persistMu  sync.Mutex
+	mu          sync.RWMutex
+	states      map[string]*DomainState
+	cachePath   string
+	persistMu   sync.Mutex
+	savePending int32 // atomic flag for debounced save
 }
 
 // NewEngine creates a new self-healing heuristics mutation engine
@@ -210,14 +212,23 @@ func (e *Engine) saveLearned() {
 	if e.cachePath == "" {
 		return
 	}
-	e.persistMu.Lock()
-	defer e.persistMu.Unlock()
-
-	e.mu.RLock()
-	data, err := json.MarshalIndent(e.states, "", "  ")
-	e.mu.RUnlock()
-
-	if err == nil {
-		_ = os.WriteFile(e.cachePath, data, 0644)
+	// Debounce: coalesce rapid saves (e.g. during active ISP packet drops) into one
+	if !atomic.CompareAndSwapInt32(&e.savePending, 0, 1) {
+		return // A save is already scheduled
 	}
+	go func() {
+		time.Sleep(500 * time.Millisecond)
+		atomic.StoreInt32(&e.savePending, 0)
+
+		e.persistMu.Lock()
+		defer e.persistMu.Unlock()
+
+		e.mu.RLock()
+		data, err := json.MarshalIndent(e.states, "", "  ")
+		e.mu.RUnlock()
+
+		if err == nil {
+			_ = os.WriteFile(e.cachePath, data, 0644)
+		}
+	}()
 }

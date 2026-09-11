@@ -12,6 +12,13 @@ type BypassStrategy interface {
 	Apply(conn net.Conn, data []byte, info ParsedInfo) error
 }
 
+// DecoyProvider is an optional interface implemented by prelude/decoy strategies.
+// When chained, only the prelude is sent by intermediate steps, ensuring the actual payload
+// is transmitted exactly once by the terminal strategy in the chain.
+type DecoyProvider interface {
+	SendDecoy(conn net.Conn, info ParsedInfo) error
+}
+
 var (
 	strategiesMu sync.RWMutex
 	strategies   = make(map[string]BypassStrategy)

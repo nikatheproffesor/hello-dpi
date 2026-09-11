@@ -23,7 +23,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.24'
           cache: true
 
       - name: Prepare Embedded Assets
@@ -43,7 +43,7 @@ jobs:
           echo "Building Portable Windows Tray Executable..."
           GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -H=windowsgui -buildid=" -o bin/HelloDPI-Windows.exe ./cmd/hellodpi-tray
 
-          echo "Packaging Windows ZIP Archive (Avoids Browser .exe block and AV False Positives)..."
+          echo "Packaging Windows ZIP Archive..."
           zip -j bin/HelloDPI-Windows.zip bin/HelloDPI-Windows.exe Baslat.bat Reset-Network.bat rules.json LICENSE
 
 
@@ -77,15 +77,23 @@ jobs:
             fi
           fi
 
+      - name: Generate SHA-256 Checksums
+        run: |
+          cd bin
+          shasum -a 256 * > SHA256SUMS.txt
+          cd ..
+
       - name: Verify Release Artifacts
         run: |
           ls -lh bin/
+          cat bin/SHA256SUMS.txt
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
+            bin/SHA256SUMS.txt
             bin/HelloDPI-Windows.zip
             bin/HelloDPI-Windows.exe
             bin/HelloDPI-macOS.dmg

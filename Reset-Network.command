@@ -9,14 +9,13 @@ echo "macOS vekil sunucu (proxy) ve ağ ayarları sıfırlanıyor..."
 echo ""
 
 # 1. Tüm aktif ağ servislerindeki proxy'leri devre dışı bırak
-SERVICES=$(networksetup -listallnetworkservices 2>/dev/null | grep -v "\*")
-
-for s in $SERVICES; do
+networksetup -listallnetworkservices 2>/dev/null | grep -v "\*" | while IFS= read -r s; do
+    [ -z "$s" ] && continue
     echo "Servis kontrol ediliyor: $s"
-    networksetup -setwebproxystate "$s" off 2>/dev/null
-    networksetup -setsecurewebproxystate "$s" off 2>/dev/null
-    networksetup -setsocksfirewallproxystate "$s" off 2>/dev/null
-    networksetup -setautoproxystate "$s" off 2>/dev/null
+    networksetup -setwebproxystate "$s" off 2>/dev/null || true
+    networksetup -setsecurewebproxystate "$s" off 2>/dev/null || true
+    networksetup -setsocksfirewallproxystate "$s" off 2>/dev/null || true
+    networksetup -setautoproxystate "$s" off 2>/dev/null || true
 done
 
 # 2. launchctl kullanıcı oturumu çevre değişkenlerini temizle

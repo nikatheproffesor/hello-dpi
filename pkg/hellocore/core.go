@@ -91,12 +91,19 @@ func (e *Engine) Start() error {
 		return nil
 	}
 
+	if err := e.server.Listen(); err != nil {
+		return fmt.Errorf("failed to bind proxy server: %w", err)
+	}
+
 	go func() {
-		_ = e.server.Start()
+		_ = e.server.Serve()
 	}()
 
 	if e.adapter != nil {
-		_ = e.adapter.OnStart()
+		if err := e.adapter.OnStart(); err != nil {
+			_ = e.server.Close()
+			return fmt.Errorf("platform adapter start failed: %w", err)
+		}
 	}
 
 	e.running = true
@@ -112,12 +119,16 @@ func (e *Engine) Stop() error {
 		return nil
 	}
 
+	var adapterErr error
 	if e.adapter != nil {
-		_ = e.adapter.OnStop()
+		adapterErr = e.adapter.OnStop()
 	}
 
 	err := e.server.Close()
 	e.running = false
+	if adapterErr != nil {
+		return adapterErr
+	}
 	return err
 }
 

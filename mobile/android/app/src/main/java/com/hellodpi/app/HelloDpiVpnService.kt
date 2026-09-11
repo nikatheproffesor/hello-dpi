@@ -58,7 +58,12 @@ class HelloDpiVpnService : VpnService() {
                 builder.addDisallowedApplication(packageName)
             } catch (ignored: Exception) {}
 
-            vpnInterface = builder.establish()
+            val pfd = builder.establish()
+            if (pfd == null) {
+                stopVpn()
+                return
+            }
+            vpnInterface = pfd
             isVpnRunning = true
 
             // Persist active state for boot auto-reconnect
@@ -85,7 +90,17 @@ class HelloDpiVpnService : VpnService() {
                     "-addr", "127.0.0.1:8080"
                 )
                 pb.redirectErrorStream(true)
-                engineProcess = pb.start()
+                val proc = pb.start()
+                engineProcess = proc
+
+                // Drain process output stream in background thread to prevent buffer deadlocks
+                Thread {
+                    try {
+                        proc.inputStream.bufferedReader().useLines { lines ->
+                            lines.forEach { /* drained */ }
+                        }
+                    } catch (ignored: Exception) {}
+                }.start()
             }
         } catch (e: Exception) {
             e.printStackTrace()

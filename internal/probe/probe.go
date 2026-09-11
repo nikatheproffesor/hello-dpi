@@ -293,6 +293,13 @@ func (e *Engine) RunProbe() *Result {
 		var totalRTT int64
 
 		for _, target := range e.targets {
+			gs, exists := groupScores[target.Group][stratName]
+			if !exists {
+				gs = &groupScore{strategy: stratName}
+				groupScores[target.Group][stratName] = gs
+			}
+			gs.total++
+
 			hello := BuildClientHello(target.Name)
 			info := dpi.ParsePacket(hello)
 
@@ -314,13 +321,6 @@ func (e *Engine) RunProbe() *Result {
 			n, rErr := conn.Read(respHdr)
 			_ = conn.Close()
 			rtt := time.Since(start).Milliseconds()
-
-			gs, exists := groupScores[target.Group][stratName]
-			if !exists {
-				gs = &groupScore{strategy: stratName}
-				groupScores[target.Group][stratName] = gs
-			}
-			gs.total++
 
 			if rErr == nil && n >= 1 && respHdr[0] == 0x16 {
 				successCount++

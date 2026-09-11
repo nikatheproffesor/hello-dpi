@@ -46,11 +46,27 @@ func TestHandlers(t *testing.T) {
 		t.Errorf("expected status 200 for /doctor/, got %d", recSlash.Code)
 	}
 
-	// 3. API fix-dns
-	reqDNS := httptest.NewRequest("GET", "/api/doctor/fix-dns", nil)
-	recDNS := httptest.NewRecorder()
-	mux.ServeHTTP(recDNS, reqDNS)
-	if recDNS.Code != http.StatusOK {
-		t.Errorf("expected status 200 for /api/doctor/fix-dns, got %d", recDNS.Code)
+	// 3. API fix-dns with GET should be rejected with 405 Method Not Allowed
+	reqDNSGet := httptest.NewRequest("GET", "/api/doctor/fix-dns", nil)
+	recDNSGet := httptest.NewRecorder()
+	mux.ServeHTTP(recDNSGet, reqDNSGet)
+	if recDNSGet.Code != http.StatusMethodNotAllowed {
+		t.Errorf("expected status 405 for GET /api/doctor/fix-dns, got %d", recDNSGet.Code)
+	}
+
+	// 4. API fix-dns with POST should succeed
+	reqDNSPost := httptest.NewRequest("POST", "/api/doctor/fix-dns", nil)
+	recDNSPost := httptest.NewRecorder()
+	mux.ServeHTTP(recDNSPost, reqDNSPost)
+	if recDNSPost.Code != http.StatusOK {
+		t.Errorf("expected status 200 for POST /api/doctor/fix-dns, got %d", recDNSPost.Code)
+	}
+
+	// 5. Read-only endpoint kernel-status accepts GET
+	reqKernelStatus := httptest.NewRequest("GET", "/api/doctor/kernel-status", nil)
+	recKernelStatus := httptest.NewRecorder()
+	mux.ServeHTTP(recKernelStatus, reqKernelStatus)
+	if recKernelStatus.Code != http.StatusOK {
+		t.Errorf("expected status 200 for GET /api/doctor/kernel-status, got %d", recKernelStatus.Code)
 	}
 }

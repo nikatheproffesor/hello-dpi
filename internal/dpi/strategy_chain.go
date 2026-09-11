@@ -39,12 +39,30 @@ func (c *ChainedStrategy) Strategies() []BypassStrategy {
 }
 
 func (c *ChainedStrategy) Apply(conn net.Conn, data []byte, info ParsedInfo) error {
-	for _, strat := range c.strategies {
-		if err := strat.Apply(conn, data, info); err != nil {
-			return &StrategyError{
-				StrategyName: strat.Name(),
-				Err:          fmt.Errorf("chain step failed in [%s]: %w", c.name, err),
+	if len(c.strategies) == 0 {
+		_, err := conn.Write(data)
+		return err
+	}
+
+	// 1. Run prelude/decoy injection for intermediate strategies (if they implement DecoyProvider)
+	for i := 0; i < len(c.strategies)-1; i++ {
+		strat := c.strategies[i]
+		if dp, ok := strat.(DecoyProvider); ok {
+			if err := dp.SendDecoy(conn, info); err != nil {
+				return &StrategyError{
+					StrategyName: strat.Name(),
+					Err:          fmt.Errorf("chain decoy step failed in [%s]: %w", c.name, err),
+				}
 			}
+		}
+	}
+
+	// 2. The terminal strategy in the chain transmits the actual application payload
+	terminalStrat := c.strategies[len(c.strategies)-1]
+	if err := terminalStrat.Apply(conn, data, info); err != nil {
+		return &StrategyError{
+			StrategyName: terminalStrat.Name(),
+			Err:          fmt.Errorf("chain payload step failed in [%s]: %w", c.name, err),
 		}
 	}
 	return nil

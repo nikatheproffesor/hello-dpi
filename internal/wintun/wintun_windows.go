@@ -28,7 +28,8 @@ func init() {
 	}
 }
 
-// IsAvailable checks if the officially signed wintun.dll is available on Windows
+// IsAvailable checks if wintun.dll is present and loadable on Windows.
+// Note: DLL load success does not verify Authenticode code signatures.
 func IsAvailable() bool {
 	if wintunMod != nil {
 		return wintunMod.Load() == nil
@@ -43,7 +44,9 @@ func IsRunning() bool {
 	return running
 }
 
-// Start initializes the Wintun L3 adapter if available
+// Start initializes the Wintun L3 adapter if available.
+// NOTE: Wintun L3 routing is experimental in userland; verified production packet
+// filtering uses the official WinDivert kernel engine.
 func Start() error {
 	mu.Lock()
 	defer mu.Unlock()
@@ -54,8 +57,8 @@ func Start() error {
 		return fmt.Errorf("wintun.dll bulunamadi veya yuklenemedi (WinDivert cekirdegi devrede)")
 	}
 
-	running = true
-	return nil
+	// Honest notification: Wintun packet-loop is an experimental stub
+	return fmt.Errorf("wintun backend deneysel asamadadir; lutfen WinDivert modunu kullanin")
 }
 
 // Stop deactivates the Wintun adapter

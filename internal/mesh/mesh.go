@@ -39,8 +39,6 @@ type Node struct {
 	nodeID     string
 	peers      map[string]*PeerNode
 	listenPort int
-	listener   net.Listener
-	closed     bool
 	sharedKey  []byte
 }
 
@@ -54,8 +52,8 @@ func NewNode(listenPort int) (*Node, error) {
 	h := sha256.Sum256(pub)
 	nodeID := hex.EncodeToString(h[:8])
 
-	// Derive default local mesh encryption key
-	sharedKey := sha256.Sum256([]byte("hellomesh-v1-zero-server-secret"))
+	// Derive per-node encryption key from the private key material (unique per instance)
+	keyMaterial := sha256.Sum256(priv.Seed())
 
 	node := &Node{
 		privKey:    priv,
@@ -63,7 +61,7 @@ func NewNode(listenPort int) (*Node, error) {
 		nodeID:     nodeID,
 		peers:      make(map[string]*PeerNode),
 		listenPort: listenPort,
-		sharedKey:  sharedKey[:16], // AES-128 key
+		sharedKey:  keyMaterial[:16], // AES-128 key
 	}
 
 	return node, nil

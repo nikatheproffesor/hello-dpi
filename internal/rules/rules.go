@@ -2,6 +2,7 @@ package rules
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -270,9 +271,10 @@ func (e *Engine) EvaluateTarget(host string, port int, processName string) Actio
 	}
 
 	h := strings.ToLower(strings.TrimSpace(host))
-	if colon := strings.IndexByte(h, ':'); colon != -1 {
-		h = h[:colon]
+	if hostPart, _, err := net.SplitHostPort(h); err == nil {
+		h = hostPart
 	}
+	h = strings.Trim(h, "[]")
 	h = strings.TrimSuffix(h, ".")
 
 	if h == "localhost" || strings.HasSuffix(h, ".local") || strings.HasSuffix(h, ".lan") || strings.HasSuffix(h, ".home") {
@@ -355,7 +357,7 @@ func (e *Engine) SyncRemote(url string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return err
+		return fmt.Errorf("remote rules sync failed with HTTP status %d", resp.StatusCode)
 	}
 
 	data, err := io.ReadAll(resp.Body)

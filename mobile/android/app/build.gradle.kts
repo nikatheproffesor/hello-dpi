@@ -22,9 +22,9 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file("hellodpi.keystore")
-            storePassword = "hellodpisecret"
-            keyAlias = "hellodpi"
-            keyPassword = "hellodpisecret"
+            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+            keyAlias = System.getenv("KEY_ALIAS") ?: "hellodpi"
+            keyPassword = System.getenv("KEY_PASSWORD") ?: ""
         }
     }
 

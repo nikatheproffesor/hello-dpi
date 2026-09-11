@@ -90,32 +90,60 @@ func (ft *FallbackTracker) rebuildFastActiveLocked() {
 	}
 }
 
-// SetGroupChains updates the ranked fallback chains for all domain groups
+// SetGroupChains updates the ranked fallback chains for all domain groups.
+// Both primary and fallback maps are merged so primary-only updates are reliably applied.
 func (ft *FallbackTracker) SetGroupChains(primary map[probe.DomainGroup]string, fallbacks map[probe.DomainGroup][]string) {
 	ft.mu.Lock()
 	defer ft.mu.Unlock()
 
-	for g, list := range fallbacks {
+	allGroups := make(map[probe.DomainGroup]bool)
+	for g := range primary {
+		allGroups[g] = true
+	}
+	for g := range fallbacks {
+		allGroups[g] = true
+	}
+
+	for g := range allGroups {
 		var strats []dpi.BypassStrategy
-		for _, name := range list {
-			if s, ok := dpi.GetStrategy(name); ok {
-				strats = append(strats, s)
+		if list, ok := fallbacks[g]; ok {
+			for _, name := range list {
+				if s, ok := dpi.GetStrategy(name); ok {
+					strats = append(strats, s)
+				}
 			}
 		}
+
+		if pName, ok := primary[g]; ok {
+			pStrat := dpi.ResolveStrategy(pName)
+			if len(strats) == 0 {
+				strats = []dpi.BypassStrategy{pStrat}
+			} else if strats[0].Name() != pStrat.Name() {
+				strats = append([]dpi.BypassStrategy{pStrat}, strats...)
+			}
+		}
+
 		if len(strats) == 0 {
-			// Fallback to primary or default
-			if pName, ok := primary[g]; ok {
-				strats = append(strats, dpi.ResolveStrategy(pName))
-			} else {
-				strats = append(strats, dpi.DefaultStrategy())
-			}
+			strats = []dpi.BypassStrategy{dpi.DefaultStrategy()}
 		}
+
 		ft.strategies[g] = strats
 		ft.activeIndex[g] = 0
 		ft.failureStreaks[g] = 0
 	}
 
 	ft.rebuildFastActiveLocked()
+}
+
+type byteCountWriter struct {
+	net.Conn
+	written int64
+}
+
+func (w *byteCountWriter) Write(p []byte) (int, error) {
+	n, err := w.Conn.Write(p)
+	w.written += int64(n)
+	return n, err
 }
 
 // SetGroupStrategies directly configures the strategy fallback slice for a specific group
@@ -192,7 +220,9 @@ func (ft *FallbackTracker) RecordFailure(group probe.DomainGroup) (dpi.BypassStr
 	return nil, false
 }
 
-// ApplyWithFallback executes the group's active bypass strategy with instant in-band fallback
+// ApplyWithFallback executes the group's active bypass strategy with instant in-band fallback.
+// If any bytes were already written to the connection during an unsuccessful attempt, the TCP stream
+// is dirty; retrying payload on the same stream is forbidden to prevent stream corruption.
 func (ft *FallbackTracker) ApplyWithFallback(group probe.DomainGroup, conn net.Conn, payload []byte, info dpi.ParsedInfo) error {
 	if group == probe.GroupSafe {
 		_, err := conn.Write(payload)
@@ -208,29 +238,37 @@ func (ft *FallbackTracker) ApplyWithFallback(group probe.DomainGroup, conn net.C
 
 	// 1. Try active primary strategy (O(1) lookup)
 	if primary != nil {
-		err := primary.Apply(conn, payload, info)
+		bw := &byteCountWriter{Conn: conn}
+		err := primary.Apply(bw, payload, info)
 		if err == nil {
 			ft.RecordSuccess(group)
 			return nil
 		}
-		log.Printf("[Hello DPI Engine] Strategy [%s] failed on group [%s]: %v. Triggering fallback...", primary.Name(), group, err)
+		log.Printf("[Hello DPI Engine] Strategy [%s] failed on group [%s]: %v (bytes written: %d)", primary.Name(), group, err, bw.written)
+		if bw.written > 0 {
+			ft.RecordFailure(group)
+			return fmt.Errorf("strategy [%s] failed after partial write (%d bytes): %w", primary.Name(), bw.written, err)
+		}
 	}
 
-	// 2. Strategy failed: record failure and evaluate circuit breaker
+	// 2. Strategy failed with 0 bytes written: record failure and evaluate circuit breaker
 	ft.RecordFailure(group)
 
-	// 3. In-band failover: attempt next strategy in chain if connection supports re-write
+	// 3. In-band failover: attempt next strategy in chain only if 0 bytes written to connection
 	for i := 0; i < len(strats); i++ {
 		nextIdx := (activeIdx + 1 + i) % len(strats)
 		nextStrat := strats[nextIdx]
 		if nextStrat != nil && nextStrat != primary {
-			if err := nextStrat.Apply(conn, payload, info); err == nil {
+			bw := &byteCountWriter{Conn: conn}
+			if err := nextStrat.Apply(bw, payload, info); err == nil {
 				return nil
+			} else if bw.written > 0 {
+				return fmt.Errorf("fallback strategy [%s] failed after partial write (%d bytes): %w", nextStrat.Name(), bw.written, err)
 			}
 		}
 	}
 
-	// 4. Ultimate Fail-Open: attempt raw write so client connection isn't abruptly severed
+	// 4. Fail-Open: attempt raw write only if no bytes have been written to the socket
 	_, err := conn.Write(payload)
 	if err != nil {
 		return fmt.Errorf("fail-open write failed: %w", err)

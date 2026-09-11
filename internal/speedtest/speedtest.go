@@ -18,17 +18,15 @@ func RegisterHandlers(mux *http.ServeMux) {
 }
 
 func handlePing(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func handleDownload(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
 
-	// Stream from real internet edge CDN to measure genuine internet connection speed (avoids false 21,000 Mbps loopback)
+	// Stream from real internet edge CDN to measure genuine internet connection speed
 	cdnURL := "https://speed.cloudflare.com/__down?bytes=25000000"
 	client := &http.Client{Timeout: 12 * time.Second}
 	resp, err := client.Get(cdnURL)
@@ -47,16 +45,11 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Offline fallback
-	chunk := make([]byte, 16*1024)
-	for i := 0; i < 40; i++ {
-		_, _ = w.Write(chunk)
-		time.Sleep(20 * time.Millisecond)
-	}
+	// When offline or CDNs are unreachable, return an error rather than fabricating fake speeds
+	http.Error(w, "Download measurement failed: Edge CDNs unreachable or offline", http.StatusBadGateway)
 }
 
 func handleUpload(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
 
 	// Forward upload payload to real external CDN
@@ -68,14 +61,14 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 		if err == nil {
 			defer resp.Body.Close()
 			_, _ = io.Copy(io.Discard, resp.Body)
-			w.WriteHeader(http.StatusOK)
-			return
+			if resp.StatusCode == http.StatusOK {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
 		}
 	}
 
-	_, _ = io.Copy(io.Discard, r.Body)
-	_ = r.Body.Close()
-	w.WriteHeader(http.StatusOK)
+	http.Error(w, "Upload measurement failed: Edge CDN upload failed", http.StatusBadGateway)
 }
 
 // OpenSpeedtest opens the speedtest UI in the default web browser

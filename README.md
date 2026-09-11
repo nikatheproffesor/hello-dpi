@@ -43,7 +43,7 @@ Bu, tek geliştiricili, henüz genç bir proje (bağımsız denetimden geçmedi)
 | Platform | Dosya | Not |
 |---|---|---|
 | Windows | [HelloDPI-Windows.zip](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-Windows.zip) | Taşınabilir ZIP paketi (Önerilen) — Kurulumsuz, tıkla çalıştır |
-| macOS | [HelloDPI-macOS.dmg](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-macOS.dmg) | Developer ID ile imzalı resmi Apple DMG paketi |
+| macOS | [HelloDPI-macOS.dmg](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-macOS.dmg) | macOS DMG paketi |
 | Linux | [hellodpi-linux-amd64](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/hellodpi-linux-amd64) | Bağımsız ikili dosya, systemd servisi olarak da kullanılabilir |
 | Android | [HelloDPI-Android.apk](https://github.com/nikatheproffesor/hello-dpi/releases/latest/download/HelloDPI-Android.apk) | Hızlı Ayarlar kutucuğu (Quick Settings Tile) içerir |
 
@@ -229,7 +229,7 @@ Discord'u tamamen kapatın (yalnızca pencereyi değil), Hello DPI'nın çalış
 ## Güvenlik
 
 - Kök/CA sertifikası yüklenmez; HTTPS verisi asla şifresi çözülmez veya kaydedilmez.
-- Sürüm ikili dosyaları VirusTotal'da taranır; bağlantılar ve sağlama toplamları her [sürümle](https://github.com/nikatheproffesor/hello-dpi/releases) birlikte paylaşılır.
+- SHA-256 sağlama toplamları (SHA256SUMS.txt) her [sürümle](https://github.com/nikatheproffesor/hello-dpi/releases) birlikte açıkça paylaşılır.
 - Bağımsız bir üçüncü taraf güvenlik denetimi yapılmamıştır. Tehdit modeliniz için bu önemliyse kaynağı inceleyin veya topluluk denetimini bekleyin.
 
 ## Yasal Uyarı

@@ -36,6 +36,18 @@ func (b *BufferedConn) Read(p []byte) (int, error) {
 	return b.r.Read(p)
 }
 
+type closeWriter interface {
+	CloseWrite() error
+}
+
+// CloseWrite forwards half-close to the underlying socket if supported
+func (b *BufferedConn) CloseWrite() error {
+	if cw, ok := b.Conn.(closeWriter); ok {
+		return cw.CloseWrite()
+	}
+	return nil
+}
+
 // Pipe streams bidirectional data between two connections with buffer reuse and clean half-close.
 func Pipe(src, dst net.Conn) {
 	var wg sync.WaitGroup
@@ -47,8 +59,8 @@ func Pipe(src, dst net.Conn) {
 		defer DefaultBufferPool.Put(bufPtr)
 
 		_, _ = io.CopyBuffer(to, from, *bufPtr)
-		if tc, ok := to.(*net.TCPConn); ok {
-			_ = tc.CloseWrite()
+		if cw, ok := to.(closeWriter); ok {
+			_ = cw.CloseWrite()
 		}
 	}
 

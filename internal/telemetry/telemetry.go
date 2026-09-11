@@ -180,9 +180,16 @@ func (c *Collector) GetISPSuccessTable() map[string]ISPStats {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	res := make(map[string]ISPStats)
+	res := make(map[string]ISPStats, len(c.ispTable))
 	for k, v := range c.ispTable {
-		res[k] = *v
+		statsCopy := *v
+		if v.StrategyWins != nil {
+			statsCopy.StrategyWins = make(map[string]int, len(v.StrategyWins))
+			for strat, wins := range v.StrategyWins {
+				statsCopy.StrategyWins[strat] = wins
+			}
+		}
+		res[k] = statsCopy
 	}
 	return res
 }

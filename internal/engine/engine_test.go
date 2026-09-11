@@ -86,7 +86,7 @@ func TestOrchestratorHandleTunnelDirect(t *testing.T) {
 
 	done := make(chan error)
 	go func() {
-		done <- orch.HandleTunnel(clientB, reader, "127.0.0.1", port)
+		done <- orch.HandleTunnel(clientB, reader, "127.0.0.1", port, nil)
 	}()
 
 	reply := make([]byte, 4)

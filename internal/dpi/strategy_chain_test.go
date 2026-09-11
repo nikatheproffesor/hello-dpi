@@ -20,11 +20,11 @@ func (d *dummyConn) Close() error {
 }
 
 func TestChainedStrategy(t *testing.T) {
-	strat1 := NewFirstByteSplitStrategy(1)
-	strat2 := NewSNIMidSplitStrategy(1)
+	decoy := NewFakePacketStrategy(24, 1)
+	sniMid := NewSNIMidSplitStrategy(1)
 
-	chain := NewChainedStrategy("chain:first-byte+sni", strat1, strat2)
-	if chain.Name() != "chain:first-byte+sni" {
+	chain := NewChainedStrategy("chain:decoy+sni", decoy, sniMid)
+	if chain.Name() != "chain:decoy+sni" {
 		t.Fatalf("unexpected chain name: %s", chain.Name())
 	}
 
@@ -39,8 +39,15 @@ func TestChainedStrategy(t *testing.T) {
 		t.Fatalf("chain apply error: %v", err)
 	}
 
-	if buf.Len() == 0 {
-		t.Fatalf("expected data written to connection")
+	// buf must contain the 24-byte decoy followed by the exact intact raw ClientHello (split across writes)
+	if buf.Len() != 24+len(raw) {
+		t.Fatalf("expected written len %d (24-byte decoy + %d raw), got %d", 24+len(raw), len(raw), buf.Len())
+	}
+
+	// Verify that the payload after decoy is byte-for-byte equal to raw ClientHello
+	writtenPayload := buf.Bytes()[24:]
+	if !bytes.Equal(writtenPayload, raw) {
+		t.Fatalf("payload was corrupted or duplicated during chain execution")
 	}
 }
 

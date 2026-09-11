@@ -63,13 +63,39 @@ func (r *UDPRelay) Serve(stopSignal <-chan struct{}) {
 	buf := make([]byte, 65535)
 
 	// Outbound remote connections map keyed by remote address string
-	remoteConns := make(map[string]*net.UDPConn)
+	type activeConn struct {
+		conn       *net.UDPConn
+		lastActive time.Time
+	}
+	remoteConns := make(map[string]*activeConn)
 	var remoteMu sync.Mutex
+
+	// Background idle timeout sweeper (2 minutes)
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stopSignal:
+				return
+			case <-ticker.C:
+				now := time.Now()
+				remoteMu.Lock()
+				for k, ac := range remoteConns {
+					if now.Sub(ac.lastActive) > 2*time.Minute {
+						_ = ac.conn.Close()
+						delete(remoteConns, k)
+					}
+				}
+				remoteMu.Unlock()
+			}
+		}
+	}()
 
 	defer func() {
 		remoteMu.Lock()
-		for _, c := range remoteConns {
-			_ = c.Close()
+		for _, ac := range remoteConns {
+			_ = ac.conn.Close()
 		}
 		remoteMu.Unlock()
 		_ = r.Close()
@@ -142,18 +168,32 @@ func (r *UDPRelay) Serve(stopSignal <-chan struct{}) {
 
 		// Look up or establish outbound UDP socket to the destination
 		remoteMu.Lock()
-		outConn, exists := remoteConns[destStr]
+		ac, exists := remoteConns[destStr]
 		if !exists {
-			outConn, err = net.DialUDP("udp", nil, destUDPAddr)
+			outConn, err := net.DialUDP("udp", nil, destUDPAddr)
 			if err != nil {
 				remoteMu.Unlock()
 				continue
 			}
-			remoteConns[destStr] = outConn
+			ac = &activeConn{
+				conn:       outConn,
+				lastActive: time.Now(),
+			}
+			remoteConns[destStr] = ac
 
 			// Spawn response reader for this remote endpoint
-			go r.pipeRemoteToClient(outConn, destHost, destPort, atyp)
+			go r.pipeRemoteToClient(outConn, destHost, destPort, atyp, func() {
+				// Update last active time on receive
+				remoteMu.Lock()
+				if c, ok := remoteConns[destStr]; ok {
+					c.lastActive = time.Now()
+				}
+				remoteMu.Unlock()
+			})
+		} else {
+			ac.lastActive = time.Now()
 		}
+		outConn := ac.conn
 		remoteMu.Unlock()
 
 		// Apply QUIC packet mangling or zero-latency voice forwarding
@@ -165,12 +205,15 @@ func (r *UDPRelay) Serve(stopSignal <-chan struct{}) {
 }
 
 // pipeRemoteToClient receives server responses, adds SOCKS5 UDP header, and sends back to client
-func (r *UDPRelay) pipeRemoteToClient(remoteConn *net.UDPConn, host string, port int, atyp byte) {
+func (r *UDPRelay) pipeRemoteToClient(remoteConn *net.UDPConn, host string, port int, atyp byte, onActive func()) {
 	respBuf := make([]byte, 65535)
 	for {
 		n, err := remoteConn.Read(respBuf)
 		if err != nil {
 			return
+		}
+		if onActive != nil {
+			onActive()
 		}
 
 		r.mu.RLock()
@@ -201,7 +244,10 @@ func (r *UDPRelay) pipeRemoteToClient(remoteConn *net.UDPConn, host string, port
 			binary.BigEndian.PutUint16(hdr[5+len(dBytes):], uint16(port))
 		}
 
-		fullResp := append(hdr, respBuf[:n]...)
+		// Safe concatenation: allocate a new buffer to avoid hdr backing array corruption
+		fullResp := make([]byte, len(hdr)+n)
+		copy(fullResp, hdr)
+		copy(fullResp[len(hdr):], respBuf[:n])
 		_, _ = r.udpConn.WriteToUDP(fullResp, client)
 	}
 }

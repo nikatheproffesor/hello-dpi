@@ -44,19 +44,10 @@ func (s *OutOfOrderStrategy) Apply(conn net.Conn, data []byte, info ParsedInfo) 
 		return err
 	}
 
-	// 1. In stream mode: inject reverse-desync decoy to occupy sequence space
-	decoy := GenerateDecoyTLSRecord(18)
-	_ = SetSocketTTL(conn, 3)
-	_, _ = conn.Write(decoy)
-	if s.delay > 0 {
-		time.Sleep(s.delay)
-	}
-	_ = SetSocketTTL(conn, 64)
-
-	// 2. Transmit real records
+	// Transmit valid TLS records with timing jitter between chunks
 	for i := 0; i < len(chunks); i++ {
 		if _, err := conn.Write(chunks[i]); err != nil {
-			return fmt.Errorf("out-of-order chunk %d write failed: %w", i, err)
+			return fmt.Errorf("tls chunk %d write failed: %w", i, err)
 		}
 		if s.delay > 0 && i < len(chunks)-1 {
 			time.Sleep(s.delay)

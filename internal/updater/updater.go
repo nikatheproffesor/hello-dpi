@@ -185,45 +185,61 @@ func parseVersionParts(v string) []int {
 
 func findMatchingAsset(assets []ReleaseAsset) *ReleaseAsset {
 	osName := runtime.GOOS
+	arch := runtime.GOARCH
 
 	switch osName {
 	case "windows":
+		// Look for Windows EXE or ZIP containing Windows binaries
 		for _, a := range assets {
-			if strings.HasSuffix(strings.ToLower(a.Name), ".exe") {
+			name := strings.ToLower(a.Name)
+			if (strings.Contains(name, "windows") || strings.Contains(name, "win")) && strings.HasSuffix(name, ".exe") {
+				assetCopy := a
+				return &assetCopy
+			}
+		}
+		for _, a := range assets {
+			name := strings.ToLower(a.Name)
+			if (strings.Contains(name, "windows") || strings.Contains(name, "win")) && strings.HasSuffix(name, ".zip") {
 				assetCopy := a
 				return &assetCopy
 			}
 		}
 	case "darwin":
-		// Strongly prefer .zip on macOS because it contains the unpackable Hello DPI.app bundle
+		// Strongly prefer macOS .zip (contains Hello DPI.app bundle)
 		for _, a := range assets {
-			if strings.HasSuffix(strings.ToLower(a.Name), ".zip") {
+			name := strings.ToLower(a.Name)
+			if (strings.Contains(name, "macos") || strings.Contains(name, "darwin") || strings.Contains(name, "apple")) && strings.HasSuffix(name, ".zip") {
 				assetCopy := a
 				return &assetCopy
 			}
 		}
 		for _, a := range assets {
 			name := strings.ToLower(a.Name)
-			if strings.HasSuffix(name, ".dmg") || strings.Contains(name, "darwin") || strings.Contains(name, "macos") {
+			if (strings.Contains(name, "macos") || strings.Contains(name, "darwin")) && strings.HasSuffix(name, ".dmg") {
 				assetCopy := a
 				return &assetCopy
 			}
 		}
 	case "linux":
+		// Match linux binaries matching system architecture
 		for _, a := range assets {
 			name := strings.ToLower(a.Name)
-			if strings.Contains(name, "linux") && !strings.HasSuffix(name, ".deb") && !strings.HasSuffix(name, ".rpm") {
+			if strings.Contains(name, "linux") && strings.Contains(name, arch) && !strings.HasSuffix(name, ".deb") && !strings.HasSuffix(name, ".rpm") {
+				assetCopy := a
+				return &assetCopy
+			}
+		}
+		// Generic linux fallback if arch not in name
+		for _, a := range assets {
+			name := strings.ToLower(a.Name)
+			if strings.Contains(name, "linux") && !strings.Contains(name, "arm") && !strings.Contains(name, "mips") && !strings.HasSuffix(name, ".deb") && !strings.HasSuffix(name, ".rpm") {
 				assetCopy := a
 				return &assetCopy
 			}
 		}
 	}
 
-	// Fallback to first asset if any
-	if len(assets) > 0 {
-		assetCopy := assets[0]
-		return &assetCopy
-	}
+	// Never return a cross-OS asset as fallback
 	return nil
 }
 
@@ -491,6 +507,11 @@ func replaceMacOSAppBundle(sourceApp, currentExe string) error {
 	return nil
 }
 
+const (
+	maxZipEntries    = 5000
+	maxZipTotalBytes = 500 * 1024 * 1024 // 500 MB maximum uncompressed size
+)
+
 func extractZipArchive(zipPath, destDir string) error {
 	r, err := zip.OpenReader(zipPath)
 	if err != nil {
@@ -498,7 +519,12 @@ func extractZipArchive(zipPath, destDir string) error {
 	}
 	defer r.Close()
 
+	if len(r.File) > maxZipEntries {
+		return fmt.Errorf("archive contains too many files (%d > %d)", len(r.File), maxZipEntries)
+	}
+
 	destClean := filepath.Clean(destDir) + string(os.PathSeparator)
+	var totalBytesWritten int64
 
 	for _, f := range r.File {
 		targetPath := filepath.Join(destDir, f.Name)
@@ -526,12 +552,24 @@ func extractZipArchive(zipPath, destDir string) error {
 			return err
 		}
 
-		_, copyErr := io.Copy(outFile, rc)
+		remain := maxZipTotalBytes - totalBytesWritten
+		if remain <= 0 {
+			outFile.Close()
+			rc.Close()
+			return fmt.Errorf("archive exceeds maximum uncompressed size limit (%d MB)", maxZipTotalBytes/(1024*1024))
+		}
+
+		limitedRC := io.LimitReader(rc, remain+1)
+		copied, copyErr := io.Copy(outFile, limitedRC)
 		outFile.Close()
 		rc.Close()
 		if copyErr != nil {
 			return copyErr
 		}
+		if copied > remain {
+			return fmt.Errorf("archive exceeds maximum uncompressed size limit (%d MB)", maxZipTotalBytes/(1024*1024))
+		}
+		totalBytesWritten += copied
 
 		_ = os.Chmod(targetPath, f.Mode())
 	}

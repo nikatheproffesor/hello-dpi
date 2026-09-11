@@ -358,7 +358,7 @@ func TestOutOfOrderStrategy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Apply failed: %v", err)
 	}
-	if len(mc.chunks) < 3 {
-		t.Fatalf("Expected decoy + out-of-order chunks, got %d", len(mc.chunks))
+	if len(mc.chunks) < 2 {
+		t.Fatalf("Expected split chunks, got %d", len(mc.chunks))
 	}
 }

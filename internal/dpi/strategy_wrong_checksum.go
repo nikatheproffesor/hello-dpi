@@ -37,7 +37,7 @@ func (s *WrongChecksumStrategy) Name() string {
 	return string(SplitWrongChecksum)
 }
 
-func (s *WrongChecksumStrategy) Apply(conn net.Conn, data []byte, info ParsedInfo) error {
+func (s *WrongChecksumStrategy) SendDecoy(conn net.Conn, info ParsedInfo) error {
 	if tcpConn, ok := conn.(*net.TCPConn); ok {
 		_ = tcpConn.SetNoDelay(true)
 	}
@@ -47,16 +47,22 @@ func (s *WrongChecksumStrategy) Apply(conn net.Conn, data []byte, info ParsedInf
 
 	// Send decoy corrupt payload (dummy TLS Handshake record with invalid length checksum)
 	badDecoy := []byte{0x16, 0x03, 0x01, 0xFF, 0xFF, 0xDE, 0xAD, 0xBE, 0xEF}
-	if _, err := conn.Write(badDecoy); err != nil {
-		_ = SetSocketTTL(conn, 64)
+	_, err := conn.Write(badDecoy)
+	_ = SetSocketTTL(conn, 64)
+	if err != nil {
 		return fmt.Errorf("wrong-chksum write failed: %w", err)
 	}
 
 	if s.delay > 0 {
 		time.Sleep(s.delay)
 	}
+	return nil
+}
 
-	_ = SetSocketTTL(conn, 64)
+func (s *WrongChecksumStrategy) Apply(conn net.Conn, data []byte, info ParsedInfo) error {
+	if err := s.SendDecoy(conn, info); err != nil {
+		return err
+	}
 
 	// Transmit real payload with 5-byte RFC record split
 	tlsStrat := NewTLSRecordSplitStrategy(5, int(s.delay.Milliseconds()))

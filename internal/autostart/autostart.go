@@ -2,10 +2,12 @@ package autostart
 
 import (
 	"fmt"
+	"html"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 const AppName = "HelloDPI"
@@ -38,13 +40,12 @@ func IsEnabled() bool {
 	return false
 }
 
-// Enable configures the application to launch automatically on system boot
+// Enable registers the application to launch automatically on login
 func Enable() error {
 	execPath, err := os.Executable()
 	if err != nil {
 		return err
 	}
-	execPath, _ = filepath.EvalSymlinks(execPath)
 
 	switch runtime.GOOS {
 	case "darwin":
@@ -56,6 +57,7 @@ func Enable() error {
 		_ = os.MkdirAll(agentsDir, 0755)
 		plistPath := filepath.Join(agentsDir, "com.hellodpi.tray.plist")
 
+		escapedPath := html.EscapeString(execPath)
 		// If running from an .app bundle, use the bundle or executable
 		plistContent := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -72,7 +74,7 @@ func Enable() error {
     <key>KeepAlive</key>
     <false/>
 </dict>
-</plist>`, execPath)
+</plist>`, escapedPath)
 		return os.WriteFile(plistPath, []byte(plistContent), 0644)
 
 	case "windows":
@@ -87,14 +89,15 @@ func Enable() error {
 		autostartDir := filepath.Join(home, ".config", "autostart")
 		_ = os.MkdirAll(autostartDir, 0755)
 		desktopPath := filepath.Join(autostartDir, "hellodpi.desktop")
+		escapedExec := strings.ReplaceAll(execPath, `"`, `\"`)
 		content := fmt.Sprintf(`[Desktop Entry]
 Type=Application
 Name=Hello DPI
-Exec=%s
+Exec="%s"
 Hidden=false
 NoDisplay=false
 X-GNOME-Autostart-enabled=true
-`, execPath)
+`, escapedExec)
 		return os.WriteFile(desktopPath, []byte(content), 0644)
 	}
 	return nil

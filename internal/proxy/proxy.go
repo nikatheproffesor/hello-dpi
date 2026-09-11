@@ -30,6 +30,7 @@ type Server struct {
 	listener     net.Listener
 	mu           sync.Mutex
 	closed       bool
+	activeWg     sync.WaitGroup
 }
 
 // Config holds initialization parameters for the Server
@@ -72,16 +73,38 @@ func (s *Server) UpdateEngineConfig(mode dpi.SplitMode, splitOffset int, delayMs
 	s.Orchestrator.UpdateStrategy(string(mode), splitOffset, delayMs)
 }
 
-// Start begins accepting connections on the configured address
-func (s *Server) Start() error {
+// Listen creates the TCP listener on s.Addr synchronously so the caller can guarantee port availability
+func (s *Server) Listen() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.closed = false
+	if s.listener != nil {
+		return nil
+	}
+
 	l, err := net.Listen("tcp", s.Addr)
 	if err != nil {
 		return fmt.Errorf("failed to listen on %s: %w", s.Addr, err)
 	}
-
-	s.mu.Lock()
 	s.listener = l
+	return nil
+}
+
+// Serve accepts incoming connections on the pre-bound listener
+func (s *Server) Serve() error {
+	s.mu.Lock()
+	l := s.listener
 	s.mu.Unlock()
+
+	if l == nil {
+		if err := s.Listen(); err != nil {
+			return err
+		}
+		s.mu.Lock()
+		l = s.listener
+		s.mu.Unlock()
+	}
 
 	log.Printf("[Hello DPI] Proxy listening on %s (Dual HTTP & SOCKS5)", s.Addr)
 
@@ -98,18 +121,32 @@ func (s *Server) Start() error {
 			continue
 		}
 
-		go s.handleConnection(clientConn)
+		s.activeWg.Add(1)
+		go func(c net.Conn) {
+			defer s.activeWg.Done()
+			s.handleConnection(c)
+		}(clientConn)
 	}
 }
 
-// Close gracefully stops the proxy listener
+// Start begins accepting connections (Listen + Serve)
+func (s *Server) Start() error {
+	if err := s.Listen(); err != nil {
+		return err
+	}
+	return s.Serve()
+}
+
+// Close gracefully stops the proxy listener and marks closed
 func (s *Server) Close() error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	s.closed = true
-	if s.listener != nil {
-		return s.listener.Close()
+	l := s.listener
+	s.listener = nil
+	s.mu.Unlock()
+
+	if l != nil {
+		return l.Close()
 	}
 	return nil
 }
@@ -118,7 +155,7 @@ func (s *Server) Close() error {
 func (s *Server) handleConnection(clientConn net.Conn) {
 	defer clientConn.Close()
 
-	// Initial handshake deadline to avoid socket slowloris starvation
+	// Handshake deadline protects against socket slowloris starvation
 	_ = clientConn.SetDeadline(time.Now().Add(15 * time.Second))
 
 	reader := bufio.NewReader(clientConn)
@@ -126,9 +163,6 @@ func (s *Server) handleConnection(clientConn net.Conn) {
 	if err != nil {
 		return
 	}
-
-	// Reset deadline for streaming phase
-	_ = clientConn.SetDeadline(time.Time{})
 
 	// SOCKS5 starts with byte 0x05
 	if firstByte[0] == 0x05 {
@@ -149,7 +183,8 @@ func (s *Server) handleHTTP(clientConn net.Conn, reader *bufio.Reader) {
 	}
 
 	// Route local management endpoints (/doctor, /speedtest, /api/status) to control server
-	if control.IsControlPath(req.Method, req.URL.Path) {
+	// only if the request genuinely targets loopback, avoiding hijacking external sites.
+	if control.IsControlRequest(req) {
 		w := newConnResponseWriter(clientConn)
 		s.Control.ServeHTTP(w, req)
 		return
@@ -176,12 +211,17 @@ func (s *Server) handleHTTP(clientConn net.Conn, reader *bufio.Reader) {
 	}
 
 	if req.Method == http.MethodConnect {
-		// Respond 200 Connection Established to the client
-		if _, err := clientConn.Write([]byte("HTTP/1.1 200 Connection Established\r\n\r\n")); err != nil {
-			return
+		err := s.Orchestrator.HandleTunnel(clientConn, reader, host, port, func() error {
+			// Clear deadline for streaming phase
+			_ = clientConn.SetDeadline(time.Time{})
+			_, wErr := clientConn.Write([]byte("HTTP/1.1 200 Connection Established\r\n\r\n"))
+			return wErr
+		})
+		if err != nil {
+			_, _ = clientConn.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
 		}
-		_ = s.Orchestrator.HandleTunnel(clientConn, reader, host, port)
 	} else {
+		_ = clientConn.SetDeadline(time.Time{})
 		_ = s.Orchestrator.HandleHTTP(clientConn, reader, req, host, port)
 	}
 }
@@ -202,7 +242,19 @@ func (s *Server) handleSOCKS5(clientConn net.Conn, reader *bufio.Reader) {
 		return
 	}
 
-	// 0x00 = NO AUTHENTICATION REQUIRED
+	// Verify client offers NO AUTHENTICATION REQUIRED (0x00)
+	hasNoAuth := false
+	for _, m := range methods {
+		if m == 0x00 {
+			hasNoAuth = true
+			break
+		}
+	}
+	if !hasNoAuth {
+		_, _ = clientConn.Write([]byte{0x05, 0xFF}) // No acceptable methods
+		return
+	}
+
 	if _, err := clientConn.Write([]byte{0x05, 0x00}); err != nil {
 		return
 	}
@@ -213,8 +265,15 @@ func (s *Server) handleSOCKS5(clientConn net.Conn, reader *bufio.Reader) {
 		return
 	}
 
+	// RFC 1928: header[0] must be VER=0x05, header[2] must be RSV=0x00
+	if header[0] != 0x05 || header[2] != 0x00 {
+		_, _ = clientConn.Write([]byte{0x05, 0x01, 0x00, 0x01, 0, 0, 0, 0, 0, 0}) // General SOCKS failure
+		return
+	}
+
 	cmd := header[1]
 	if cmd == 0x03 { // 0x03 = UDP ASSOCIATE (QUIC / Discord Voice)
+		_ = clientConn.SetDeadline(time.Time{})
 		if err := HandleSOCKS5UDPAssociate(clientConn, reader); err != nil {
 			log.Printf("[Hello DPI] SOCKS5 UDP Associate error: %v", err)
 		}
@@ -267,12 +326,14 @@ func (s *Server) handleSOCKS5(clientConn net.Conn, reader *bufio.Reader) {
 		return
 	}
 
-	// SOCKS5 success reply
-	if _, err := clientConn.Write([]byte{0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0}); err != nil {
-		return
+	err = s.Orchestrator.HandleTunnel(clientConn, reader, targetHost, port, func() error {
+		_ = clientConn.SetDeadline(time.Time{})
+		_, wErr := clientConn.Write([]byte{0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
+		return wErr
+	})
+	if err != nil {
+		_, _ = clientConn.Write([]byte{0x05, 0x04, 0x00, 0x01, 0, 0, 0, 0, 0, 0}) // Host unreachable
 	}
-
-	_ = s.Orchestrator.HandleTunnel(clientConn, reader, targetHost, port)
 }
 
 func (s *Server) isProxyLoop(host, port string) bool {

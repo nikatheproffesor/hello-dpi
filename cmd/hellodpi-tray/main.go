@@ -80,12 +80,27 @@ func main() {
 		server.UpdateEngineConfig(mode, splitOffset, delayMs)
 	})
 
-	// Start proxy server in background
-	go func() {
-		if err := server.Start(); err != nil {
-			log.Printf("[Hello DPI Tray] Proxy server error: %v", err)
-		}
-	}()
+	// Network interface and sleep/wake monitor
+	netMonitor := netmon.NewMonitor("127.0.0.1", 8080, func(oldState, newState netmon.NetworkState) {
+		probeEngine.TriggerImmediateReProbe()
+	})
+
+	// Synchronously bind proxy listener before touching OS system proxy settings
+	if err := server.Listen(); err != nil {
+		log.Printf("[Hello DPI Tray] Critical: failed to listen on %s: %v", proxyAddr, err)
+		// Do not enable system proxy if server failed to bind!
+	} else {
+		go func() {
+			if err := server.Serve(); err != nil {
+				log.Printf("[Hello DPI Tray] Proxy server error: %v", err)
+			}
+		}()
+		// Activate system proxy only after successful listener bind
+		_ = sysproxy.SetSystemProxy("127.0.0.1", 8080)
+		netMonitor.SetProxyState(true)
+	}
+	netMonitor.Start()
+	defer netMonitor.Stop()
 
 	// Periodic background auto-tune re-verification (every 6 hours)
 	go func() {
@@ -100,12 +115,6 @@ func main() {
 		}
 	}()
 
-	// Activate system proxy
-	_ = sysproxy.SetSystemProxy("127.0.0.1", 8080)
-
-	// WinDivert operates selectively: L7 is default (zero admin prompt);
-	// Kernel divert engages silently only when needed by direct socket games (Roblox)
-
 	// Setup tray
 	tray := systray.New()
 	tray.SetAppName(appTitle)
@@ -113,13 +122,36 @@ func main() {
 	tray.SetTemplateIcon(icon.ActiveIconPNG())
 	tray.SetIcon(icon.ActiveIconPNG())
 
+	// Serialized state machine queue to prevent out-of-order execution on rapid clicks
+	toggleCh := make(chan bool, 32)
+	go func() {
+		for targetActive := range toggleCh {
+			if targetActive {
+				netMonitor.SetProxyState(true)
+				if err := sysproxy.SetSystemProxy("127.0.0.1", 8080); err != nil {
+					log.Printf("[Hello DPI Tray] Failed to resume system proxy: %v", err)
+					tray.ShowNotification(appTitle, "Sistem vekili etkinleştirilemedi.")
+				} else {
+					tray.ShowNotification(appTitle, "Hello DPI devrede. Discord ve tüm siteler açık.")
+				}
+			} else {
+				netMonitor.SetProxyState(false)
+				_ = divert.Stop()
+				if err := sysproxy.ClearSystemProxy(); err != nil {
+					log.Printf("[Hello DPI Tray] Failed to clear system proxy: %v", err)
+				}
+				tray.ShowNotification(appTitle, "Koruma geçici olarak duraklatıldı.")
+			}
+		}
+	}()
+
 	menu := systray.NewMenu()
 
 	// 1. Status Label
 	statusItem := menu.Add(fmt.Sprintf("Hello DPI: Aktif (v%s)", version.Version), nil)
 	statusItem.SetDisabled(true)
 
-	// 2. Protection Toggle (Instant 0ms UI feedback + Async sysproxy toggle)
+	// 2. Protection Toggle (Instant 0ms UI feedback + Serialized sysproxy toggle)
 	isActive := true
 	var toggleMu sync.Mutex
 	var toggleItem *systray.MenuItem
@@ -140,12 +172,7 @@ func main() {
 			if kernelItem != nil {
 				kernelItem.SetLabel("Çekirdek Motoru: Devre Dışı")
 			}
-			tray.ShowNotification(appTitle, "Koruma geçici olarak duraklatıldı.")
-
-			go func() {
-				_ = divert.Stop()
-				_ = sysproxy.ClearSystemProxy()
-			}()
+			toggleCh <- false
 		} else {
 			// Resume protection
 			isActive = true
@@ -161,11 +188,7 @@ func main() {
 					kernelItem.SetLabel("Çekirdek Motoru: Devre Dışı")
 				}
 			}
-			tray.ShowNotification(appTitle, "Hello DPI devrede. Discord ve tüm siteler açık.")
-
-			go func() {
-				_ = sysproxy.SetSystemProxy("127.0.0.1", 8080)
-			}()
+			toggleCh <- true
 		}
 	})
 
@@ -229,14 +252,6 @@ func main() {
 			server.Orchestrator.UpdateGroupStrategies(res.GroupStrategies, res.GroupFallbacks)
 		}
 	})
-
-	// Network interface and sleep/wake monitor
-	netMonitor := netmon.NewMonitor("127.0.0.1", 8080, func(oldState, newState netmon.NetworkState) {
-		probeEngine.TriggerImmediateReProbe()
-	})
-	netMonitor.SetProxyState(true)
-	netMonitor.Start()
-	defer netMonitor.Stop()
 
 	// 6. Auto-Updater Action
 	var latestRelease *updater.ReleaseInfo

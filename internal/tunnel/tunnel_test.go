@@ -11,28 +11,49 @@ import (
 )
 
 func TestBufferedConn(t *testing.T) {
-	pipeReader, pipeWriter := net.Pipe()
-	defer pipeReader.Close()
-	defer pipeWriter.Close()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("Listen failed: %v", err)
+	}
+	defer ln.Close()
 
+	done := make(chan struct{})
+	var serverConn net.Conn
 	go func() {
-		_, _ = pipeWriter.Write([]byte("WORLD"))
+		defer close(done)
+		var err error
+		serverConn, err = ln.Accept()
+		if err != nil {
+			return
+		}
+		defer serverConn.Close()
+		_, _ = serverConn.Write([]byte("WORLD"))
+		if tc, ok := serverConn.(*net.TCPConn); ok {
+			_ = tc.CloseWrite()
+		}
 	}()
 
-	// Put "HELLO " in a buffer, and socket has "WORLD"
-	preBuf := bytes.NewReader([]byte("HELLO "))
-	reader := bufio.NewReader(io.MultiReader(preBuf, pipeReader))
+	clientConn, err := net.Dial("tcp", ln.Addr().String())
+	if err != nil {
+		t.Fatalf("Dial failed: %v", err)
+	}
+	defer clientConn.Close()
 
-	bc := NewBufferedConn(reader, pipeReader)
+	// Put "HELLO " in a pre-buffer, and serverConn streams "WORLD"
+	preBuf := bytes.NewReader([]byte("HELLO "))
+	reader := bufio.NewReader(io.MultiReader(preBuf, clientConn))
+
+	bc := NewBufferedConn(reader, clientConn)
 
 	data := make([]byte, 11)
 	n, err := io.ReadFull(bc, data)
 	if err != nil {
-		t.Fatalf("ReadFull failed: %v", err)
+		t.Fatalf("ReadFull failed (n=%d, read=%q): %v", n, string(data[:n]), err)
 	}
 	if n != 11 || string(data) != "HELLO WORLD" {
 		t.Fatalf("Expected 'HELLO WORLD', got '%s'", string(data))
 	}
+	<-done
 }
 
 func TestReadInitialPayloadTLS(t *testing.T) {
