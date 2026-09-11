@@ -3,4 +3,4 @@
 package sysproxy
 
 func startWatchdog(host string, port int) {}
-func stopWatchdog() {}
+func stopWatchdog()                       {}

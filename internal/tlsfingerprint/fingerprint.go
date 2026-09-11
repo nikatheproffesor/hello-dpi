@@ -63,9 +63,9 @@ var Safari18CipherSuites = []uint16{
 
 // Fingerprint holds parsed JA3 / JA4 telemetry
 type Fingerprint struct {
-	JA3Raw     string
-	JA3Hash    string
-	JA4        string
+	JA3Raw         string
+	JA3Hash        string
+	JA4            string
 	MatchedBrowser string
 }
 

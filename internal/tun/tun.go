@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	ErrDeviceClosed   = errors.New("tun device is closed")
+	ErrDeviceClosed    = errors.New("tun device is closed")
 	ErrInvalidIPPacket = errors.New("invalid IP packet")
 )
 
@@ -39,14 +39,14 @@ type Stats struct {
 
 // Engine operates the transparent network layer packet pump
 type Engine struct {
-	dev        Device
-	mangler    *quic.Mangler
-	strategy   dpi.BypassStrategy
-	stats      Stats
-	mu         sync.RWMutex
-	running    bool
-	stopChan   chan struct{}
-	stopOnce   sync.Once
+	dev      Device
+	mangler  *quic.Mangler
+	strategy dpi.BypassStrategy
+	stats    Stats
+	mu       sync.RWMutex
+	running  bool
+	stopChan chan struct{}
+	stopOnce sync.Once
 }
 
 // NewEngine creates a new transparent TUN packet engine
@@ -175,7 +175,7 @@ func (e *Engine) handleTCP(dstIP net.IP, tcpPkt []byte) {
 	}
 	// srcPort := binary.BigEndian.Uint16(tcpPkt[0:2]) // Unused
 	dstPort := binary.BigEndian.Uint16(tcpPkt[2:4])
-	dataOffset := int((tcpPkt[12] >> 4) & 0x0F) * 4
+	dataOffset := int((tcpPkt[12]>>4)&0x0F) * 4
 	if len(tcpPkt) <= dataOffset {
 		return
 	}

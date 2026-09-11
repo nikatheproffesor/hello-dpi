@@ -50,12 +50,12 @@ type Engine struct {
 
 // Anti-cheat process deny-list: NEVER intercept or divert these processes to prevent bans
 var antiCheatProcesses = map[string]bool{
-	"vgc.exe":               true, // Riot Vanguard
-	"vgtray.exe":            true,
-	"easyanticheat.exe":     true, // EasyAntiCheat
-	"easyanticheat_eos.exe": true,
-	"beservice.exe":         true, // BattlEye
-	"bedaisy.sys":           true,
+	"vgc.exe":                     true, // Riot Vanguard
+	"vgtray.exe":                  true,
+	"easyanticheat.exe":           true, // EasyAntiCheat
+	"easyanticheat_eos.exe":       true,
+	"beservice.exe":               true, // BattlEye
+	"bedaisy.sys":                 true,
 	"cs2.exe":                     true, // Counter-Strike 2
 	"valorant.exe":                true, // Valorant
 	"valorant-win64-shipping.exe": true, // Valorant main game and voice engine

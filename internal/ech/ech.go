@@ -180,12 +180,12 @@ func EncapsulateOuterClientHello(innerHello []byte, cfg *ECHConfig, outerSNI str
 	if len(cfg.PublicKey) != 32 {
 		return nil, fmt.Errorf("invalid ECH public key length: expected 32 bytes, got %d", len(cfg.PublicKey))
 	}
-	
+
 	peerPub, err := ecdh.X25519().NewPublicKey(cfg.PublicKey)
 	if err != nil {
 		return nil, fmt.Errorf("invalid ECH peer public key: %w", err)
 	}
-	
+
 	sharedSecret, err = privKey.ECDH(peerPub)
 	if err != nil {
 		return nil, fmt.Errorf("ECDH key exchange failed: %w", err)
@@ -260,7 +260,7 @@ func buildOuterHelloWithECH(outerSNI string, echPayload []byte) []byte {
 	handshakeBody[0] = 0x03
 	handshakeBody[1] = 0x03
 	_, _ = io.ReadFull(rand.Reader, handshakeBody[2:34]) // 32 bytes random
-	handshakeBody[34] = 0x00                            // Session ID len 0
+	handshakeBody[34] = 0x00                             // Session ID len 0
 	// 2 Cipher suites: TLS_AES_128_GCM_SHA256 (0x1301), TLS_AES_256_GCM_SHA384 (0x1302)
 	binary.BigEndian.PutUint16(handshakeBody[35:37], 0x0004)
 	binary.BigEndian.PutUint16(handshakeBody[37:39], 0x1301)

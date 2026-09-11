@@ -55,7 +55,7 @@ func IsQUICInitial(payload []byte) bool {
 	}
 	firstByte := payload[0]
 	// Must be Long Header (0x80), Fixed Bit set (0x40), and Type == 0x00 (bits 4-5 are 0)
-	if (firstByte & 0x80) == 0 || (firstByte & 0x40) == 0 {
+	if (firstByte&0x80) == 0 || (firstByte&0x40) == 0 {
 		return false
 	}
 	packetType := (firstByte & 0x30) >> 4
