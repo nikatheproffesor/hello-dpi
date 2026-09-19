@@ -69,6 +69,7 @@ func (s *WrongChecksumStrategy) Apply(conn net.Conn, data []byte, info ParsedInf
 	return tlsStrat.Apply(conn, data, info)
 }
 
+
 func init() {
 	RegisterStrategy(NewWrongChecksumStrategy(3, 4))
 }

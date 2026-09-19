@@ -73,6 +73,8 @@ func (s *FakePacketStrategy) Apply(conn net.Conn, data []byte, info ParsedInfo) 
 	return tlsStrat.Apply(conn, data, info)
 }
 
+
+
 func init() {
 	RegisterStrategy(NewFakePacketStrategy(24, 5))
 }

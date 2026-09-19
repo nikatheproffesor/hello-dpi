@@ -45,16 +45,16 @@ func NewFallbackTracker(onFallback func(group probe.DomainGroup, fromStrat, toSt
 		onFallback:     onFallback,
 	}
 
-	// Initialize sensible default fallback chains
+	// Initialize sensible default fallback chains (pure stream-safe strategies without decoy corruption)
 	ft.strategies[probe.GroupDiscord] = []dpi.BypassStrategy{
-		dpi.ResolveStrategy(string(dpi.SplitOutOfOrder)),
-		dpi.ResolveStrategy(string(dpi.SplitWrongSeq)),
 		dpi.ResolveStrategy(string(dpi.SplitTLS)),
+		dpi.ResolveStrategy(string(dpi.SplitSNI)),
+		dpi.ResolveStrategy(string(dpi.SplitFirstByte)),
 	}
 	ft.strategies[probe.GroupRoblox] = []dpi.BypassStrategy{
-		dpi.ResolveStrategy(string(dpi.SplitWrongSeq)),
-		dpi.ResolveStrategy(string(dpi.SplitOutOfOrder)),
 		dpi.ResolveStrategy(string(dpi.SplitTLS)),
+		dpi.ResolveStrategy(string(dpi.SplitSNI)),
+		dpi.ResolveStrategy(string(dpi.SplitFirstByte)),
 	}
 	ft.strategies[probe.GroupWeb] = []dpi.BypassStrategy{
 		dpi.ResolveStrategy(string(dpi.SplitTLS)),
