@@ -19,6 +19,16 @@ func TestEvaluateDomains(t *testing.T) {
 	if act := eng.Evaluate("wifi.gsb.gov.tr"); act != ActionDirect {
 		t.Errorf("Expected wifi.gsb.gov.tr to be ActionDirect, got %d", act)
 	}
+	if act := eng.Evaluate("portal.gsb.gov.tr"); act != ActionDirect {
+		t.Errorf("Expected portal.gsb.gov.tr to be ActionDirect, got %d", act)
+	}
+	if act := eng.Evaluate("giris.gsb.gov.tr"); act != ActionDirect {
+		t.Errorf("Expected giris.gsb.gov.tr to be ActionDirect, got %d", act)
+	}
+	if act := eng.Evaluate("kyk.gov.tr"); act != ActionDirect {
+		t.Errorf("Expected kyk.gov.tr to be ActionDirect, got %d", act)
+	}
+
 
 	// Discord -> ProxyDPI
 	if act := eng.Evaluate("discord.com"); act != ActionProxyDPI {

@@ -114,8 +114,12 @@ var defaultDirectList = []string{
 	"gelirler.gov.tr",
 	"btk.gov.tr",
 	"kyk.gov.tr",
+	"wifi.kyk.gov.tr",
 	"gsb.gov.tr",
 	"wifi.gsb.gov.tr",
+	"portal.gsb.gov.tr",
+	"giris.gsb.gov.tr",
+	"auth.gsb.gov.tr",
 
 	// Captive Portals & Network Health
 	"captive.apple.com",

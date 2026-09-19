@@ -5,11 +5,13 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/hellodpi/hellodpi/internal/sysproxy"
 )
+
 
 // NetworkState describes the currently detected network environment
 type NetworkState struct {
@@ -89,8 +91,8 @@ func (m *Monitor) check() {
 			oldState.PrimaryInterface, oldState.LocalIP,
 			currentState.PrimaryInterface, currentState.LocalIP)
 
-		// Re-apply system proxy to the new active interface if proxy was enabled
-		if proxyActive && m.proxyPort > 0 {
+		// Re-apply system proxy to the new active interface only if proxy was enabled and NOT in captive portal
+		if proxyActive && m.proxyPort > 0 && !currentState.CaptivePortal {
 			log.Printf("[Hello DPI NetMon] Re-applying system proxy to new network interface...")
 			_ = sysproxy.SetSystemProxy(m.proxyHost, m.proxyPort)
 		}
@@ -98,8 +100,12 @@ func (m *Monitor) check() {
 		if m.onChange != nil {
 			go m.onChange(oldState, currentState)
 		}
-	} else if captiveChanged && currentState.CaptivePortal {
-		log.Printf("[Hello DPI NetMon] Captive portal / login page detected (GSB / KYK / Hotel WiFi).")
+	} else if captiveChanged {
+		if currentState.CaptivePortal {
+			log.Printf("[Hello DPI NetMon] Captive portal / login page detected (GSB / KYK / Hotel WiFi).")
+		} else {
+			log.Printf("[Hello DPI NetMon] Captive portal cleared. Normal internet connectivity restored.")
+		}
 		if m.onChange != nil {
 			go m.onChange(oldState, currentState)
 		}
@@ -141,34 +147,74 @@ func (m *Monitor) inspect() NetworkState {
 		}
 	}
 
-	// Check captive portal (short timeout)
+	// Check captive portal (multi-endpoint direct probe)
 	st.CaptivePortal = checkCaptivePortal()
 	return st
 }
 
 // checkCaptivePortal detects whether HTTP requests are being redirected (e.g. KYK / GSB login)
 func checkCaptivePortal() bool {
-	ctx, cancel := context.WithTimeout(context.Background(), 800*time.Millisecond)
-	defer cancel()
+	return checkCaptivePortalEndpoints("http://connectivitycheck.gstatic.com/generate_204", "http://captive.apple.com/hotspot-detect.html")
+}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", "http://connectivitycheck.gstatic.com/generate_204", nil)
-	if err != nil {
-		return false
+func checkCaptivePortalEndpoints(googleURL, appleURL string) bool {
+	// Probe with direct transport (no proxy) to detect local gateway captive redirects
+	directTransport := &http.Transport{
+		Proxy:                 nil,
+		DisableKeepAlives:     true,
+		ResponseHeaderTimeout: 1500 * time.Millisecond,
 	}
 
 	client := &http.Client{
-		Timeout: 800 * time.Millisecond,
+		Timeout:   1500 * time.Millisecond,
+		Transport: directTransport,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 	}
 
-	resp, err := client.Do(req)
-	if err != nil {
-		return false
+	// 1. Google generate_204 check
+	if googleURL != "" {
+		ctx1, cancel1 := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+		defer cancel1()
+		req1, err := http.NewRequestWithContext(ctx1, "GET", googleURL, nil)
+		if err == nil {
+			resp1, err := client.Do(req1)
+			if err == nil {
+				defer resp1.Body.Close()
+				if resp1.StatusCode == http.StatusNoContent {
+					return false // Clean connection, no captive portal
+				}
+				if resp1.StatusCode == http.StatusFound || resp1.StatusCode == http.StatusMovedPermanently || resp1.StatusCode == http.StatusTemporaryRedirect || resp1.StatusCode == http.StatusOK {
+					return true // Redirected to captive portal or returned login page
+				}
+			}
+		}
 	}
-	defer resp.Body.Close()
 
-	// If HTTP 204 No Content is returned, connection is fully open without captive portal
-	return resp.StatusCode != http.StatusNoContent
+	// 2. Apple hotspot-detect fallback check
+	if appleURL != "" {
+		ctx2, cancel2 := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+		defer cancel2()
+		req2, err := http.NewRequestWithContext(ctx2, "GET", appleURL, nil)
+		if err == nil {
+			resp2, err := client.Do(req2)
+			if err == nil {
+				defer resp2.Body.Close()
+				if resp2.StatusCode == http.StatusOK {
+					buf := make([]byte, 128)
+					n, _ := resp2.Body.Read(buf)
+					if strings.Contains(string(buf[:n]), "Success") {
+						return false // Clean connection
+					}
+					return true // Captive HTML returned instead of Success
+				}
+				return true // Redirected
+			}
+		}
+	}
+
+	return false
 }
+
+

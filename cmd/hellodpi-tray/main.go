@@ -80,9 +80,92 @@ func main() {
 		server.UpdateEngineConfig(mode, splitOffset, delayMs)
 	})
 
-	// Network interface and sleep/wake monitor
-	netMonitor := netmon.NewMonitor("127.0.0.1", 8080, func(oldState, newState netmon.NetworkState) {
-		probeEngine.TriggerImmediateReProbe()
+	// Setup tray
+	tray := systray.New()
+	tray.SetAppName(appTitle)
+	tray.SetTooltip("Hello DPI: Aktif (v" + version.Version + ")")
+	tray.SetTemplateIcon(icon.ActiveIconPNG())
+	tray.SetIcon(icon.ActiveIconPNG())
+
+	menu := systray.NewMenu()
+
+	// 1. Status Label
+	statusItem := menu.Add(fmt.Sprintf("Hello DPI: Aktif (v%s)", version.Version), nil)
+	statusItem.SetDisabled(true)
+
+	// 2. Protection Toggle (Instant 0ms UI feedback + Serialized sysproxy toggle)
+	isActive := true
+	var toggleMu sync.Mutex
+	var toggleItem *systray.MenuItem
+	var kernelItem *systray.MenuItem
+
+	var netMonitor *netmon.Monitor
+
+	// Serialized state machine queue to prevent out-of-order execution on rapid clicks
+	toggleCh := make(chan bool, 32)
+	go func() {
+		for targetActive := range toggleCh {
+			if targetActive {
+				if netMonitor != nil {
+					netMonitor.SetProxyState(true)
+				}
+				if err := sysproxy.SetSystemProxy("127.0.0.1", 8080); err != nil {
+					log.Printf("[Hello DPI Tray] Failed to resume system proxy: %v", err)
+					tray.ShowNotification(appTitle, "Sistem vekili etkinleştirilemedi.")
+				} else {
+					tray.ShowNotification(appTitle, "Hello DPI devrede. Discord ve tüm siteler açık.")
+				}
+			} else {
+				if netMonitor != nil {
+					netMonitor.SetProxyState(false)
+				}
+				_ = divert.Stop()
+				if err := sysproxy.ClearSystemProxy(); err != nil {
+					log.Printf("[Hello DPI Tray] Failed to clear system proxy: %v", err)
+				}
+				tray.ShowNotification(appTitle, "Koruma geçici olarak duraklatıldı.")
+			}
+		}
+	}()
+
+	// Network interface and sleep/wake monitor with Captive Portal (GSB WiFi / KYK) auto-handling
+	netMonitor = netmon.NewMonitor("127.0.0.1", 8080, func(oldState, newState netmon.NetworkState) {
+		if newState.CaptivePortal && !oldState.CaptivePortal {
+			log.Println("[Hello DPI Tray] Captive portal detected (GSB WiFi / KYK / Hotel). Suspending system proxy to allow login...")
+			toggleMu.Lock()
+			if isActive {
+				isActive = false
+				toggleCh <- false
+				tray.SetTemplateIcon(icon.PausedIconPNG())
+				tray.SetIcon(icon.PausedIconPNG())
+				tray.SetTooltip("Hello DPI: GSB WiFi Girişi Bekleniyor")
+				statusItem.SetLabel("Hello DPI: GSB WiFi Girişi Bekleniyor")
+				if toggleItem != nil {
+					toggleItem.SetLabel("Korumayı Başlat")
+				}
+				tray.ShowNotification(appTitle, "GSB WiFi giriş sayfası tespit edildi. Giriş yapabilmeniz için sistem vekili geçici olarak duraklatıldı.")
+			}
+			toggleMu.Unlock()
+		} else if !newState.CaptivePortal && oldState.CaptivePortal {
+			log.Println("[Hello DPI Tray] Captive portal cleared. Resuming protection and auto-tuning...")
+			toggleMu.Lock()
+			if !isActive {
+				isActive = true
+				toggleCh <- true
+				tray.SetTemplateIcon(icon.ActiveIconPNG())
+				tray.SetIcon(icon.ActiveIconPNG())
+				tray.SetTooltip("Hello DPI: Aktif (v" + version.Version + ")")
+				statusItem.SetLabel(fmt.Sprintf("Hello DPI: Aktif (v%s)", version.Version))
+				if toggleItem != nil {
+					toggleItem.SetLabel("Korumayı Duraklat")
+				}
+				tray.ShowNotification(appTitle, "GSB WiFi bağlantısı sağlandı. Hello DPI devrede.")
+			}
+			toggleMu.Unlock()
+			probeEngine.TriggerImmediateReProbe()
+		} else {
+			probeEngine.TriggerImmediateReProbe()
+		}
 	})
 
 	// Synchronously bind proxy listener before touching OS system proxy settings
@@ -115,47 +198,6 @@ func main() {
 		}
 	}()
 
-	// Setup tray
-	tray := systray.New()
-	tray.SetAppName(appTitle)
-	tray.SetTooltip("Hello DPI: Aktif (v" + version.Version + ")")
-	tray.SetTemplateIcon(icon.ActiveIconPNG())
-	tray.SetIcon(icon.ActiveIconPNG())
-
-	// Serialized state machine queue to prevent out-of-order execution on rapid clicks
-	toggleCh := make(chan bool, 32)
-	go func() {
-		for targetActive := range toggleCh {
-			if targetActive {
-				netMonitor.SetProxyState(true)
-				if err := sysproxy.SetSystemProxy("127.0.0.1", 8080); err != nil {
-					log.Printf("[Hello DPI Tray] Failed to resume system proxy: %v", err)
-					tray.ShowNotification(appTitle, "Sistem vekili etkinleştirilemedi.")
-				} else {
-					tray.ShowNotification(appTitle, "Hello DPI devrede. Discord ve tüm siteler açık.")
-				}
-			} else {
-				netMonitor.SetProxyState(false)
-				_ = divert.Stop()
-				if err := sysproxy.ClearSystemProxy(); err != nil {
-					log.Printf("[Hello DPI Tray] Failed to clear system proxy: %v", err)
-				}
-				tray.ShowNotification(appTitle, "Koruma geçici olarak duraklatıldı.")
-			}
-		}
-	}()
-
-	menu := systray.NewMenu()
-
-	// 1. Status Label
-	statusItem := menu.Add(fmt.Sprintf("Hello DPI: Aktif (v%s)", version.Version), nil)
-	statusItem.SetDisabled(true)
-
-	// 2. Protection Toggle (Instant 0ms UI feedback + Serialized sysproxy toggle)
-	isActive := true
-	var toggleMu sync.Mutex
-	var toggleItem *systray.MenuItem
-	var kernelItem *systray.MenuItem
 
 	toggleItem = menu.Add("Korumayı Duraklat", func() {
 		toggleMu.Lock()

@@ -82,8 +82,8 @@ func (m *linuxManager) Enable(host string, port int) error {
 	_ = exec.Command("gsettings", "set", "org.gnome.system.proxy.https", "host", host).Run()
 	_ = exec.Command("gsettings", "set", "org.gnome.system.proxy.https", "port", portStr).Run()
 	_ = exec.Command("gsettings", "set", "org.gnome.system.proxy.socks", "host", host).Run()
-	_ = exec.Command("gsettings", "set", "org.gnome.system.proxy.socks", "port", portStr).Run()
-	_ = exec.Command("gsettings", "set", "org.gnome.system.proxy", "ignore-hosts", "['localhost', '127.0.0.0/8', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '*.local', '*.gsb.gov.tr', '*.kyk.gov.tr', 'captive.apple.com', 'connectivitycheck.gstatic.com', 'msftconnecttest.com']").Run()
+	_ = exec.Command("gsettings", "set", "org.gnome.system.proxy", "ignore-hosts", "['localhost', '127.0.0.0/8', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '*.local', 'gsb.gov.tr', '*.gsb.gov.tr', 'wifi.gsb.gov.tr', 'portal.gsb.gov.tr', 'giris.gsb.gov.tr', 'auth.gsb.gov.tr', 'kyk.gov.tr', '*.kyk.gov.tr', 'wifi.kyk.gov.tr', 'captive.apple.com', 'connectivitycheck.gstatic.com', 'connectivitycheck.android.com', 'msftconnecttest.com', 'ipv6.msftconnecttest.com']").Run()
+
 
 	// 2. KDE Plasma Desktop (KDE 5 & 6)
 	for _, kcmd := range []string{"kwriteconfig6", "kwriteconfig5"} {
